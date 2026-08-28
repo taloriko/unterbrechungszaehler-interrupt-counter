@@ -17,14 +17,32 @@ Der wichtigste Punkt war von Anfang an, dass die Bedienung **so einfach sein mus
 
 Ab hier wird es wieder sachlich.
 
-<!-- SCREENSHOT-DE-01: Hauptansicht / Heute -->
-![Hauptansicht](docs/images/Reiter - Heute.png)
 
-<!-- SCREENSHOT-DE-02: Verlauf / Heatmap -->
-> **Screenshot-Platzhalter:** Verlauf und Heatmap
+## Screenshots
 
-<!-- SCREENSHOT-DE-03: Gerät / Autark -->
-> **Screenshot-Platzhalter:** Geräteinformationen und Autarker Modus
+### Heute
+
+![Reiter Heute](docs/images/Reiter%20-%20Heute.png)
+
+### Heatmap
+
+![Reiter Heatmap](docs/images/Reiter%20-%20Heatmap.png)
+
+### Details
+
+![Reiter Details](docs/images/Reiter%20-%20Details.png)
+
+### Export
+
+![Reiter Export](docs/images/Reiter%20-%20Export.png)
+
+### Gerät
+
+![Reiter Gerät](docs/images/Reiter%20-%20Geraet.png)
+
+### Autark – Beta
+
+![Reiter Autark Beta](docs/images/Reiter%20-%20Autark%20-%20Beta.png)
 
 ### Funktionen
 
