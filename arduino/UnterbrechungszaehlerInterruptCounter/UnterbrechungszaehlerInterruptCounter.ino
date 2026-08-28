@@ -1,0 +1,1172 @@
+#include <WiFi.h>
+#include <WebServer.h>
+#include <ESPmDNS.h>
+#include <LittleFS.h>
+#include <time.h>
+#include <WiFiUdp.h>
+#include <Preferences.h>
+#include <esp_sleep.h>
+#include <esp_timer.h>
+#include <driver/gpio.h>
+#include "esp32-hal-cpu.h"
+#include "Secrets.h"
+
+// ============================================================
+// Unterbrechungszaehler / Interrupt Counter - ESP32
+// ============================================================
+// Hardware: ESP32 Dev Module / ESP32-WROOM-32
+// Button:   GPIO27 <-> dry contact <-> GND
+// LED:      GPIO2 (if available on board)
+// ============================================================
+
+const char* APP_VERSION = "2026-08-28-6";
+const char* HOSTNAME = "unterbrechungen";
+const uint8_t BUTTON_PIN = 27;
+const uint8_t LED_PIN = 2;
+// Schiebeschalter: GPIO33 -> GND = Autarker Modus (Beta). Offen = Netz/WLAN.
+const uint8_t AUTARK_PIN = 33;
+const bool LED_ACTIVE_LOW = false;
+
+const uint32_t DEBOUNCE_MS = 50;
+const uint32_t LONG_PRESS_MS = 3000;
+const uint32_t WIFI_RETRY_MS = 10000;
+
+// Germany: CET/CEST including automatic DST switching.
+const char* TZ_INFO = "CET-1CEST,M3.5.0,M10.5.0/3";
+const char* DEFAULT_NTP_1 = "pool.ntp.org";
+const char* NTP_2 = "time.cloudflare.com";
+const char* NTP_3 = "time.google.com";
+String primaryNtp = DEFAULT_NTP_1;
+Preferences preferences;
+
+// Binary ring buffer. 10,000 records use only about 40 kB plus header.
+const char* RING_FILE = "/events.bin";
+const char* LEGACY_FILE = "/events.txt";
+const char* EXPORT_FILE = "/export.csv";
+const uint32_t RING_MAGIC = 0x55494331; // "UIC1"
+const uint16_t RING_VERSION = 1;
+const uint32_t RING_CAPACITY = 10000;
+
+// Separate fixed-size ring for autonomous/battery operation.
+const char* AUTARK_FILE = "/autark.bin";
+const char* AUTARK_EXPORT_FILE = "/autark_export.csv";
+const uint32_t AUTARK_MAGIC = 0x55494131; // "UIA1"
+const uint16_t AUTARK_VERSION = 1;
+const uint32_t AUTARK_CAPACITY = 10000;
+
+enum AutarkRecordType : uint8_t {
+  AUTARK_START = 1,
+  AUTARK_EVENT = 2,
+  AUTARK_END = 3
+};
+
+struct __attribute__((packed)) AutarkHeader {
+  uint32_t magic;
+  uint16_t version;
+  uint16_t reserved;
+  uint32_t capacity;
+  uint32_t writeIndex;
+  uint32_t count;
+  uint32_t nextSessionId;
+};
+
+struct __attribute__((packed)) AutarkRecord {
+  uint32_t sessionId;
+  uint32_t elapsedSec;
+  uint32_t anchorEpoch;
+  uint8_t type;
+  uint8_t flags;
+  uint16_t reserved;
+};
+
+struct __attribute__((packed)) RingHeader {
+  uint32_t magic;
+  uint16_t version;
+  uint16_t reserved;
+  uint32_t capacity;
+  uint32_t writeIndex; // next slot to write
+  uint32_t count;      // valid records, max capacity
+};
+
+WebServer server(80);
+bool fsOk = false;
+bool ringOk = false;
+RingHeader ringHeader = {};
+bool buttonRaw = HIGH;
+bool buttonStable = HIGH;
+uint32_t rawChangedAt = 0;
+uint32_t pressedAt = 0;
+uint32_t lastWifiRetry = 0;
+uint32_t physicalPulseSeq = 0;
+uint32_t uiActionSeq = 0;
+uint8_t uiActionKind = 0; // 1 = add/blue, 2 = delete/red
+
+AutarkHeader autarkHeader = {};
+bool autarkRingOk = false;
+bool autarkMode = false;
+bool webServerStarted = false;
+bool mdnsStarted = false;
+bool autarkRaw = HIGH;
+bool autarkStable = HIGH;
+uint32_t autarkChangedAt = 0;
+uint32_t autarkSessionId = 0;
+uint64_t autarkSessionStartUs = 0;
+uint32_t autarkSessionEvents = 0;
+uint32_t lastAutarkElapsed = 0;
+uint32_t pendingAutarkEndSession = 0;
+uint32_t pendingAutarkEndElapsed = 0;
+
+// ============================================================
+// WEB PAGE
+// ============================================================
+const char INDEX_HTML[] PROGMEM = R"HTML(
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Unterbrechungsz&auml;hler / Interrupt Counter</title>
+<style>
+:root{--bg:#eef1f4;--card:#fff;--text:#18202a;--muted:#65717e;--line:#cfd7df;--accent:#2166d1;--danger:#b42318;--battery:#8a5a00;--ok:#16803a;--tab:#e4e9ee;--shadow:0 2px 10px rgba(0,0,0,.06)}
+@media(prefers-color-scheme:dark){:root{--bg:#11151a;--card:#1a2027;--text:#edf2f7;--muted:#9ba8b5;--line:#35404b;--accent:#6ea8ff;--danger:#ff8178;--battery:#f1b84b;--ok:#65d58b;--tab:#151b21;--shadow:none}}
+*{box-sizing:border-box}html{overflow-y:scroll;scrollbar-gutter:stable}body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,"Segoe UI",sans-serif}.wrap{max-width:1120px;margin:auto;padding:18px}header{display:flex;justify-content:space-between;gap:12px;align-items:center}h1{font-size:1.35rem;margin:0}.muted{color:var(--muted)}.status{font-size:.9rem;color:var(--muted);text-align:right}.dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--danger);margin-right:5px}.dot.ok{background:var(--ok)}
+.tabs{display:flex;align-items:flex-end;gap:4px;flex-wrap:wrap;margin-top:18px;border-bottom:1px solid var(--line);padding-left:8px}.tab{position:relative;top:1px;border:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--tab);color:var(--text);border-radius:10px 10px 0 0;padding:10px 15px 9px;font:inherit;cursor:pointer;display:flex;align-items:center;gap:7px}.tab:hover{background:var(--card)}.tab.active{background:var(--card);border-bottom-color:var(--card);color:var(--accent);font-weight:700;z-index:2}.ico{font-size:1.05rem;line-height:1}
+.tabpanel{background:var(--card);border:1px solid var(--line);border-top:0;border-radius:0 12px 12px 12px;padding:14px;box-shadow:var(--shadow)}.view{display:none}.view.active{display:block}.notice{display:none;border:1px solid var(--danger);color:var(--danger);padding:10px;border-radius:9px;margin-bottom:14px}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}.card{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:16px;transition:border-color .16s ease,box-shadow .16s ease}.card.pulseBlue,.infoBox.pulseBlue{animation:pulseBlue .9s ease-out}.card.pulseRed,.infoBox.pulseRed{animation:pulseRed .9s ease-out}@keyframes pulseBlue{0%{border-color:var(--line);box-shadow:none}18%{border-color:var(--accent);box-shadow:0 0 0 3px rgba(33,102,209,.23),0 0 18px rgba(33,102,209,.18)}65%{border-color:var(--accent)}100%{border-color:var(--line);box-shadow:none}}@keyframes pulseRed{0%{border-color:var(--line);box-shadow:none}18%{border-color:var(--danger);box-shadow:0 0 0 3px rgba(180,35,24,.20),0 0 18px rgba(180,35,24,.16)}65%{border-color:var(--danger)}100%{border-color:var(--line);box-shadow:none}}.span4{grid-column:span 4}.span6{grid-column:span 6}.span8{grid-column:span 8}.span12{grid-column:span 12}.big{text-align:center;padding:24px 10px}.countRow{display:grid;grid-template-columns:58px 1fr 58px;align-items:center;gap:8px}.big .num{font-size:4rem;font-weight:700}.countAction{width:50px;height:50px;border-radius:50%;padding:0;display:flex;align-items:center;justify-content:center;font-size:1.35rem;margin:auto;background:var(--bg);border:1px solid var(--line);transition:transform .12s ease,border-color .12s ease,background .12s ease}.countAction:hover{border-color:var(--accent);background:var(--card);transform:translateY(-1px)}.countAction.add{color:var(--accent)}.countAction.delete{color:var(--danger)}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:16px}.metric{border-top:1px solid var(--line);padding-top:10px}.metric b{display:block}.metric span{font-size:.8rem;color:var(--muted)}h2{font-size:1.05rem;margin:0 0 14px}.barrow{display:grid;grid-template-columns:60px 1fr 35px;gap:8px;align-items:center;margin:7px 0}.barbg{height:15px;background:var(--line);border-radius:6px;overflow:hidden}.bar{height:100%;background:var(--accent)}table.list{width:100%;border-collapse:collapse}.list th,.list td{padding:8px;border-bottom:1px solid var(--line);text-align:left}.list th:last-child,.list td:last-child{text-align:right}.heatwrap{overflow:auto}.heat{border-collapse:separate;border-spacing:4px;min-width:700px}.heat td,.heat th{width:42px;height:34px;text-align:center;font-size:.8rem}.heat td{border:1px solid var(--line);border-radius:6px}.actions{display:flex;gap:8px;flex-wrap:wrap}button,.btn{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:9px;padding:9px 13px;font:inherit;cursor:pointer;text-decoration:none}.btn.primary{background:var(--accent);color:white;border-color:var(--accent)}.btn.danger{color:var(--danger)}select{font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text)}
+.infoGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.infoBox{border:1px solid var(--line);border-radius:10px;padding:14px;transition:border-color .16s ease,box-shadow .16s ease}.infoBox h3{font-size:.95rem;margin:0 0 10px;color:var(--text);display:flex;align-items:center;gap:8px}.infoIcon{font-size:1.2rem}.helpList{display:grid;gap:9px;margin:14px 0}.helpRow{display:grid;grid-template-columns:42px minmax(0,1fr);gap:11px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 11px}.helpIcon{width:38px;height:38px;border-radius:9px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:1.25rem}.helpText b{display:block;margin-bottom:3px}.helpText span{font-size:.84rem;color:var(--muted);line-height:1.35}.ledPattern{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.82rem}.footerWrap{position:relative;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;margin:20px 0 8px;font-size:.82rem;color:var(--muted)}.footerLeft{justify-self:start}.footerCenter{justify-self:center;text-align:center}.footerRight{justify-self:end}.footerWrap a{color:var(--muted);text-decoration:none}.footerWrap a:hover{color:var(--accent);text-decoration:underline}.footerLove{text-align:center}.footerLove .heart{color:#d92d20}.footerLove b{color:var(--text);font-weight:600}.kv{display:grid;grid-template-columns:minmax(130px,1fr) minmax(120px,1fr);gap:7px 14px;font-size:.92rem}.kv span:nth-child(odd){color:var(--muted)}.kv span:nth-child(even){text-align:right;font-weight:600;word-break:break-word}.progress{height:12px;background:var(--line);border-radius:7px;overflow:hidden;margin:8px 0}.progress>div{height:100%;background:var(--accent);width:0}.progress.free>div{background:var(--ok)}.fieldRow{display:flex;gap:8px;align-items:center;margin-top:10px}.fieldRow input{min-width:0;flex:1;font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text)}.ntpResult{margin-top:7px;font-size:.8rem;color:var(--muted)}.ntpResult.ok{color:var(--ok)}.ntpResult.err{color:var(--danger)}.beta{font-size:.65rem;font-weight:700;letter-spacing:.04em;border:1px solid var(--battery);color:var(--battery);border-radius:999px;padding:2px 5px;margin-left:2px}.modeBadge{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:5px 9px;font-size:.82rem}.modeBadge.on{border-color:var(--battery);color:var(--battery)}.small{font-size:.8rem;color:var(--muted)}footer{font-size:.8rem;color:var(--muted);margin-top:18px}
+@media(max-width:800px){.span4,.span6,.span8{grid-column:span 12}.wrap{padding:12px}.infoGrid{grid-template-columns:1fr}.tab{padding:9px 11px}}
+@media(max-width:520px){.metrics{grid-template-columns:1fr}.status{font-size:.78rem}.tab .label{display:none}.tab{padding:10px 13px}.kv{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><div><h1>Unterbrechungsz&auml;hler / Interrupt Counter</h1><div id="todayLabel" class="muted"></div></div><div class="status"><span id="dot" class="dot"></span><span id="conn">Verbinden...</span><br><span id="deviceClock">Geraetezeit: --</span></div></header>
+<div class="tabs">
+<button class="tab active" data-view="today"><span class="ico">&#128202;</span><span class="label">Heute</span></button>
+<button class="tab" data-view="history"><span class="ico">&#128197;</span><span class="label">Verlauf</span></button>
+<button class="tab" data-view="heatmap"><span class="ico">&#128293;</span><span class="label">Heatmap</span></button>
+<button class="tab" data-view="details"><span class="ico">&#128336;</span><span class="label">Details</span></button>
+<button class="tab" data-view="export"><span class="ico">&#11015;</span><span class="label">Export</span></button>
+<button class="tab" data-view="device"><span class="ico">&#9881;</span><span class="label">Geraet</span></button>
+<button class="tab" data-view="autark"><span class="ico">&#128267;</span><span class="label">Autark</span><span class="beta">BETA</span></button>
+</div>
+<div class="tabpanel">
+<div id="notice" class="notice"></div>
+<section id="today" class="view active"><div class="grid">
+<div class="card span4 big"><div class="countRow"><button id="addBtn" class="countAction add" title="Unterbrechung jetzt erfassen" aria-label="Unterbrechung jetzt erfassen">&#128070;</button><div id="todayCount" class="num">0</div><button id="undoBtn" class="countAction delete" title="Letzten Eintrag loeschen" aria-label="Letzten Eintrag loeschen">&#128465;</button></div><div class="muted">Unterbrechungen heute</div><div class="metrics"><div class="metric"><b id="avgGap">-</b><span>&Oslash; Abstand</span></div><div class="metric"><b id="maxGap">-</b><span>laengster Abstand</span></div><div class="metric"><b id="lastTime">-</b><span>letzte</span></div></div></div>
+<div class="card span8"><h2>Unterbrechungen nach Uhrzeit</h2><div id="hourBars" class="muted">Noch keine Ereignisse.</div></div>
+<div class="card span6"><h2>Letzte Ereignisse</h2><table class="list"><thead><tr><th>Zeit</th><th>Abstand</th></tr></thead><tbody id="latestRows"><tr><td colspan="2" class="muted">Noch keine Ereignisse.</td></tr></tbody></table></div>
+<div class="card span6"><h2>Bedienung</h2>
+<div class="helpList">
+<div class="helpRow"><div class="helpIcon">&#128070;</div><div class="helpText"><b>Kurz druecken</b><span>Speichert eine neue Unterbrechung mit Datum und Uhrzeit.</span></div></div>
+<div class="helpRow"><div class="helpIcon">&#128465;</div><div class="helpText"><b>Ca. 3 Sekunden halten</b><span>Loescht den zuletzt gespeicherten Eintrag. Bestaetigung: <span class="ledPattern">3x schnell</span>.</span></div></div>
+<div class="helpRow"><div class="helpIcon">&#9888;</div><div class="helpText"><b>Warnsignal</b><span>Keine gueltige Zeit, kein WLAN oder Speicherproblem: <span class="ledPattern">2x schnell + 2x langsam</span>.</span></div></div>
+</div></div>
+</div></section>
+<section id="history" class="view"><div class="grid"><div class="card span12"><h2>Tagesverlauf</h2><div id="dayBars" class="muted">Noch keine Daten.</div></div><div class="card span12"><h2>Uebersicht</h2><table class="list"><thead><tr><th>Datum</th><th>Anzahl</th></tr></thead><tbody id="dayRows"></tbody></table></div></div></section>
+<section id="heatmap" class="view"><div class="card"><h2>Heatmap - Wochentag / Uhrzeit</h2><div id="heatWrap" class="heatwrap"></div></div></section>
+<section id="details" class="view"><div class="card"><h2>Tagesdetail</h2><p><select id="dateSelect"></select></p><table class="list"><thead><tr><th>Zeit</th><th>Abstand</th></tr></thead><tbody id="detailRows"></tbody></table></div></section>
+<section id="export" class="view"><div class="card"><h2>Export & Datensicherung</h2><p>CSV mit Datum, Uhrzeit und Unix-Zeitstempel. Der Dateiname enthaelt den Zeitpunkt des Exports.</p><div class="actions"><a class="btn primary" href="/export.csv">CSV herunterladen</a><button id="refreshBtn" class="btn">Daten neu laden</button></div><p id="eventTotal" class="muted"></p><p class="small">Der Ringspeicher behaelt immer die neuesten Eintraege. Ist er voll, wird der jeweils aelteste Eintrag ueberschrieben.</p></div></section>
+<section id="device" class="view">
+<div class="infoGrid">
+<div class="infoBox"><h3><span class="infoIcon">&#128337;</span>Geraet & Zeit</h3><div class="kv"><span>Datum</span><span id="devDate">-</span><span>Uhrzeit</span><span id="devTime">-</span><span>Uptime</span><span id="devUptime">-</span><span>Firmware</span><span id="devVersion">-</span><span>Hostname</span><span id="devHost">-</span></div></div>
+<div class="infoBox"><h3><span class="infoIcon">&#129504;</span>ESP32 & RAM</h3><div class="kv"><span>Chip</span><span id="devChip">-</span><span>Revision</span><span id="devRevision">-</span><span>Kerne</span><span id="devCores">-</span><span>CPU</span><span id="devCpu">-</span><span>RAM gesamt</span><span id="heapTotal">-</span><span>RAM frei</span><span id="devHeap">-</span><span>RAM belegt</span><span id="heapUsed">-</span></div><div class="progress free"><div id="heapBar"></div></div><div class="small">Balken = aktuell freier Heap-RAM.</div></div>
+<div class="infoBox"><h3><span class="infoIcon">&#128246;</span>WLAN & NTP</h3><div class="kv"><span>Status</span><span id="devWifi">-</span><span>IP-Adresse</span><span id="devIp">-</span><span>Signal</span><span id="devRssi">-</span></div><label class="small" for="ntpServer"><b>Primaerer NTP-Server</b></label><div class="fieldRow"><input id="ntpServer" type="text" maxlength="120" placeholder="pool.ntp.org" spellcheck="false"><button id="ntpSaveBtn" class="btn">Pruefen & speichern</button></div><div id="ntpResult" class="ntpResult">Beim Speichern wird DNS und eine echte NTP-Antwort kurz geprueft. Cloudflare und Google bleiben als Fallback aktiv.</div></div>
+<div class="infoBox"><h3><span class="infoIcon">&#128190;</span>LittleFS</h3><div class="kv"><span>Gesamt</span><span id="fsTotal">-</span><span>Belegt</span><span id="fsUsed">-</span><span>Frei</span><span id="fsFree">-</span></div><div class="progress"><div id="fsBar"></div></div></div>
+<div class="infoBox"><h3><span class="infoIcon">&#128260;</span>Ringspeicher</h3><div class="kv"><span>Eintraege</span><span id="ringCount">-</span><span>Kapazitaet</span><span id="ringCapacity">-</span><span>Frei</span><span id="ringFree">-</span><span>Speichermodus</span><span>Ring / FIFO</span></div><div class="progress"><div id="ringBar"></div></div><div class="small">Bei 100 % wird beim naechsten Ereignis automatisch der aelteste Datensatz ersetzt.</div></div>
+<div class="infoBox"><h3><span class="infoIcon">&#9889;</span>Flash / Programm</h3><div class="kv"><span>Flash gesamt</span><span id="flashTotal">-</span><span>Sketch</span><span id="sketchUsed">-</span><span>Sketch-Partition frei</span><span id="sketchFree">-</span></div><div class="progress"><div id="flashBar"></div></div><div class="small">Balken = Belegung der fuer den Sketch verfuegbaren Programm-Partition.</div></div>
+</div>
+</section>
+<section id="autark" class="view">
+<div class="infoGrid">
+<div class="infoBox"><h3><span class="infoIcon">&#128267;</span>Autarker Modus <span class="beta">BETA</span></h3><div class="kv"><span>Schiebeschalter</span><span>GPIO33 &rarr; GND</span><span>Status</span><span id="autarkState">-</span><span>Aktive Session</span><span id="autarkSession">-</span><span>Laufzeit</span><span id="autarkElapsed">-</span></div><p class="small">Geschlossener Kontakt = Autark. WLAN, mDNS und Webserver werden abgeschaltet; CPU 80 MHz und Light-Sleep zwischen Bedienungen.</p></div>
+<div class="infoBox"><h3><span class="infoIcon">&#9201;</span>Zeit ohne NTP</h3><p>Beim Umschalten wird ein Marker <b>Akku-Betrieb</b> gespeichert. Danach werden Pulse als Laufzeit seit diesem Marker erfasst.</p><p class="small">Ist beim Start keine Uhrzeit vorhanden, bleibt die Session zunaechst relativ. Beim Rueckschalten ins Netz kann sie ueber den NTP-Zeitpunkt am Ende zeitlich eingeordnet werden. Bei einem echten Stromausfall waehrend der Session ist ohne RTC keine lueckenlose absolute Zeitrekonstruktion moeglich.</p></div>
+<div class="infoBox"><h3><span class="infoIcon">&#128260;</span>Autark-Ringspeicher</h3><div class="kv"><span>Datensaetze</span><span id="autarkCount">-</span><span>Kapazitaet</span><span id="autarkCapacity">-</span><span>Frei</span><span id="autarkFree">-</span><span>Aktuelle Pulse</span><span id="autarkSessionEvents">-</span></div><div class="progress"><div id="autarkBar"></div></div><div class="small">Eigene Datei <code>/autark.bin</code>, 10.000 Datensaetze. Danach wird der aelteste Datensatz ersetzt.</div></div>
+<div class="infoBox"><h3><span class="infoIcon">&#127793;</span>Stromsparstrategie</h3><div class="kv"><span>WLAN</span><span>aus</span><span>Webserver</span><span>aus</span><span>CPU</span><span>80 MHz</span><span>Idle</span><span>Light-Sleep</span></div><p class="small">Hinweis: Power-LED, USB-UART-Chip und Spannungsregler des Dev-Boards verbrauchen weiterhin Strom. Fuer maximale Akkulaufzeit ist spaeter ein sparsameres Board bzw. Hardware-Umbau sinnvoll.</p></div>
+</div>
+<div class="card" style="margin-top:12px"><h2>Letzte Autark-Eintraege</h2><div class="actions"><a class="btn primary" href="/autark.csv">Autark-CSV herunterladen</a><button id="autarkRefreshBtn" class="btn">Neu laden</button></div><table class="list" style="margin-top:10px"><thead><tr><th>Session / Typ</th><th>Zeitbezug</th></tr></thead><tbody id="autarkRows"><tr><td colspan="2" class="muted">Noch keine Daten geladen.</td></tr></tbody></table></div>
+</section>
+</div>
+<footer class="footerWrap"><div class="footerLeft"><a href="https://github.com/taloriko" target="_blank" rel="noopener">&#128187; GitHub: taloriko</a></div><div class="footerCenter footerLove">Mit Liebe <span class="heart">&#10084;&#65039;</span> gemacht &ndash; aus dem Schmerz heraus &middot; Version <b id="footerVersion">--</b></div><div class="footerRight"><a href="https://github.com/taloriko/unterbrechungszaehler-interrupt-counter" target="_blank" rel="noopener">&#128736;&#65039; Projekt auf GitHub</a></div></footer>
+</div>
+<script>
+(function(){
+'use strict';
+var events=[];var lastKnown=0;var statusData=null;var lastActionSeq=null;var autarkData=null;
+function el(id){return document.getElementById(id)}
+function pad(n){return String(n).padStart(2,'0')}
+function dateKey(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function dmy(d){return pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear()}
+function hms(d){return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())}
+function duration(sec){if(!isFinite(sec)||sec<=0)return '-';var m=Math.round(sec/60);if(m<60)return m+' min';var h=Math.floor(m/60),r=m%60;return r?h+' h '+r+' min':h+' h'}
+function bytes(n){if(n===undefined||n===null)return '-';if(n<1024)return n+' B';if(n<1048576)return (n/1024).toFixed(1)+' KiB';return (n/1048576).toFixed(2)+' MiB'}
+function uptime(s){s=Math.floor(s||0);var d=Math.floor(s/86400);s%=86400;var h=Math.floor(s/3600);s%=3600;var m=Math.floor(s/60);return (d?d+' d ':'')+pad(h)+':'+pad(m)}
+function keyFromTs(ts){return dateKey(new Date(ts*1000))}
+function showNotice(txt){el('notice').textContent=txt;el('notice').style.display=txt?'block':'none'}
+function setConnection(ok,text){el('dot').className=ok?'dot ok':'dot';el('conn').textContent=text}
+function flashCards(kind){var cls=kind==='delete'?'pulseRed':'pulseBlue';document.querySelectorAll('.card,.infoBox').forEach(function(c){c.classList.remove('pulseBlue','pulseRed');void c.offsetWidth;c.classList.add(cls)});setTimeout(function(){document.querySelectorAll('.'+cls).forEach(function(c){c.classList.remove(cls)})},950)}
+function grouped(){var m={};events.forEach(function(ts){var k=keyFromTs(ts);if(!m[k])m[k]=[];m[k].push(ts)});return m}
+function renderToday(){var now=new Date();var key=dateKey(now);var arr=events.filter(function(ts){return keyFromTs(ts)===key});el('todayLabel').textContent=dmy(now);el('todayCount').textContent=arr.length;el('lastTime').textContent=arr.length?hms(new Date(arr[arr.length-1]*1000)).slice(0,5):'-';var gaps=[];for(var i=1;i<arr.length;i++)gaps.push(arr[i]-arr[i-1]);el('avgGap').textContent=gaps.length?duration(gaps.reduce(function(a,b){return a+b},0)/gaps.length):'-';el('maxGap').textContent=gaps.length?duration(Math.max.apply(null,gaps)):'-';var c=new Array(24).fill(0);arr.forEach(function(ts){c[new Date(ts*1000).getHours()]++});var max=Math.max.apply(null,[1].concat(c));var html='';for(i=0;i<24;i++){if(c[i]===0&&i<6)continue;if(c[i]===0&&i>20)continue;html+='<div class="barrow"><span>'+pad(i)+'-'+pad((i+1)%24)+'</span><div class="barbg"><div class="bar" style="width:'+(c[i]/max*100)+'%"></div></div><b>'+c[i]+'</b></div>'}el('hourBars').innerHTML=html||'<span class="muted">Noch keine Ereignisse.</span>';var rows='';for(i=arr.length-1;i>=Math.max(0,arr.length-10);i--){var gap=i>0?arr[i]-arr[i-1]:NaN;rows+='<tr><td>'+hms(new Date(arr[i]*1000))+'</td><td>'+(i>0?duration(gap):'-')+'</td></tr>'}el('latestRows').innerHTML=rows||'<tr><td colspan="2" class="muted">Noch keine Ereignisse.</td></tr>'}
+function renderHistory(){var m=grouped();var days=Object.keys(m).sort().reverse().slice(0,30);var max=1;days.forEach(function(k){max=Math.max(max,m[k].length)});var bars='',rows='';days.forEach(function(k){var p=k.split('-');var label=p[2]+'.'+p[1]+'.';var n=m[k].length;bars+='<div class="barrow"><span>'+label+'</span><div class="barbg"><div class="bar" style="width:'+(n/max*100)+'%"></div></div><b>'+n+'</b></div>';rows+='<tr><td>'+p[2]+'.'+p[1]+'.'+p[0]+'</td><td>'+n+'</td></tr>'});el('dayBars').innerHTML=bars||'<span class="muted">Noch keine Daten.</span>';el('dayRows').innerHTML=rows}
+function renderHeat(){var names=['So','Mo','Di','Mi','Do','Fr','Sa'];var a=[];for(var d=0;d<7;d++)a[d]=new Array(24).fill(0);var max=1;events.forEach(function(ts){var x=new Date(ts*1000);a[x.getDay()][x.getHours()]++;max=Math.max(max,a[x.getDay()][x.getHours()])});var html='<table class="heat"><thead><tr><th></th>';for(var h=6;h<=20;h++)html+='<th>'+h+'</th>';html+='</tr></thead><tbody>';[1,2,3,4,5,6,0].forEach(function(day){html+='<tr><th>'+names[day]+'</th>';for(var hour=6;hour<=20;hour++){var v=a[day][hour];var alpha=v?0.15+0.75*(v/max):0;html+='<td style="background:rgba(33,102,209,'+alpha.toFixed(2)+')">'+(v||'')+'</td>'}html+='</tr>'});html+='</tbody></table>';el('heatWrap').innerHTML=html}
+function renderDetails(){var m=grouped();var days=Object.keys(m).sort().reverse();var old=el('dateSelect').value;var opts='';days.forEach(function(k){var p=k.split('-');opts+='<option value="'+k+'">'+p[2]+'.'+p[1]+'.'+p[0]+' - '+m[k].length+'</option>'});el('dateSelect').innerHTML=opts;if(old&&m[old])el('dateSelect').value=old;renderDetailRows()}
+function renderDetailRows(){var m=grouped();var arr=m[el('dateSelect').value]||[];var rows='';for(var i=0;i<arr.length;i++)rows+='<tr><td>'+hms(new Date(arr[i]*1000))+'</td><td>'+(i?duration(arr[i]-arr[i-1]):'-')+'</td></tr>';el('detailRows').innerHTML=rows||'<tr><td colspan="2" class="muted">Keine Ereignisse.</td></tr>'}
+function renderDevice(){var d=statusData;if(!d)return;el('devDate').textContent=d.deviceDate||'-';el('devTime').textContent=d.deviceTime||'-';el('deviceClock').textContent='Geraetezeit: '+(d.deviceDate||'--')+' '+(d.deviceTime||'--');el('devUptime').textContent=uptime(d.uptime);el('devVersion').textContent=d.version||'-';el('footerVersion').textContent=d.version||'-';el('devHost').textContent=d.hostname||'-';el('devChip').textContent=d.chipModel||'-';el('devRevision').textContent=d.chipRevision;el('devCores').textContent=d.chipCores;el('devCpu').textContent=d.cpuMHz+' MHz';el('heapTotal').textContent=bytes(d.heapTotal);el('devHeap').textContent=bytes(d.heapFree);el('heapUsed').textContent=bytes(Math.max(0,(d.heapTotal||0)-(d.heapFree||0)));el('heapBar').style.width=(d.heapTotal?Math.min(100,d.heapFree/d.heapTotal*100):0)+'%';el('devWifi').textContent=d.wifi?'Verbunden':'Offline';el('devIp').textContent=d.ip||'-';el('devRssi').textContent=d.wifi?(d.rssi+' dBm'):'-';if(document.activeElement!==el('ntpServer'))el('ntpServer').value=d.ntpPrimary||'';el('fsTotal').textContent=bytes(d.fsTotal);el('fsUsed').textContent=bytes(d.fsUsed);el('fsFree').textContent=bytes(d.fsFree);el('fsBar').style.width=(d.fsTotal?Math.min(100,d.fsUsed/d.fsTotal*100):0)+'%';el('ringCount').textContent=d.eventCount;el('ringCapacity').textContent=d.ringCapacity;el('ringFree').textContent=Math.max(0,d.ringCapacity-d.eventCount);el('ringBar').style.width=(d.ringCapacity?Math.min(100,d.eventCount/d.ringCapacity*100):0)+'%';el('flashTotal').textContent=bytes(d.flashTotal);el('sketchUsed').textContent=bytes(d.sketchUsed);el('sketchFree').textContent=bytes(d.sketchFree);var sp=(d.sketchUsed||0)+(d.sketchFree||0);el('flashBar').style.width=(sp?Math.min(100,d.sketchUsed/sp*100):0)+'%';el('autarkState').textContent=d.autarkMode?'AKTIV':'Netz/WLAN';el('autarkSession').textContent=d.autarkSession||'-';el('autarkElapsed').textContent=duration(d.autarkElapsed||0);el('autarkCount').textContent=d.autarkCount;el('autarkCapacity').textContent=d.autarkCapacity;el('autarkFree').textContent=Math.max(0,d.autarkCapacity-d.autarkCount);el('autarkSessionEvents').textContent=d.autarkSessionEvents||0;el('autarkBar').style.width=(d.autarkCapacity?Math.min(100,d.autarkCount/d.autarkCapacity*100):0)+'%'}
+function render(){renderToday();renderHistory();renderHeat();renderDetails();renderDevice();el('eventTotal').textContent='Gespeicherte Ereignisse: '+events.length+(statusData&&statusData.ringCapacity?' / '+statusData.ringCapacity:'')}
+async function loadStatus(){var r=await fetch('/api/status?x='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);statusData=await r.json();setConnection(statusData.wifi,statusData.wifi?'Verbunden':'Offline');renderDevice();if(lastActionSeq===null){lastActionSeq=statusData.actionSeq||0}else if((statusData.actionSeq||0)!==lastActionSeq){lastActionSeq=statusData.actionSeq||0;flashCards(statusData.actionKind===2?'delete':'add');await loadAll()}else if(statusData.eventCount!==events.length||statusData.last!==lastKnown){await loadAll()}return statusData}
+async function loadAll(){try{var r=await fetch('/api/events?x='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);var data=await r.json();events=(data.events||[]).sort(function(a,b){return a-b});lastKnown=events.length?events[events.length-1]:0;setConnection(true,'Verbunden');showNotice(data.timeValid?'':'Uhrzeit noch nicht per NTP synchronisiert. Im normalen Modus werden Ereignisse bis dahin nicht gespeichert; der Autarke Modus kann relativ weiterzaehlen.');render()}catch(err){setConnection(false,'Offline');showNotice('Keine Verbindung zur Daten-API: '+err.message)}}
+async function loadAutark(){try{var r=await fetch('/api/autark?x='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);autarkData=await r.json();var rec=autarkData.records||[],anchors={};rec.forEach(function(x){var a=anchors[x.session]||(anchors[x.session]={});if(x.type===1&&x.epoch)a.start=x.epoch;if(x.type===3&&x.epoch){a.end=x.epoch;a.endElapsed=x.elapsed}});var rows='';rec.slice().reverse().forEach(function(x){var typ=x.type===1?'Akku-Betrieb':(x.type===2?'Puls':'Ende / Netz');var when='+'+duration(x.elapsed),a=anchors[x.session],ep=x.epoch||0;if(!ep&&a){if(a.start)ep=a.start+x.elapsed;else if(a.end&&a.endElapsed>=x.elapsed)ep=a.end-(a.endElapsed-x.elapsed)}if(ep){var dt=new Date(ep*1000);when=dmy(dt)+' '+hms(dt)+' <span class="muted">(+'+duration(x.elapsed)+')</span>'}rows+='<tr><td>#'+x.session+' - '+typ+'</td><td>'+when+'</td></tr>'});el('autarkRows').innerHTML=rows||'<tr><td colspan="2" class="muted">Noch keine Autark-Daten.</td></tr>'}catch(e){el('autarkRows').innerHTML='<tr><td colspan="2" class="muted">Autark-Daten konnten nicht geladen werden.</td></tr>'}}
+async function post(path){try{var r=await fetch(path,{method:'POST',cache:'no-store'});var text=await r.text();if(!r.ok)throw new Error(text||('HTTP '+r.status));await loadAll();await loadStatus()}catch(err){showNotice('Aktion fehlgeschlagen: '+err.message)}}
+async function saveNtp(){var input=el('ntpServer'),btn=el('ntpSaveBtn'),out=el('ntpResult');var host=(input.value||'').trim();if(!host){out.className='ntpResult err';out.textContent='Bitte einen Hostnamen oder eine IPv4-Adresse eintragen.';return}btn.disabled=true;out.className='ntpResult';out.textContent='Pruefe NTP-Server...';try{var r=await fetch('/api/ntp?server='+encodeURIComponent(host),{method:'POST',cache:'no-store'});var d=await r.json();if(!r.ok||!d.ok)throw new Error(d.message||'NTP-Server nicht erreichbar');out.className='ntpResult ok';out.textContent='OK: '+d.server+' antwortet als '+d.ip+' nach ca. '+d.latencyMs+' ms und wurde gespeichert.';await loadStatus()}catch(err){out.className='ntpResult err';out.textContent='Fehler: '+err.message}finally{btn.disabled=false}}
+function switchView(btn){document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('active')});document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active')});btn.classList.add('active');el(btn.getAttribute('data-view')).classList.add('active')}
+document.querySelectorAll('.tab').forEach(function(btn){btn.addEventListener('click',function(){switchView(btn);if(btn.getAttribute('data-view')==='autark')loadAutark()})});
+el('dateSelect').addEventListener('change',renderDetailRows);el('autarkRefreshBtn').addEventListener('click',loadAutark);el('ntpSaveBtn').addEventListener('click',saveNtp);el('ntpServer').addEventListener('keydown',function(e){if(e.key==='Enter')saveNtp()});el('addBtn').addEventListener('click',function(){post('/api/add')});el('undoBtn').addEventListener('click',function(){if(confirm('Letzten Eintrag wirklich loeschen?'))post('/api/delete-last')});el('refreshBtn').addEventListener('click',function(){loadAll();loadStatus()});
+setInterval(function(){loadStatus().catch(function(){setConnection(false,'Offline')})},1000);loadAll();loadStatus().catch(function(){});
+})();
+</script>
+</body>
+</html>
+)HTML";
+
+// ============================================================
+// LED / STATUS PATTERNS
+// ============================================================
+bool timeIsValid() {
+  return time(nullptr) > 1700000000;
+}
+
+void led(bool on) {
+  digitalWrite(LED_PIN, (on != LED_ACTIVE_LOW) ? HIGH : LOW);
+}
+
+void blink(uint8_t count, uint16_t onMs, uint16_t offMs) {
+  for (uint8_t i = 0; i < count; i++) {
+    led(true);
+    delay(onMs);
+    led(false);
+    if (i + 1 < count) delay(offMs);
+  }
+}
+
+void blinkDeleteOk() {
+  blink(3, 55, 70); // 3x fast
+}
+
+void blinkWarning() {
+  blink(2, 55, 70); // 2x fast
+  delay(220);
+  blink(2, 280, 220); // 2x slow
+}
+
+void noteUiAction(uint8_t kind) {
+  uiActionKind = kind;
+  uiActionSeq++;
+}
+
+// ============================================================
+// AUTONOMOUS / BATTERY RING BUFFER (BETA)
+// ============================================================
+size_t autarkDataOffset(uint32_t index) {
+  return sizeof(AutarkHeader) + (size_t)index * sizeof(AutarkRecord);
+}
+
+bool writeAutarkHeader(File& f) {
+  if (!f.seek(0, SeekSet)) return false;
+  size_t n = f.write((const uint8_t*)&autarkHeader, sizeof(autarkHeader));
+  f.flush();
+  return n == sizeof(autarkHeader);
+}
+
+bool createAutarkFile() {
+  File f = LittleFS.open(AUTARK_FILE, FILE_WRITE);
+  if (!f) return false;
+  autarkHeader.magic = AUTARK_MAGIC;
+  autarkHeader.version = AUTARK_VERSION;
+  autarkHeader.reserved = 0;
+  autarkHeader.capacity = AUTARK_CAPACITY;
+  autarkHeader.writeIndex = 0;
+  autarkHeader.count = 0;
+  autarkHeader.nextSessionId = 1;
+  if (!writeAutarkHeader(f)) { f.close(); return false; }
+  const size_t finalSize = sizeof(AutarkHeader) + (size_t)AUTARK_CAPACITY * sizeof(AutarkRecord);
+  if (!f.seek(finalSize - 1, SeekSet)) { f.close(); return false; }
+  uint8_t zero = 0;
+  if (f.write(&zero, 1) != 1) { f.close(); return false; }
+  f.flush();
+  f.close();
+  Serial.printf("Autark-Ringspeicher neu: %lu Datensaetze, %u Bytes.\n", (unsigned long)AUTARK_CAPACITY, (unsigned)finalSize);
+  return true;
+}
+
+bool loadAutarkHeader() {
+  if (!LittleFS.exists(AUTARK_FILE)) return false;
+  File f = LittleFS.open(AUTARK_FILE, FILE_READ);
+  if (!f) return false;
+  bool ok = f.read((uint8_t*)&autarkHeader, sizeof(autarkHeader)) == sizeof(autarkHeader);
+  f.close();
+  if (!ok) return false;
+  return autarkHeader.magic == AUTARK_MAGIC && autarkHeader.version == AUTARK_VERSION &&
+         autarkHeader.capacity == AUTARK_CAPACITY && autarkHeader.writeIndex < AUTARK_CAPACITY &&
+         autarkHeader.count <= AUTARK_CAPACITY && autarkHeader.nextSessionId > 0;
+}
+
+bool initAutarkRing() {
+  if (loadAutarkHeader()) return true;
+  if (LittleFS.exists(AUTARK_FILE)) LittleFS.remove(AUTARK_FILE);
+  if (!createAutarkFile()) return false;
+  return loadAutarkHeader();
+}
+
+bool appendAutarkRecord(uint8_t type, uint32_t sessionId, uint32_t elapsedSec, uint32_t anchorEpoch = 0) {
+  if (!autarkRingOk) return false;
+  File f = LittleFS.open(AUTARK_FILE, "r+");
+  if (!f) return false;
+  AutarkRecord r = {};
+  r.sessionId = sessionId; r.elapsedSec = elapsedSec; r.anchorEpoch = anchorEpoch; r.type = type;
+  if (!f.seek(autarkDataOffset(autarkHeader.writeIndex), SeekSet) ||
+      f.write((const uint8_t*)&r, sizeof(r)) != sizeof(r)) { f.close(); return false; }
+  autarkHeader.writeIndex = (autarkHeader.writeIndex + 1) % autarkHeader.capacity;
+  if (autarkHeader.count < autarkHeader.capacity) autarkHeader.count++;
+  bool ok = writeAutarkHeader(f);
+  f.close();
+  return ok;
+}
+
+bool readAutarkChronologicalFromFile(File& f, uint32_t chronologicalIndex, AutarkRecord& r) {
+  if (!autarkRingOk || chronologicalIndex >= autarkHeader.count) return false;
+  uint32_t oldest = (autarkHeader.writeIndex + autarkHeader.capacity - autarkHeader.count) % autarkHeader.capacity;
+  uint32_t physical = (oldest + chronologicalIndex) % autarkHeader.capacity;
+  if (!f.seek(autarkDataOffset(physical), SeekSet)) return false;
+  return f.read((uint8_t*)&r, sizeof(r)) == sizeof(r);
+}
+
+bool getLastAutarkRecord(AutarkRecord& r) {
+  if (!autarkRingOk || autarkHeader.count == 0) return false;
+  File f = LittleFS.open(AUTARK_FILE, FILE_READ);
+  if (!f) return false;
+  bool ok = readAutarkChronologicalFromFile(f, autarkHeader.count - 1, r);
+  f.close();
+  return ok;
+}
+
+void restoreAutarkSummary() {
+  if (!autarkRingOk || autarkHeader.count == 0) return;
+  File f = LittleFS.open(AUTARK_FILE, FILE_READ);
+  if (!f) return;
+  AutarkRecord last = {};
+  if (!readAutarkChronologicalFromFile(f, autarkHeader.count - 1, last)) { f.close(); return; }
+  autarkSessionId = last.sessionId;
+  lastAutarkElapsed = last.elapsedSec;
+  autarkSessionEvents = 0;
+  for (uint32_t n = 0; n < autarkHeader.count; n++) {
+    uint32_t idx = autarkHeader.count - 1 - n;
+    AutarkRecord r = {}; if (!readAutarkChronologicalFromFile(f, idx, r)) continue;
+    if (r.sessionId != last.sessionId) break;
+    if (r.type == AUTARK_EVENT) autarkSessionEvents++;
+    if (r.type == AUTARK_START) break;
+  }
+  f.close();
+}
+
+bool deleteLastAutarkEvent() {
+  AutarkRecord r = {};
+  if (!getLastAutarkRecord(r) || r.type != AUTARK_EVENT || r.sessionId != autarkSessionId) return false;
+  File f = LittleFS.open(AUTARK_FILE, "r+");
+  if (!f) return false;
+  autarkHeader.writeIndex = (autarkHeader.writeIndex + autarkHeader.capacity - 1) % autarkHeader.capacity;
+  autarkHeader.count--;
+  bool ok = writeAutarkHeader(f);
+  f.close();
+  if (ok && autarkSessionEvents) autarkSessionEvents--;
+  return ok;
+}
+
+bool updateLastAutarkEndAnchor(uint32_t sessionId, uint32_t epoch) {
+  if (!autarkRingOk || !epoch || autarkHeader.count == 0) return false;
+  File f = LittleFS.open(AUTARK_FILE, "r+");
+  if (!f) return false;
+  uint32_t physical = (autarkHeader.writeIndex + autarkHeader.capacity - 1) % autarkHeader.capacity;
+  if (!f.seek(autarkDataOffset(physical), SeekSet)) { f.close(); return false; }
+  AutarkRecord r = {};
+  if (f.read((uint8_t*)&r, sizeof(r)) != sizeof(r) || r.type != AUTARK_END || r.sessionId != sessionId) { f.close(); return false; }
+  r.anchorEpoch = epoch;
+  if (!f.seek(autarkDataOffset(physical), SeekSet)) { f.close(); return false; }
+  bool ok = f.write((const uint8_t*)&r, sizeof(r)) == sizeof(r);
+  f.flush(); f.close();
+  return ok;
+}
+
+uint32_t currentAutarkElapsed() {
+  if (!autarkMode || autarkSessionStartUs == 0) return 0;
+  uint64_t nowUs = (uint64_t)esp_timer_get_time();
+  return (uint32_t)((nowUs - autarkSessionStartUs) / 1000000ULL);
+}
+
+String buildAutarkJson() {
+  String json; json.reserve(26000);
+  json = "{\"count\":" + String(autarkHeader.count) + ",\"capacity\":" + String(autarkHeader.capacity) + ",\"records\":[";
+  File f = LittleFS.open(AUTARK_FILE, FILE_READ);
+  bool first = true;
+  if (f) {
+    uint32_t start = autarkHeader.count > 200 ? autarkHeader.count - 200 : 0;
+    for (uint32_t i = start; i < autarkHeader.count; i++) {
+      AutarkRecord r = {}; if (!readAutarkChronologicalFromFile(f, i, r)) continue;
+      if (!first) json += ','; first = false;
+      json += "{\"session\":" + String(r.sessionId) + ",\"type\":" + String(r.type) + ",\"elapsed\":" + String(r.elapsedSec) + ",\"epoch\":" + String(r.anchorEpoch) + "}";
+    }
+    f.close();
+  }
+  json += "]}"; return json;
+}
+
+bool createAutarkCsv() {
+  LittleFS.remove(AUTARK_EXPORT_FILE);
+  File out = LittleFS.open(AUTARK_EXPORT_FILE, FILE_WRITE); if (!out) return false;
+  out.print("Session;Typ;Seit_Start_s;Anker_Unixzeit\r\n");
+  File in = LittleFS.open(AUTARK_FILE, FILE_READ); if (!in) { out.close(); return false; }
+  for (uint32_t i=0;i<autarkHeader.count;i++) {
+    AutarkRecord r={}; if (!readAutarkChronologicalFromFile(in,i,r)) continue;
+    const char* type = r.type==AUTARK_START ? "Akku-Betrieb" : (r.type==AUTARK_EVENT ? "Puls" : "Ende-Netz");
+    out.printf("%lu;%s;%lu;%lu\r\n", (unsigned long)r.sessionId, type, (unsigned long)r.elapsedSec, (unsigned long)r.anchorEpoch);
+  }
+  in.close(); out.close(); return true;
+}
+
+// ============================================================
+// BINARY RING BUFFER
+// ============================================================
+size_t ringDataOffset(uint32_t index) {
+  return sizeof(RingHeader) + (size_t)index * sizeof(uint32_t);
+}
+
+bool writeRingHeader(File& f) {
+  if (!f.seek(0, SeekSet)) return false;
+  size_t n = f.write((const uint8_t*)&ringHeader, sizeof(ringHeader));
+  f.flush();
+  return n == sizeof(ringHeader);
+}
+
+bool createRingFile() {
+  File f = LittleFS.open(RING_FILE, FILE_WRITE);
+  if (!f) return false;
+
+  ringHeader.magic = RING_MAGIC;
+  ringHeader.version = RING_VERSION;
+  ringHeader.reserved = 0;
+  ringHeader.capacity = RING_CAPACITY;
+  ringHeader.writeIndex = 0;
+  ringHeader.count = 0;
+
+  if (!writeRingHeader(f)) {
+    f.close();
+    return false;
+  }
+
+  // Pre-allocate the complete data area once. This is a real fixed-size ring file.
+  const size_t finalSize = sizeof(RingHeader) + (size_t)RING_CAPACITY * sizeof(uint32_t);
+  if (!f.seek(finalSize - 1, SeekSet)) {
+    f.close();
+    return false;
+  }
+  uint8_t zero = 0;
+  if (f.write(&zero, 1) != 1) {
+    f.close();
+    return false;
+  }
+  f.flush();
+  f.close();
+  Serial.printf("Ringspeicher neu angelegt: %lu Eintraege, %u Bytes.\n",
+                (unsigned long)RING_CAPACITY, (unsigned)finalSize);
+  return true;
+}
+
+bool loadRingHeader() {
+  if (!LittleFS.exists(RING_FILE)) return false;
+  File f = LittleFS.open(RING_FILE, FILE_READ);
+  if (!f) return false;
+  if (f.read((uint8_t*)&ringHeader, sizeof(ringHeader)) != sizeof(ringHeader)) {
+    f.close();
+    return false;
+  }
+  f.close();
+  if (ringHeader.magic != RING_MAGIC ||
+      ringHeader.version != RING_VERSION ||
+      ringHeader.capacity != RING_CAPACITY ||
+      ringHeader.writeIndex >= RING_CAPACITY ||
+      ringHeader.count > RING_CAPACITY) {
+    return false;
+  }
+  return true;
+}
+
+bool appendEvent(time_t ts) {
+  if (!ringOk || ts <= 0) return false;
+  File f = LittleFS.open(RING_FILE, "r+");
+  if (!f) return false;
+
+  uint32_t value = (uint32_t)ts;
+  if (!f.seek(ringDataOffset(ringHeader.writeIndex), SeekSet)) {
+    f.close();
+    return false;
+  }
+  if (f.write((const uint8_t*)&value, sizeof(value)) != sizeof(value)) {
+    f.close();
+    return false;
+  }
+
+  ringHeader.writeIndex = (ringHeader.writeIndex + 1) % ringHeader.capacity;
+  if (ringHeader.count < ringHeader.capacity) ringHeader.count++;
+  bool ok = writeRingHeader(f);
+  f.close();
+  if (ok) Serial.printf("Ereignis gespeichert: %lu (%lu/%lu)\n",
+                        (unsigned long)value,
+                        (unsigned long)ringHeader.count,
+                        (unsigned long)ringHeader.capacity);
+  return ok;
+}
+
+bool readChronologicalFromFile(File& f, uint32_t chronologicalIndex, uint32_t& value) {
+  if (!ringOk || chronologicalIndex >= ringHeader.count) return false;
+  uint32_t oldest = (ringHeader.writeIndex + ringHeader.capacity - ringHeader.count) % ringHeader.capacity;
+  uint32_t physical = (oldest + chronologicalIndex) % ringHeader.capacity;
+  if (!f.seek(ringDataOffset(physical), SeekSet)) return false;
+  return f.read((uint8_t*)&value, sizeof(value)) == sizeof(value);
+}
+
+bool readChronological(uint32_t chronologicalIndex, uint32_t& value) {
+  File f = LittleFS.open(RING_FILE, FILE_READ);
+  if (!f) return false;
+  bool ok = readChronologicalFromFile(f, chronologicalIndex, value);
+  f.close();
+  return ok;
+}
+
+uint32_t getLastEvent() {
+  if (!ringOk || ringHeader.count == 0) return 0;
+  uint32_t v = 0;
+  readChronological(ringHeader.count - 1, v);
+  return v;
+}
+
+bool deleteLastEvent() {
+  if (!ringOk || ringHeader.count == 0) return false;
+  File f = LittleFS.open(RING_FILE, "r+");
+  if (!f) return false;
+  ringHeader.writeIndex = (ringHeader.writeIndex + ringHeader.capacity - 1) % ringHeader.capacity;
+  ringHeader.count--;
+  bool ok = writeRingHeader(f);
+  f.close();
+  if (ok) Serial.printf("Letztes Ereignis geloescht. Verbleibend: %lu\n", (unsigned long)ringHeader.count);
+  return ok;
+}
+
+void migrateLegacyEvents() {
+  if (!ringOk || !LittleFS.exists(LEGACY_FILE)) return;
+  File f = LittleFS.open(LEGACY_FILE, FILE_READ);
+  if (!f) return;
+  uint32_t migrated = 0;
+  while (f.available()) {
+    String line = f.readStringUntil('\n');
+    line.trim();
+    if (!line.length()) continue;
+    uint32_t ts = strtoul(line.c_str(), nullptr, 10);
+    if (ts > 0 && appendEvent((time_t)ts)) migrated++;
+  }
+  f.close();
+  String backup = String(LEGACY_FILE) + ".migrated";
+  LittleFS.remove(backup.c_str());
+  LittleFS.rename(LEGACY_FILE, backup.c_str());
+  Serial.printf("Legacy-Daten migriert: %lu Eintraege.\n", (unsigned long)migrated);
+}
+
+bool initRing() {
+  if (loadRingHeader()) {
+    Serial.printf("Ringspeicher: OK, %lu/%lu Eintraege.\n",
+                  (unsigned long)ringHeader.count,
+                  (unsigned long)ringHeader.capacity);
+    return true;
+  }
+  if (LittleFS.exists(RING_FILE)) {
+    Serial.println("Ringspeicher ungueltig - wird neu angelegt.");
+    LittleFS.remove(RING_FILE);
+  }
+  if (!createRingFile()) return false;
+  if (!loadRingHeader()) return false;
+  return true;
+}
+
+String buildEventsJson() {
+  String json;
+  size_t reserveSize = 96 + (size_t)ringHeader.count * 12;
+  if (reserveSize < 180000) json.reserve(reserveSize);
+  json = "{\"timeValid\":";
+  json += timeIsValid() ? "true" : "false";
+  json += ",\"total\":" + String(ringHeader.count);
+  json += ",\"capacity\":" + String(ringHeader.capacity);
+  json += ",\"events\":[";
+  uint32_t v = 0;
+  File f = LittleFS.open(RING_FILE, FILE_READ);
+  bool first = true;
+  if (f) {
+    for (uint32_t i = 0; i < ringHeader.count; i++) {
+      if (!readChronologicalFromFile(f, i, v)) continue;
+      if (!first) json += ',';
+      json += String(v);
+      first = false;
+    }
+    f.close();
+  }
+  json += "]}";
+  return json;
+}
+
+bool createCsvExportFile() {
+  LittleFS.remove(EXPORT_FILE);
+  File out = LittleFS.open(EXPORT_FILE, FILE_WRITE);
+  if (!out) return false;
+  out.print("Datum;Zeit;Unixzeit\r\n");
+  uint32_t ts = 0;
+  File in = LittleFS.open(RING_FILE, FILE_READ);
+  if (!in) {
+    out.close();
+    LittleFS.remove(EXPORT_FILE);
+    return false;
+  }
+  for (uint32_t i = 0; i < ringHeader.count; i++) {
+    if (!readChronologicalFromFile(in, i, ts)) continue;
+    time_t tsv = (time_t)ts;
+    struct tm t;
+    localtime_r(&tsv, &t);
+    char row[64];
+    snprintf(row, sizeof(row), "%02d.%02d.%04d;%02d:%02d:%02d;%lu\r\n",
+             t.tm_mday, t.tm_mon + 1, t.tm_year + 1900,
+             t.tm_hour, t.tm_min, t.tm_sec, (unsigned long)ts);
+    out.print(row);
+  }
+  in.close();
+  out.close();
+  return true;
+}
+
+// ============================================================
+// DEVICE / API HELPERS
+// ============================================================
+String localDateString() {
+  if (!timeIsValid()) return "-";
+  time_t now = time(nullptr);
+  struct tm t;
+  localtime_r(&now, &t);
+  char b[16];
+  snprintf(b, sizeof(b), "%02d.%02d.%04d", t.tm_mday, t.tm_mon + 1, t.tm_year + 1900);
+  return String(b);
+}
+
+String localTimeString() {
+  if (!timeIsValid()) return "-";
+  time_t now = time(nullptr);
+  struct tm t;
+  localtime_r(&now, &t);
+  char b[16];
+  snprintf(b, sizeof(b), "%02d:%02d:%02d", t.tm_hour, t.tm_min, t.tm_sec);
+  return String(b);
+}
+
+String buildStatusJson() {
+  bool wifi = WiFi.status() == WL_CONNECTED;
+  size_t fsTotal = fsOk ? LittleFS.totalBytes() : 0;
+  size_t fsUsed = fsOk ? LittleFS.usedBytes() : 0;
+  String ip = wifi ? WiFi.localIP().toString() : String("-");
+  String json;
+  json.reserve(640);
+  json = "{\"ok\":true";
+  json += ",\"version\":\"" + String(APP_VERSION) + "\"";
+  json += ",\"timeValid\":" + String(timeIsValid() ? "true" : "false");
+  json += ",\"deviceDate\":\"" + localDateString() + "\"";
+  json += ",\"deviceTime\":\"" + localTimeString() + "\"";
+  json += ",\"uptime\":" + String(millis() / 1000UL);
+  json += ",\"last\":" + String(getLastEvent());
+  json += ",\"wifi\":" + String(wifi ? "true" : "false");
+  json += ",\"rssi\":" + String(wifi ? WiFi.RSSI() : 0);
+  json += ",\"ip\":\"" + ip + "\"";
+  json += ",\"hostname\":\"" + String(HOSTNAME) + ".local\"";
+  json += ",\"ntpPrimary\":\"" + primaryNtp + "\"";
+  json += ",\"chipModel\":\"" + String(ESP.getChipModel()) + "\"";
+  json += ",\"chipRevision\":" + String(ESP.getChipRevision());
+  json += ",\"chipCores\":" + String(ESP.getChipCores());
+  json += ",\"cpuMHz\":" + String(ESP.getCpuFreqMHz());
+  json += ",\"heapTotal\":" + String(ESP.getHeapSize());
+  json += ",\"heapFree\":" + String(ESP.getFreeHeap());
+  json += ",\"flashTotal\":" + String(ESP.getFlashChipSize());
+  json += ",\"sketchUsed\":" + String(ESP.getSketchSize());
+  json += ",\"sketchFree\":" + String(ESP.getFreeSketchSpace());
+  json += ",\"fsTotal\":" + String((uint32_t)fsTotal);
+  json += ",\"fsUsed\":" + String((uint32_t)fsUsed);
+  json += ",\"fsFree\":" + String((uint32_t)(fsTotal >= fsUsed ? fsTotal - fsUsed : 0));
+  json += ",\"eventCount\":" + String(ringHeader.count);
+  json += ",\"ringCapacity\":" + String(ringHeader.capacity);
+  json += ",\"pulseSeq\":" + String(physicalPulseSeq);
+  json += ",\"actionSeq\":" + String(uiActionSeq);
+  json += ",\"actionKind\":" + String(uiActionKind);
+  json += ",\"autarkMode\":" + String(autarkMode ? "true" : "false");
+  json += ",\"autarkSession\":" + String(autarkSessionId);
+  json += ",\"autarkElapsed\":" + String(autarkMode ? currentAutarkElapsed() : lastAutarkElapsed);
+  json += ",\"autarkSessionEvents\":" + String(autarkSessionEvents);
+  json += ",\"autarkCount\":" + String(autarkHeader.count);
+  json += ",\"autarkCapacity\":" + String(autarkHeader.capacity);
+  json += "}";
+  return json;
+}
+
+
+String exportFileName() {
+  if (!timeIsValid()) return String("unterbrechungen_ohne-zeit.csv");
+  time_t now = time(nullptr);
+  struct tm t;
+  localtime_r(&now, &t);
+  char b[64];
+  snprintf(b, sizeof(b), "unterbrechungen_%04d-%02d-%02d_%02d-%02d-%02d.csv",
+           t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
+           t.tm_hour, t.tm_min, t.tm_sec);
+  return String(b);
+}
+
+bool validNtpHost(const String& host) {
+  if (host.length() < 1 || host.length() > 120) return false;
+  for (size_t i = 0; i < host.length(); i++) {
+    char c = host[i];
+    bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+              (c >= '0' && c <= '9') || c == '.' || c == '-' || c == '_';
+    if (!ok) return false;
+  }
+  return true;
+}
+
+bool testNtpServer(const String& host, String& ipText, uint32_t& latencyMs, String& error) {
+  if (WiFi.status() != WL_CONNECTED) {
+    error = "WLAN ist nicht verbunden";
+    return false;
+  }
+  IPAddress ip;
+  if (!WiFi.hostByName(host.c_str(), ip)) {
+    error = "DNS-Aufloesung fehlgeschlagen";
+    return false;
+  }
+  ipText = ip.toString();
+
+  WiFiUDP udp;
+  if (!udp.begin(2390)) {
+    error = "Lokaler UDP-Port konnte nicht geoeffnet werden";
+    return false;
+  }
+  uint8_t packet[48] = {0};
+  packet[0] = 0b11100011;
+  packet[1] = 0;
+  packet[2] = 6;
+  packet[3] = 0xEC;
+  packet[12] = 49; packet[13] = 0x4E; packet[14] = 49; packet[15] = 52;
+
+  uint32_t started = millis();
+  if (!udp.beginPacket(ip, 123)) {
+    udp.stop();
+    error = "NTP-Anfrage konnte nicht gestartet werden";
+    return false;
+  }
+  udp.write(packet, sizeof(packet));
+  if (!udp.endPacket()) {
+    udp.stop();
+    error = "NTP-Anfrage konnte nicht gesendet werden";
+    return false;
+  }
+
+  while (millis() - started < 1800) {
+    int size = udp.parsePacket();
+    if (size >= 48) {
+      while (udp.available()) udp.read();
+      latencyMs = millis() - started;
+      udp.stop();
+      return true;
+    }
+    delay(10);
+  }
+  udp.stop();
+  error = "Keine NTP-Antwort innerhalb von 1,8 s";
+  return false;
+}
+
+void loadNtpConfig() {
+  preferences.begin("interrupt", true);
+  primaryNtp = preferences.getString("ntp1", DEFAULT_NTP_1);
+  preferences.end();
+  if (!validNtpHost(primaryNtp)) primaryNtp = DEFAULT_NTP_1;
+}
+
+bool saveNtpConfig(const String& host) {
+  preferences.begin("interrupt", false);
+  bool ok = preferences.putString("ntp1", host) > 0;
+  preferences.end();
+  if (ok) primaryNtp = host;
+  return ok;
+}
+
+// ============================================================
+// WEB API
+// ============================================================
+void setupWebServer() {
+  server.on("/", HTTP_GET, []() {
+    server.send_P(200, "text/html; charset=utf-8", INDEX_HTML);
+  });
+
+  server.on("/api/events", HTTP_GET, []() {
+    server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    server.send(200, "application/json; charset=utf-8", buildEventsJson());
+  });
+
+  server.on("/api/status", HTTP_GET, []() {
+    server.sendHeader("Cache-Control", "no-store");
+    server.send(200, "application/json; charset=utf-8", buildStatusJson());
+  });
+
+  server.on("/api/ntp", HTTP_POST, []() {
+    String host = server.arg("server");
+    host.trim();
+    if (!validNtpHost(host)) {
+      server.send(400, "application/json; charset=utf-8", "{\"ok\":false,\"message\":\"Ungueltiger Hostname. Erlaubt sind Buchstaben, Zahlen, Punkt, Bindestrich und Unterstrich.\"}");
+      return;
+    }
+    String ip, error;
+    uint32_t latency = 0;
+    if (!testNtpServer(host, ip, latency, error)) {
+      String json = "{\"ok\":false,\"message\":\"" + error + "\"}";
+      server.send(502, "application/json; charset=utf-8", json);
+      return;
+    }
+    if (!saveNtpConfig(host)) {
+      server.send(500, "application/json; charset=utf-8", "{\"ok\":false,\"message\":\"NTP-Server antwortet, konnte aber nicht dauerhaft gespeichert werden.\"}");
+      return;
+    }
+    configTzTime(TZ_INFO, primaryNtp.c_str(), NTP_2, NTP_3);
+    String json = "{\"ok\":true,\"server\":\"" + primaryNtp + "\",\"ip\":\"" + ip + "\",\"latencyMs\":" + String(latency) + "}";
+    server.send(200, "application/json; charset=utf-8", json);
+  });
+
+  server.on("/api/add", HTTP_POST, []() {
+    if (!timeIsValid()) {
+      blinkWarning();
+      server.send(503, "application/json", "{\"ok\":false,\"error\":\"time_not_synced\"}");
+      return;
+    }
+    if (!appendEvent(time(nullptr))) {
+      blinkWarning();
+      server.send(500, "application/json", "{\"ok\":false,\"error\":\"write_failed\"}");
+      return;
+    }
+    noteUiAction(1);
+    if (WiFi.status() != WL_CONNECTED) blinkWarning();
+    else blink(1, 90, 0);
+    server.send(200, "application/json", "{\"ok\":true}");
+  });
+
+  server.on("/api/delete-last", HTTP_POST, []() {
+    if (deleteLastEvent()) {
+      noteUiAction(2);
+      blinkDeleteOk();
+      server.send(200, "application/json", "{\"ok\":true}");
+    } else {
+      blinkWarning();
+      server.send(404, "application/json", "{\"ok\":false,\"error\":\"no_event\"}");
+    }
+  });
+
+  server.on("/export.csv", HTTP_GET, []() {
+    if (!createCsvExportFile()) {
+      server.send(500, "text/plain; charset=utf-8", "CSV konnte nicht erzeugt werden.");
+      return;
+    }
+    File f = LittleFS.open(EXPORT_FILE, FILE_READ);
+    if (!f) {
+      server.send(500, "text/plain; charset=utf-8", "CSV konnte nicht geoeffnet werden.");
+      return;
+    }
+    String exportName = exportFileName();
+    server.sendHeader("Content-Disposition", "attachment; filename=\"" + exportName + "\"");
+    server.streamFile(f, "text/csv; charset=utf-8");
+    f.close();
+    LittleFS.remove(EXPORT_FILE);
+  });
+
+  server.on("/api/autark", HTTP_GET, []() {
+    server.sendHeader("Cache-Control", "no-store");
+    server.send(200, "application/json; charset=utf-8", buildAutarkJson());
+  });
+
+  server.on("/autark.csv", HTTP_GET, []() {
+    if (!createAutarkCsv()) { server.send(500, "text/plain; charset=utf-8", "Autark-CSV konnte nicht erzeugt werden."); return; }
+    File f = LittleFS.open(AUTARK_EXPORT_FILE, FILE_READ);
+    if (!f) { server.send(500, "text/plain; charset=utf-8", "Autark-CSV konnte nicht geoeffnet werden."); return; }
+    String name = String("autark_") + exportFileName().substring(16);
+    server.sendHeader("Content-Disposition", "attachment; filename=\"" + name + "\"");
+    server.streamFile(f, "text/csv; charset=utf-8"); f.close(); LittleFS.remove(AUTARK_EXPORT_FILE);
+  });
+
+  server.on("/favicon.ico", HTTP_GET, []() { server.send(204); });
+  server.onNotFound([]() { server.send(404, "text/plain; charset=utf-8", "Nicht gefunden"); });
+  server.begin();
+  webServerStarted = true;
+  Serial.println("Webserver gestartet.");
+}
+
+// ============================================================
+// WIFI / TIME / MDNS
+// ============================================================
+void connectWifi() {
+  WiFi.mode(WIFI_STA);
+  WiFi.setHostname(HOSTNAME);
+  WiFi.setAutoReconnect(true);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.printf("Verbinde mit WLAN: %s", WIFI_SSID);
+  uint32_t start = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - start < 20000) {
+    delay(250);
+    Serial.print('.');
+  }
+  Serial.println();
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.print("IP-Adresse: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("WLAN noch nicht verbunden. Neuer Versuch im Hintergrund.");
+  }
+}
+
+void setupTime() {
+  configTzTime(TZ_INFO, primaryNtp.c_str(), NTP_2, NTP_3);
+  Serial.printf("NTP synchronisieren [%s]", primaryNtp.c_str());
+  uint32_t start = millis();
+  while (!timeIsValid() && millis() - start < 12000) {
+    delay(250);
+    Serial.print('.');
+  }
+  Serial.println(timeIsValid() ? " OK" : " noch nicht synchronisiert");
+}
+
+void setupMdns() {
+  if (WiFi.status() == WL_CONNECTED && MDNS.begin(HOSTNAME)) {
+    MDNS.addService("http", "tcp", 80);
+    mdnsStarted = true;
+    Serial.printf("Webadresse: http://%s.local\n", HOSTNAME);
+  } else {
+    Serial.println("mDNS konnte nicht gestartet werden.");
+  }
+}
+
+void stopNetworkForAutark() {
+  if (mdnsStarted) { MDNS.end(); mdnsStarted = false; }
+  if (webServerStarted) { server.stop(); webServerStarted = false; }
+  WiFi.setAutoReconnect(false);
+  WiFi.disconnect(true, true);
+  WiFi.mode(WIFI_OFF);
+}
+
+void configureAutarkWake() {
+  gpio_wakeup_enable((gpio_num_t)BUTTON_PIN, GPIO_INTR_LOW_LEVEL);
+  gpio_wakeup_enable((gpio_num_t)AUTARK_PIN, GPIO_INTR_HIGH_LEVEL);
+  esp_sleep_enable_gpio_wakeup();
+}
+
+void enterAutarkMode() {
+  if (autarkMode) return;
+  autarkMode = true;
+  autarkSessionId = autarkHeader.nextSessionId++;
+  { File f = LittleFS.open(AUTARK_FILE, "r+"); if (f) { writeAutarkHeader(f); f.close(); } }
+  autarkSessionEvents = 0;
+  autarkSessionStartUs = (uint64_t)esp_timer_get_time();
+  uint32_t anchor = timeIsValid() ? (uint32_t)time(nullptr) : 0;
+  appendAutarkRecord(AUTARK_START, autarkSessionId, 0, anchor);
+  Serial.printf("AUTARK EIN - Session %lu, Zeitanker %lu.\n", (unsigned long)autarkSessionId, (unsigned long)anchor);
+  stopNetworkForAutark();
+  setCpuFrequencyMhz(80);
+  configureAutarkWake();
+  led(false);
+}
+
+void exitAutarkMode() {
+  if (!autarkMode) return;
+  uint32_t elapsed = currentAutarkElapsed();
+  uint32_t session = autarkSessionId;
+  appendAutarkRecord(AUTARK_END, session, elapsed, 0);
+  pendingAutarkEndSession = session;
+  pendingAutarkEndElapsed = elapsed;
+  lastAutarkElapsed = elapsed;
+  autarkMode = false;
+  autarkSessionStartUs = 0;
+  gpio_wakeup_disable((gpio_num_t)BUTTON_PIN);
+  gpio_wakeup_disable((gpio_num_t)AUTARK_PIN);
+  setCpuFrequencyMhz(240);
+  Serial.printf("AUTARK AUS - Session %lu nach %lu s. WLAN startet.\n", (unsigned long)session, (unsigned long)elapsed);
+  connectWifi();
+  setupTime();
+  if (timeIsValid()) {
+    updateLastAutarkEndAnchor(session, (uint32_t)time(nullptr));
+    pendingAutarkEndSession = 0; pendingAutarkEndElapsed = 0;
+  }
+  setupMdns();
+  setupWebServer();
+}
+
+void processAutarkSwitch() {
+  bool raw = digitalRead(AUTARK_PIN);
+  if (raw != autarkRaw) { autarkRaw = raw; autarkChangedAt = millis(); }
+  if (millis() - autarkChangedAt < 80) return;
+  if (autarkStable == autarkRaw) return;
+  autarkStable = autarkRaw;
+  if (autarkStable == LOW) enterAutarkMode(); else exitAutarkMode();
+}
+
+void autarkIdleSleep() {
+  if (!autarkMode) return;
+  if (digitalRead(AUTARK_PIN) != LOW) return;
+  if (digitalRead(BUTTON_PIN) != HIGH) return;
+  if (buttonRaw != buttonStable || millis() - rawChangedAt < DEBOUNCE_MS) return;
+  esp_light_sleep_start();
+}
+
+void maintainWifi() {
+  if (autarkMode) return;
+  if (WiFi.status() == WL_CONNECTED) {
+    if (pendingAutarkEndSession && timeIsValid()) {
+      updateLastAutarkEndAnchor(pendingAutarkEndSession, (uint32_t)time(nullptr));
+      pendingAutarkEndSession = 0; pendingAutarkEndElapsed = 0;
+    }
+    return;
+  }
+  if (millis() - lastWifiRetry < WIFI_RETRY_MS) return;
+  lastWifiRetry = millis();
+  Serial.println("WLAN reconnect...");
+  WiFi.disconnect();
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+}
+
+// ============================================================
+// BUTTON
+// ============================================================
+void processButton() {
+  bool raw = digitalRead(BUTTON_PIN);
+  if (raw != buttonRaw) {
+    buttonRaw = raw;
+    rawChangedAt = millis();
+  }
+  if (millis() - rawChangedAt < DEBOUNCE_MS) return;
+  if (buttonStable == buttonRaw) return;
+
+  buttonStable = buttonRaw;
+  if (buttonStable == LOW) {
+    pressedAt = millis();
+    led(true);
+    Serial.println("Taster gedrueckt.");
+    return;
+  }
+
+  led(false);
+  uint32_t durationMs = millis() - pressedAt;
+  Serial.printf("Taster losgelassen nach %lu ms.\n", (unsigned long)durationMs);
+
+  if (durationMs >= LONG_PRESS_MS) {
+    bool ok = autarkMode ? deleteLastAutarkEvent() : deleteLastEvent();
+    if (ok) { noteUiAction(2); blinkDeleteOk(); }
+    else blinkWarning();
+    return;
+  }
+
+  if (autarkMode) {
+    uint32_t elapsed = currentAutarkElapsed();
+    if (!appendAutarkRecord(AUTARK_EVENT, autarkSessionId, elapsed, 0)) {
+      Serial.println("NICHT gespeichert: Autark-Ringspeicher Schreibfehler."); blinkWarning(); return;
+    }
+    autarkSessionEvents++; physicalPulseSeq++; noteUiAction(1);
+    Serial.printf("Autark-Puls gespeichert: Session %lu +%lu s.\n", (unsigned long)autarkSessionId, (unsigned long)elapsed);
+    blink(1, 70, 0);
+    return;
+  }
+
+  if (!timeIsValid()) {
+    Serial.println("NICHT gespeichert: NTP-Zeit ungueltig.");
+    blinkWarning();
+    return;
+  }
+
+  if (!appendEvent(time(nullptr))) {
+    Serial.println("NICHT gespeichert: Ringspeicher Schreibfehler.");
+    blinkWarning();
+    return;
+  }
+
+  physicalPulseSeq++;
+  noteUiAction(1);
+
+  // A missing WLAN connection does not destroy the measurement: if time is
+  // valid the event remains stored locally, but the requested warning pattern
+  // signals that the device is currently offline.
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Ereignis lokal gespeichert, aber WLAN ist offline.");
+    blinkWarning();
+  } else {
+    blink(1, 90, 0);
+  }
+}
+
+// ============================================================
+// SETUP / LOOP
+// ============================================================
+void setup() {
+  Serial.begin(115200);
+  delay(300);
+  Serial.println();
+  Serial.printf("Unterbrechungszaehler / Interrupt Counter %s startet...\n", APP_VERSION);
+
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  pinMode(AUTARK_PIN, INPUT_PULLUP);
+  pinMode(LED_PIN, OUTPUT);
+  led(false);
+
+  loadNtpConfig();
+  Serial.printf("Primaerer NTP-Server: %s\n", primaryNtp.c_str());
+
+  fsOk = LittleFS.begin(false);
+  if (!fsOk) {
+    Serial.println("LittleFS Mount fehlgeschlagen - formatiere einmalig...");
+    fsOk = LittleFS.begin(true);
+  }
+  Serial.println(fsOk ? "LittleFS: OK" : "LittleFS: FEHLER");
+
+  if (fsOk) {
+    ringOk = initRing();
+    Serial.println(ringOk ? "Ringspeicher: bereit" : "Ringspeicher: FEHLER");
+    if (ringOk) migrateLegacyEvents();
+    autarkRingOk = initAutarkRing();
+    Serial.println(autarkRingOk ? "Autark-Ringspeicher: bereit" : "Autark-Ringspeicher: FEHLER");
+    if (autarkRingOk) restoreAutarkSummary();
+  }
+
+  autarkRaw = autarkStable = digitalRead(AUTARK_PIN);
+  if (autarkStable == LOW && autarkRingOk) {
+    enterAutarkMode();
+  } else {
+    connectWifi();
+    setupTime();
+    setupMdns();
+    setupWebServer();
+    if (fsOk && ringOk) blink(2, 80, 80);
+  }
+}
+
+void loop() {
+  processAutarkSwitch();
+  processButton();
+  if (autarkMode) {
+    autarkIdleSleep();
+    delay(2);
+    return;
+  }
+  if (webServerStarted) server.handleClient();
+  maintainWifi();
+  delay(1);
+}
