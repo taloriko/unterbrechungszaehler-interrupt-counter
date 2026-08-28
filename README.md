@@ -187,24 +187,6 @@ ntp.meinefirma.local
 192.168.1.10
 ```
 
-### Versionierung
-
-Format:
-
-```text
-JJJJ-MM-TT-Fortlaufendenummer
-```
-
-Aktuelle Version: **2026-08-28-6**
-
-Die letzte Nummer ist global fortlaufend und wird **nicht auf eine feste Stellenzahl aufgefüllt und nie zurückgesetzt**. Beispiel:
-
-```text
-2026-08-28-4
-2026-08-29-5
-2026-09-03-6
-```
-
 ### Projekt-Repository auf GitHub
 
 Empfohlener Repository-Name:
@@ -217,29 +199,7 @@ GitHub-Konto des Autors: [taloriko](https://github.com/taloriko)
 
 Projekt-Repository: [unterbrechungszaehler-interrupt-counter](https://github.com/taloriko/unterbrechungszaehler-interrupt-counter)
 
-Das Repository ist bereits angelegt:
 
-[github.com/taloriko/unterbrechungszaehler-interrupt-counter](https://github.com/taloriko/unterbrechungszaehler-interrupt-counter)
-
-Falls du das Projekt lokal neu klonen willst:
-
-1. **New repository** auswählen.
-2. Repository-Name `unterbrechungszaehler-interrupt-counter` eintragen.
-3. Sichtbarkeit nach Wunsch `Public` oder `Private` wählen.
-4. **Kein** zusätzliches README, `.gitignore` oder License erzeugen, da diese bereits im Projekt vorhanden sind.
-5. Repository erstellen.
-6. Projektordner lokal öffnen und anschließend pushen:
-
-```bash
-git init
-git add .
-git commit -m "Initial release"
-git branch -M main
-git remote add origin https://github.com/taloriko/unterbrechungszaehler-interrupt-counter.git
-git push -u origin main
-```
-
-Sobald das Repository existiert, kann der Projekt-Link zusätzlich in der Weboberfläche eingeblendet werden.
 
 ### GitHub-Beschreibung – Deutsch
 
@@ -249,24 +209,6 @@ Sobald das Repository existiert, kann der Projekt-Link zusätzlich in der Webobe
 
 > ESP32 workplace interrupt counter: one button press per interruption, local web dashboard with daily trends, heatmap, CSV export and an optional standalone battery mode. Built to turn constant interruptions into measurable data.
 
-### Projektstruktur
-
-```text
-unterbrechungszaehler-interrupt-counter/
-├── .github/
-│   └── workflows/
-│       └── arduino-build.yml
-├── arduino/
-│   └── UnterbrechungszaehlerInterruptCounter/
-│       ├── UnterbrechungszaehlerInterruptCounter.ino
-│       └── Secrets.example.h
-├── docs/
-│   └── FLASHEN.md
-├── .gitignore
-├── CHANGELOG.md
-├── LICENSE
-└── README.md
-```
 
 ### Lizenz
 
@@ -286,18 +228,33 @@ So the idea became deliberately simple: press a button, record the interruption,
 
 The most important design requirement was that it had to remain **simple enough to use on exactly the kind of chaotic day it is meant to measure**. No form, no category selection, no phone unlock. Just press the button.
 
-The rest of this section is intentionally straightforward.
+## Screenshots
 
-<!-- SCREENSHOT-EN-01: Main dashboard / Today -->
-> **Screenshot placeholder:** Main “Today” dashboard
+### Heute
 
-<!-- SCREENSHOT-EN-02: History / Heatmap -->
-> **Screenshot placeholder:** History and heatmap
+![Reiter Heute](docs/images/Reiter%20-%20Heute.png)
 
-<!-- SCREENSHOT-EN-03: Device / Standalone mode -->
-> **Screenshot placeholder:** Device information and standalone mode
+### Heatmap
 
-### Features
+![Reiter Heatmap](docs/images/Reiter%20-%20Heatmap.png)
+
+### Details
+
+![Reiter Details](docs/images/Reiter%20-%20Details.png)
+
+### Export
+
+![Reiter Export](docs/images/Reiter%20-%20Export.png)
+
+### Gerät
+
+![Reiter Gerät](docs/images/Reiter%20-%20Geraet.png)
+
+### Autark – Beta
+
+![Reiter Autark Beta](docs/images/Reiter%20-%20Autark%20-%20Beta.png)
+
+### Funktionen
 
 - physical button on GPIO27: short press records an interruption
 - long press of about 3 seconds deletes the latest entry
@@ -372,17 +329,6 @@ See [`docs/FLASHEN.md`](docs/FLASHEN.md) for the full flashing guide.
 
 The primary NTP server can be changed on the **Device** tab. **Check & save** first resolves the hostname and then sends a real NTP request over UDP/123. The setting is only stored in NVS after a valid response. `time.cloudflare.com` and `time.google.com` remain configured as fallback servers.
 
-### Versioning
-
-Format:
-
-```text
-YYYY-MM-DD-runningNumber
-```
-
-Current version: **2026-08-28-4**
-
-The final number is global, never reset and never padded with leading zeros.
 
 ### GitHub repository
 
