@@ -1,0 +1,12 @@
+# WLAN-Zugangsdaten niemals committen
+arduino/UnterbrechungszaehlerInterruptCounter/Secrets.h
+
+# Arduino / IDE
+*.bin
+*.elf
+*.map
+build/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
