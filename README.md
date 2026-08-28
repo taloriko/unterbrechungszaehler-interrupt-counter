@@ -18,7 +18,7 @@ Der wichtigste Punkt war von Anfang an, dass die Bedienung **so einfach sein mus
 Ab hier wird es wieder sachlich.
 
 <!-- SCREENSHOT-DE-01: Hauptansicht / Heute -->
-> **Screenshot-Platzhalter:** Hauptansicht „Heute“
+![Hauptansicht](docs/images/Reiter - Heute.png)
 
 <!-- SCREENSHOT-DE-02: Verlauf / Heatmap -->
 > **Screenshot-Platzhalter:** Verlauf und Heatmap
