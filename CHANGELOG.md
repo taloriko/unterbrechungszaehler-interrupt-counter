@@ -1,17 +1,12 @@
 # Changelog
 
-## 2026-08-29-8
+## 2026-08-29-8 – zurueckgezogen
 
-- Datum wieder unter der Uhrzeit im linken Kopfbereich eingeblendet
-- normaler Daten-Refresh im Export zeigt jetzt wie Autark den Status `Aktualisiere...`, danach Anzahl der geladenen Eintraege und Uhrzeit oder eine Fehlermeldung
-- neue Spracheinstellung in der Geraeteansicht
-- Sprachvarianten: Deutsch, Schwaebisch, Englisch, Italienisch und Franzoesisch
-- Sprachwahl mit Flaggen bzw. Schwaebisch-Symbol
-- nicht-deutsche Sprachfassungen werden sichtbar als automatisch uebersetzt und ungeprueft gekennzeichnet
-- neue Darstellungseinstellung mit `System`, Sonne und Mond
-- `System` uebernimmt automatisch die Hell-/Dunkel-Einstellung des verwendeten Endgeraets
-- manuell gewaehlter Hell- oder Dunkelmodus wird lokal im Browser gespeichert
-- Sprache und Darstellung werden pro Endgeraet lokal im Browser gespeichert und erzeugen keine zusaetzlichen Flash-Schreibvorgaenge auf dem ESP32
+- Sprach- und Theme-Umbau wurde nach Vergleich mit `2026-08-29-7` wieder entfernt
+- Grund: beim Umbau gingen Teile der bestehenden Oberflaeche verloren, unter anderem RAM-/Flash-Anzeige und Teile der Bedienungsansicht
+- Firmware wurde deshalb vollstaendig auf den stabilen Stand `2026-08-29-7` zurueckgesetzt
+- neue Sprachtexte werden ab jetzt getrennt in `translations/ui-translations.csv` gepflegt und erst nach manueller Pruefung wieder eingebaut
+- die Uebersetzungsliste enthaelt auch dynamische Rueckmeldungen und Fehlermeldungen, nicht nur statische Beschriftungen
 
 ## 2026-08-29-7
 
