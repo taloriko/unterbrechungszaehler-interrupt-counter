@@ -32,6 +32,7 @@ private:
   void sendEvents();
   void sendAutark();
   void sendAggregate();
+  void sendDisplayPreview();
   void exportNormalCsv();
   void exportArchiveCsv();
   void exportAutarkCsv();
