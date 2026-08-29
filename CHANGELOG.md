@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-08-29-16
+
+- Langzeitaufzeichnung fuer mindestens 10 Jahre vorbereitet
+- zusaetzlicher Ringspeicher `/events_10y.bin` mit 100.000 absoluten Zeitstempeln
+- 100.000 Eintraege benoetigen nur rund 400 kB Rohdaten
+- bei 30 Unterbrechungen pro Werktag reicht die Kapazitaet rechnerisch fuer ca. 12,8 Jahre
+- bestehender 10.000er Ringspeicher bleibt unveraendert fuer schnelle Tages-, Verlauf- und Detailansichten
+- vorhandene normale Ereignisse werden beim ersten Start automatisch in den Langzeitspeicher uebernommen
+- neue normale Ereignisse und Loeschvorgaenge werden parallel im Langzeitspeicher nachgefuehrt
+- Autark-Daten bleiben weiterhin getrennt im Autark-Ringspeicher
+- neue API `/api/aggregate` fuer kompakte Langzeitauswertungen
+- Aggregat-API liefert Wochentag/Uhrzeit, Monat/Kalenderwoche, Jahr/Monat und verfuegbare Jahre
+- Heatmaps laden nicht mehr alle Langzeit-Zeitstempel, sondern nur noch wenige Kilobyte aggregierte Werte
+- Monat/Kalenderwoche zeigt 12 Monate vertikal und KW 1 bis 52 horizontal mit Jahresauswahl
+- aktuelles Jahr ist bei Monat/Kalenderwoche vorausgewaehlt; Jahre mit vorhandenen Daten stehen im Dropdown zur Verfuegung
+- Jahr/Monat zeigt statisch immer das aktuelle Jahr und die vier vorherigen Jahre
+- Aggregatdaten werden im RAM zwischengespeichert und nur bei geaendertem Langzeitring neu aufgebaut
+- Heatmap-Aktualisierung auf 15 Sekunden reduziert, da die Daten jetzt langfristig aggregiert sind
+- serielle Statuszeile zeigt zusaetzlich Belegung des Langzeitspeichers
+- Firmware-Runtime-Version auf `2026-08-29-16` gesetzt
+
 ## 2026-08-29-14
 
 - Ursache aus den Screenshots behoben: grosse Heatmap-Erweiterung wurde nicht mehr als komplette HTML-Seite im RAM des ESP32 aufgebaut
