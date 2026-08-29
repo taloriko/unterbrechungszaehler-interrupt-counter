@@ -61,9 +61,13 @@ void DisplayService::begin(RtcService* rtc,
   }
 
   Serial.printf("[DISPLAY] SH1106 %s", present_ ? "erkannt" : "nicht erkannt");
+  Serial.printf(" | Simulation %s", simulationEnabled_ ? "AN" : "AUS");
   if (present_) {
-    Serial.printf(" | 0x%02X | Hell %u | Dim %u nach %us | Aus %lus | Layout %s",
-                  address_, brightness_, dimBrightness_, dimAfterSeconds_,
+    Serial.printf(" | 0x%02X", address_);
+  }
+  if (available()) {
+    Serial.printf(" | Hell %u | Dim %u nach %us | Aus %lus | Layout %s",
+                  brightness_, dimBrightness_, dimAfterSeconds_,
                   static_cast<unsigned long>(offAfterSeconds_), layoutName(layout_));
   }
   Serial.println();
@@ -94,7 +98,7 @@ void DisplayService::tick() {
 }
 
 void DisplayService::showBootStatus(bool autarkMode) {
-  if (!present_ || !initializeController()) return;
+  if (!available() || !initializeController()) return;
   currentAutarkMode_ = autarkMode;
   screenMode_ = ScreenMode::Boot;
   bootUntil_ = autarkMode ? 0 : millis() + 3000UL;
@@ -104,7 +108,7 @@ void DisplayService::showBootStatus(bool autarkMode) {
 }
 
 bool DisplayService::showTest(bool autarkMode) {
-  if (!present_) return false;
+  if (!available()) return false;
   if (!active_ && !initializeController()) return false;
   currentAutarkMode_ = autarkMode;
   screenMode_ = ScreenMode::Test;
@@ -116,7 +120,7 @@ bool DisplayService::showTest(bool autarkMode) {
 }
 
 void DisplayService::notifyActivity(bool autarkMode) {
-  if (!present_) return;
+  if (!available()) return;
   currentAutarkMode_ = autarkMode;
   screenMode_ = ScreenMode::Live;
   bootUntil_ = 0;
@@ -135,7 +139,7 @@ void DisplayService::notifyEvent(bool autarkMode) {
 
   // Wenn Aufwecken deaktiviert ist, wird ein bereits aktives Display trotzdem
   // aktualisiert. Ein ausgeschaltetes Display bleibt dagegen wirklich aus.
-  if (!present_ || !active_) return;
+  if (!available() || !active_) return;
   currentAutarkMode_ = autarkMode;
   screenMode_ = ScreenMode::Live;
   renderFrame(autarkMode, ScreenMode::Live);
@@ -143,7 +147,7 @@ void DisplayService::notifyEvent(bool autarkMode) {
 }
 
 void DisplayService::wake(bool autarkMode, bool resetTimers) {
-  if (!present_) return;
+  if (!available()) return;
   setContrast(brightness_);
   applyOrientation();
   command(0xAF);
@@ -153,12 +157,39 @@ void DisplayService::wake(bool autarkMode, bool resetTimers) {
 }
 
 void DisplayService::off() {
-  if (!present_) return;
-  command(0xAE);
+  if (!available()) return;
+  if (present_) command(0xAE);
   active_ = false;
   dimmed_ = false;
   dimAt_ = 0;
   offAt_ = 0;
+}
+
+bool DisplayService::setSimulationEnabled(bool enabled) {
+  preferences_.begin("interrupt", false);
+  preferences_.putBool("oledSim", enabled);
+  preferences_.end();
+
+  simulationEnabled_ = enabled;
+
+  if (!present_) {
+    if (enabled) {
+      screenMode_ = ScreenMode::Live;
+      bootUntil_ = 0;
+      renderFrame(currentAutarkMode_, ScreenMode::Live);
+      active_ = true;
+      dimmed_ = false;
+      armActivityTimers(currentAutarkMode_);
+      lastFrameAt_ = millis();
+    } else {
+      active_ = false;
+      dimmed_ = false;
+      dimAt_ = 0;
+      offAt_ = 0;
+    }
+  }
+
+  return true;
 }
 
 bool DisplayService::setSettings(uint8_t brightness,
@@ -222,6 +253,7 @@ void DisplayService::loadSettings() {
   wakeOnEvent_ = preferences_.getBool("oledWakeEvt", true);
   inverted_ = preferences_.getBool("oledInvert", false);
   rotation180_ = preferences_.getBool("oledRot180", false);
+  simulationEnabled_ = preferences_.getBool("oledSim", false);
   const uint8_t layoutValue = preferences_.getUChar("oledLayout", 0);
   preferences_.end();
 
@@ -241,7 +273,8 @@ bool DisplayService::probe(uint8_t address) {
 }
 
 bool DisplayService::command(uint8_t commandValue) {
-  if (!present_ || !address_) return false;
+  if (!present_) return simulationEnabled_;
+  if (!address_) return false;
   Wire.beginTransmission(address_);
   Wire.write(static_cast<uint8_t>(0x00));
   Wire.write(commandValue);
@@ -249,11 +282,12 @@ bool DisplayService::command(uint8_t commandValue) {
 }
 
 bool DisplayService::setContrast(uint8_t value) {
+  if (!present_) return simulationEnabled_;
   return command(0x81) && command(value);
 }
 
 bool DisplayService::applyOrientation() {
-  if (!present_) return false;
+  if (!present_) return simulationEnabled_;
   const bool segmentOk = command(rotation180_ ? 0xA0 : 0xA1);
   const bool scanOk = command(rotation180_ ? 0xC0 : 0xC8);
   const bool invertOk = command(inverted_ ? 0xA7 : 0xA6);
@@ -261,6 +295,7 @@ bool DisplayService::applyOrientation() {
 }
 
 bool DisplayService::initializeController() {
+  if (!present_) return simulationEnabled_;
   const uint8_t commands[] = {
     0xAE, 0xD5, 0x80, 0xA8, 0x3F, 0xD3, 0x00, 0x40,
     0xAD, 0x8B, 0xDA, 0x12, 0xD9, 0x22, 0xDB, 0x35, 0xA4
@@ -274,12 +309,14 @@ bool DisplayService::initializeController() {
 }
 
 void DisplayService::setPage(uint8_t page) {
+  if (!present_) return;
   command(static_cast<uint8_t>(0xB0 | (page & 0x07)));
   command(0x02);
   command(0x10);
 }
 
 void DisplayService::writeData(const uint8_t* data, size_t length) {
+  if (!present_) return;
   size_t pos = 0;
   while (pos < length) {
     const size_t chunk = min(static_cast<size_t>(16), length - pos);
@@ -292,10 +329,12 @@ void DisplayService::writeData(const uint8_t* data, size_t length) {
 }
 
 void DisplayService::flush() {
-  if (!present_) return;
-  for (uint8_t page = 0; page < 8; page++) {
-    setPage(page);
-    writeData(framebuffer_ + static_cast<size_t>(page) * WIDTH, WIDTH);
+  if (!available()) return;
+  if (present_) {
+    for (uint8_t page = 0; page < 8; page++) {
+      setPage(page);
+      writeData(framebuffer_ + static_cast<size_t>(page) * WIDTH, WIDTH);
+    }
   }
   lastFrameAt_ = millis();
 }
