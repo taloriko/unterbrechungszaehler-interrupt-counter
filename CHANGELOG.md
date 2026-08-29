@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-29-1
+
+- Start von WLAN und NTP nicht mehr blockierend
+- lokaler offener Fallback-Hotspot `Unterbrechungszaehler` hinzugefuegt
+- feste lokale Adresse `http://192.168.4.1` waehrend das normale WLAN noch nicht verbunden ist
+- Fallback-Hotspot wird nach erfolgreicher normaler WLAN-Verbindung automatisch abgeschaltet
+- Weboberflaeche kann bei fehlender NTP-Zeit einmalig die Zeit des verbundenen Handys/Browsers an den ESP32 uebergeben
+- Browserzeit wird nur akzeptiert, solange noch keine gueltige Geraetezeit vorhanden ist
+- Normalbetrieb bleibt strikt: ohne gueltige absolute Zeit werden keine Ereignisse gespeichert
+- Geraeteansicht um Zeitquelle und Status des lokalen Fallback-Zugangs erweitert
+
 ## 2026-08-28-6
 
 - finales GitHub-Repository verlinkt
