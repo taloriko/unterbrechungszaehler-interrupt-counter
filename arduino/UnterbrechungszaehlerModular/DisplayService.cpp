@@ -55,7 +55,8 @@ void DisplayService::tick() {
   const uint32_t now = millis();
 
   if (!dimmed_ && dimAt_ != 0 && static_cast<int32_t>(now - dimAt_) >= 0) {
-    const uint8_t dimValue = max<uint8_t>(12, static_cast<uint8_t>(brightness_ / 4));
+    const uint8_t reduced = static_cast<uint8_t>(brightness_ / 4);
+    const uint8_t dimValue = reduced < 12 ? 12 : reduced;
     if (setContrast(dimValue)) dimmed_ = true;
   }
 
