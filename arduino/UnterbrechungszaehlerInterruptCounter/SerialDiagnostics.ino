@@ -4,7 +4,7 @@
 
 #include <esp_system.h>
 
-static const char* SERIAL_DIAG_VERSION = "2026-08-29-11";
+static const char* SERIAL_DIAG_VERSION = "2026-08-29-12";
 
 class RuntimeVersionInitializer {
 public:
@@ -49,6 +49,19 @@ static void diagPrintSeparator() {
   Serial.println("------------------------------------------------------------");
 }
 
+static void diagPrintFallbackStatus() {
+  if (apActive) {
+    Serial.printf("[AP] Fallback-WLAN AKTIV | SSID=%s | IP=%s | URL=http://%s\n",
+                  FALLBACK_AP_SSID,
+                  WiFi.softAPIP().toString().c_str(),
+                  WiFi.softAPIP().toString().c_str());
+  } else {
+    Serial.printf("[AP] Fallback-WLAN AUS | SSID=%s | feste IP=%s\n",
+                  FALLBACK_AP_SSID,
+                  FALLBACK_AP_IP.toString().c_str());
+  }
+}
+
 static void diagPrintStartup() {
   Serial.println();
   diagPrintSeparator();
@@ -74,10 +87,7 @@ static void diagPrintStartup() {
                 (unsigned long)autarkHeader.count,
                 (unsigned long)autarkHeader.capacity);
   Serial.printf("Startmodus: %s\n", autarkMode ? "AUTARK" : "NORMAL");
-  if (apActive) {
-    Serial.printf("Fallback-WLAN: %s | http://%s\n",
-                  FALLBACK_AP_SSID, WiFi.softAPIP().toString().c_str());
-  }
+  diagPrintFallbackStatus();
   diagPrintSeparator();
 }
 
@@ -90,8 +100,10 @@ static void diagPrintPeriodicStatus() {
     Serial.printf(" | IP=%s | RSSI=%d dBm",
                   WiFi.localIP().toString().c_str(), WiFi.RSSI());
   } else if (apActive) {
-    Serial.printf(" | AP=%s | IP=%s",
+    Serial.printf(" | Fallback-AP=%s | AP-IP=%s",
                   FALLBACK_AP_SSID, WiFi.softAPIP().toString().c_str());
+  } else {
+    Serial.printf(" | Fallback-AP=AUS | AP-IP=%s", FALLBACK_AP_IP.toString().c_str());
   }
   Serial.printf(" | Zeit=%s/%s | Events=%lu | Autark=%lu | Heap=%u\n",
                 timeIsValid() ? "OK" : "UNGUELTIG",
@@ -116,12 +128,7 @@ static void diagCheckTransitions() {
   }
 
   if (apActive != diagLastAp) {
-    if (apActive) {
-      Serial.printf("[AP] Fallback aktiv: %s | http://%s\n",
-                    FALLBACK_AP_SSID, WiFi.softAPIP().toString().c_str());
-    } else {
-      Serial.println("[AP] Fallback abgeschaltet.");
-    }
+    diagPrintFallbackStatus();
     diagLastAp = apActive;
   }
 
@@ -196,8 +203,6 @@ static void diagCheckTransitions() {
   }
 }
 
-// Arduino-ESP32 calls serialEventRun() after loop(). This keeps diagnostics
-// completely separate from the functional main loop and throttles output.
 void serialEventRun(void) {
   if (!diagInitialized) {
     diagInitialized = true;
