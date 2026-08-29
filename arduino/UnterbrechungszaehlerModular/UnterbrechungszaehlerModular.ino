@@ -104,12 +104,9 @@ void setup() {
   timeService.begin(&rtc);
   counter.begin(&storage, &timeService, &led);
   autark.begin(&storage, &timeService, &led);
-  display.begin(&rtc, &timeService);
+  display.begin(&rtc, &timeService, &storage, &network);
   input.begin(&counter, &autark, &led, &display);
 
-  // Heatmap-Daten werden einmal beim Start vorbereitet. Dadurch ist der
-  // erste Aufruf der Heatmap nicht mehr der Moment, in dem das Archiv erst
-  // komplett ausgewertet werden muss.
   analytics.begin(&storage);
   const uint32_t analyticsStarted = millis();
   const bool analyticsReady = analytics.warmCurrent();
