@@ -16,6 +16,38 @@
 #include "WebUi.h"
 #include "WebUiPatch.h"
 
+namespace {
+String exportDownloadName(const char* baseName, TimeService* timeService) {
+  String filename(baseName);
+
+  if (timeService && timeService->valid()) {
+    time_t raw = static_cast<time_t>(timeService->epoch());
+    struct tm value = {};
+    localtime_r(&raw, &value);
+
+    char timestamp[32];
+    snprintf(timestamp,
+             sizeof(timestamp),
+             "_%04d-%02d-%02d_%02d-%02d-%02d.csv",
+             value.tm_year + 1900,
+             value.tm_mon + 1,
+             value.tm_mday,
+             value.tm_hour,
+             value.tm_min,
+             value.tm_sec);
+    filename += timestamp;
+  } else {
+    filename += "_zeit-unbekannt.csv";
+  }
+
+  return filename;
+}
+
+String attachmentHeader(const String& filename) {
+  return String("attachment; filename=\"") + filename + "\"";
+}
+}
+
 WebService::WebService() : server_(80) {}
 
 void WebService::begin(StorageService* storage,
@@ -386,7 +418,7 @@ void WebService::exportNormalCsv() {
   out.close();
 
   File file = LittleFS.open(path, FILE_READ);
-  server_.sendHeader("Content-Disposition", "attachment; filename=\"unterbrechungen.csv\"");
+  server_.sendHeader("Content-Disposition", attachmentHeader(exportDownloadName("unterbrechungen", time_)));
   server_.streamFile(file, "text/csv");
   file.close();
   LittleFS.remove(path);
@@ -401,7 +433,7 @@ void WebService::exportArchiveCsv() {
   // Der Langzeitspeicher kann 100.000 Werte enthalten. Deshalb wird der
   // Export direkt zum Browser gestreamt und keine zweite grosse Datei im
   // LittleFS angelegt.
-  server_.sendHeader("Content-Disposition", "attachment; filename=\"unterbrechungen_langzeit.csv\"");
+  server_.sendHeader("Content-Disposition", attachmentHeader(exportDownloadName("unterbrechungen_langzeit", time_)));
   server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
   server_.send(200, "text/csv; charset=utf-8", "Datum;Zeit;Unixzeit\r\n");
 
@@ -467,7 +499,7 @@ void WebService::exportAutarkCsv() {
   out.close();
 
   File file = LittleFS.open(path, FILE_READ);
-  server_.sendHeader("Content-Disposition", "attachment; filename=\"autark.csv\"");
+  server_.sendHeader("Content-Disposition", attachmentHeader(exportDownloadName("autark", time_)));
   server_.streamFile(file, "text/csv");
   file.close();
   LittleFS.remove(path);
