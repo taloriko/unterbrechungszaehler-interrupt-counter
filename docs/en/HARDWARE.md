@@ -11,4 +11,12 @@ Currently tested hardware:
 - suitable 5 V power supply for normal operation
 - optional battery or USB power bank for mobile operation
 
+## Optional: magnetic mounting
+
+A **MagSafe-style magnetic ring** can be added to the enclosure for simple removable mounting.
+
+The ring is only used for mechanical mounting and has no electrical function.
+
+The exact enclosure implementation is still **work in progress**.
+
 More details about enclosures, terminals and recommended parts will follow.
