@@ -17,7 +17,26 @@ function getRange(){
   return{s:s,e:e};
 }
 
+function installUiPolish(){
+  if(!q('extUiPolish')){
+    var style=document.createElement('style');
+    style.id='extUiPolish';
+    style.textContent='.tabpanel{border-radius:0 0 12px 12px}.longTermProgress{height:12px;background:var(--line);border-radius:7px;overflow:hidden;margin:8px 0}.longTermProgress>div{height:100%;background:var(--accent);width:0}';
+    document.head.appendChild(style);
+  }
+
+  var deviceIcon=document.querySelector('.tab[data-view="device"] .ico');
+  if(deviceIcon)deviceIcon.innerHTML='&#128421;';
+
+  if(!document.querySelector('link[data-uic-favicon]')){
+    var icon=document.createElement('link');
+    icon.rel='icon';icon.type='image/svg+xml';icon.dataset.uicFavicon='1';icon.href='/favicon.svg?v=17';
+    document.head.appendChild(icon);
+  }
+}
+
 function buildUi(){
+  installUiPolish();
   var tabs=document.querySelector('.tabs');
   var autarkTab=document.querySelector('.tab[data-view="autark"]');
   if(tabs&&!document.querySelector('.tab[data-view="settings"]')){
@@ -40,6 +59,13 @@ function buildUi(){
   if(deviceGrid&&settingsHost){
     var original=deviceGrid.querySelector('.infoBox');
     if(original&&!settingsHost.contains(original))settingsHost.appendChild(original);
+  }
+
+  if(deviceGrid&&!q('longTermStorageBox')){
+    var lt=document.createElement('div');lt.className='infoBox';lt.id='longTermStorageBox';
+    lt.innerHTML='<h3><span class="infoIcon">&#128451;</span>Langzeit-Ringspeicher</h3><div class="kv"><span>Eintraege</span><span id="longTermCount">-</span><span>Kapazitaet</span><span id="longTermCapacity">100000</span><span>Frei</span><span id="longTermFree">-</span><span>Speichermodus</span><span>Ring / FIFO</span></div><div class="longTermProgress"><div id="longTermBar"></div></div><p class="small">Langzeitarchiv fuer Heatmaps und Statistiken. Bei 100 % wird automatisch der aelteste Datensatz ersetzt.</p>';
+    var flashBox=Array.from(deviceGrid.querySelectorAll('.infoBox')).find(function(x){return x.textContent.indexOf('Flash / Programm')>=0});
+    if(flashBox)deviceGrid.insertBefore(lt,flashBox);else deviceGrid.appendChild(lt);
   }
 
   var heat=q('heatmap');
@@ -85,6 +111,15 @@ function saveRange(){
 }
 
 function maxIn2d(a){var max=1;(a||[]).forEach(function(row){(row||[]).forEach(function(v){if(v>max)max=v})});return max}
+
+function renderLongTermStatus(data){
+  if(!data)return;
+  var stored=data.stored||0,capacity=data.capacity||100000;
+  if(q('longTermCount'))q('longTermCount').textContent=stored;
+  if(q('longTermCapacity'))q('longTermCapacity').textContent=capacity;
+  if(q('longTermFree'))q('longTermFree').textContent=Math.max(0,capacity-stored);
+  if(q('longTermBar'))q('longTermBar').style.width=(capacity?Math.min(100,stored/capacity*100):0)+'%';
+}
 
 function renderWeek(data){
   var wrap=q('heatWrap');if(!wrap)return;
@@ -138,30 +173,48 @@ async function refreshHeatmaps(year){
     var url='/api/aggregate?x='+Date.now();if(Number.isInteger(selected))url+='&year='+selected;
     var r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
     var data=await r.json();if(!data.ok)throw new Error('Aggregat nicht verfuegbar');
-    lastAggregate=data;renderWeek(data);renderMonthWeek(data);renderYearMonth(data);
+    lastAggregate=data;renderLongTermStatus(data);renderWeek(data);renderMonthWeek(data);renderYearMonth(data);
   }catch(err){
     var text='<span class="muted">Fehler beim Laden: '+err.message+'</span>';
     if(q('heatWrap'))q('heatWrap').innerHTML=text;if(q('monthWeekHeatWrap'))q('monthWeekHeatWrap').innerHTML=text;if(q('yearMonthHeatWrap'))q('yearMonthHeatWrap').innerHTML=text;
   }
 }
 
-function bindExistingTabs(){var hb=document.querySelector('.tab[data-view="heatmap"]');if(hb&&!hb.dataset.extBound){hb.dataset.extBound='1';hb.addEventListener('click',function(){setTimeout(function(){refreshHeatmaps()},30)})}}
+async function refreshLongTermStatus(){
+  try{
+    var r=await fetch('/api/aggregate?x='+Date.now(),{cache:'no-store'});if(!r.ok)return;
+    var data=await r.json();if(data.ok){lastAggregate=data;renderLongTermStatus(data)}
+  }catch(e){}
+}
+
+function bindExistingTabs(){
+  var hb=document.querySelector('.tab[data-view="heatmap"]');if(hb&&!hb.dataset.extBound){hb.dataset.extBound='1';hb.addEventListener('click',function(){setTimeout(function(){refreshHeatmaps()},30)})}
+  var db=document.querySelector('.tab[data-view="device"]');if(db&&!db.dataset.extStorageBound){db.dataset.extStorageBound='1';db.addEventListener('click',function(){setTimeout(refreshLongTermStatus,30)})}
+}
 
 buildUi();bindExistingTabs();
-setTimeout(function(){buildUi();bindExistingTabs();refreshHeatmaps()},100);
-setTimeout(function(){refreshHeatmaps()},800);
+setTimeout(function(){buildUi();bindExistingTabs();refreshHeatmaps();refreshLongTermStatus()},100);
+setTimeout(function(){refreshHeatmaps();refreshLongTermStatus()},800);
 setInterval(function(){var v=q('heatmap');if(v&&v.classList.contains('active'))refreshHeatmaps()},15000);
+setInterval(function(){var v=q('device');if(v&&v.classList.contains('active'))refreshLongTermStatus()},15000);
 })();
 )JS";
+
+static const char UIC_FAVICON_SVG[] PROGMEM = R"SVG(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="13" fill="#2166d1"/><rect x="13" y="31" width="8" height="20" rx="2" fill="#fff"/><rect x="28" y="19" width="8" height="32" rx="2" fill="#fff"/><rect x="43" y="11" width="8" height="40" rx="2" fill="#fff"/><circle cx="17" cy="17" r="6" fill="#65d58b"/></svg>)SVG";
 
 static void serveHeatmapExtensionJs() {
   server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate");
   server.send_P(200, "application/javascript; charset=utf-8", HEATMAP_EXTENSION_JS);
 }
 
+static void serveUiFavicon() {
+  server.sendHeader("Cache-Control", "public, max-age=86400");
+  server.send_P(200, "image/svg+xml", UIC_FAVICON_SVG);
+}
+
 static void serveHeatmapExtendedIndex() {
   String page = FPSTR(INDEX_HTML);
-  const char* includeScript = "<script src=\"/heatmap-extension.js?v=16\"></script></body>";
+  const char* includeScript = "<script src=\"/heatmap-extension.js?v=17\"></script></body>";
   page.replace("</body>", includeScript);
   server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate");
   server.send(200, "text/html; charset=utf-8", page);
@@ -172,6 +225,7 @@ public:
   HeatmapExtensionRegistrar() {
     server.on("/", HTTP_GET, serveHeatmapExtendedIndex);
     server.on("/heatmap-extension.js", HTTP_GET, serveHeatmapExtensionJs);
+    server.on("/favicon.svg", HTTP_GET, serveUiFavicon);
   }
 };
 HeatmapExtensionRegistrar heatmapExtensionRegistrar;
