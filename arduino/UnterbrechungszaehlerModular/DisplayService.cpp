@@ -1,6 +1,7 @@
 #include "DisplayService.h"
 
 #include <Wire.h>
+#include <time.h>
 
 #include "Config.h"
 #include "NetworkService.h"
@@ -62,9 +63,7 @@ void DisplayService::begin(RtcService* rtc,
 
   Serial.printf("[DISPLAY] SH1106 %s", present_ ? "erkannt" : "nicht erkannt");
   Serial.printf(" | Simulation %s", simulationEnabled_ ? "AN" : "AUS");
-  if (present_) {
-    Serial.printf(" | 0x%02X", address_);
-  }
+  if (present_) Serial.printf(" | 0x%02X", address_);
   if (available()) {
     Serial.printf(" | Hell %u | Dim %u nach %us | Aus %lus | Layout %s",
                   brightness_, dimBrightness_, dimAfterSeconds_,
@@ -137,8 +136,6 @@ void DisplayService::notifyEvent(bool autarkMode) {
     return;
   }
 
-  // Wenn Aufwecken deaktiviert ist, wird ein bereits aktives Display trotzdem
-  // aktualisiert. Ein ausgeschaltetes Display bleibt dagegen wirklich aus.
   if (!available() || !active_) return;
   currentAutarkMode_ = autarkMode;
   screenMode_ = ScreenMode::Live;
@@ -169,7 +166,6 @@ bool DisplayService::setSimulationEnabled(bool enabled) {
   preferences_.begin("interrupt", false);
   preferences_.putBool("oledSim", enabled);
   preferences_.end();
-
   simulationEnabled_ = enabled;
 
   if (!present_) {
@@ -188,7 +184,6 @@ bool DisplayService::setSimulationEnabled(bool enabled) {
       offAt_ = 0;
     }
   }
-
   return true;
 }
 
@@ -423,6 +418,45 @@ String DisplayService::networkText() const {
   return "WLAN OFF";
 }
 
+uint32_t DisplayService::todayCount() {
+  if (!storage_ || !time_ || !time_->valid()) return 0;
+
+  time_t now = static_cast<time_t>(time_->epoch());
+  struct tm local = {};
+  localtime_r(&now, &local);
+  local.tm_hour = 0;
+  local.tm_min = 0;
+  local.tm_sec = 0;
+  local.tm_isdst = -1;
+  const time_t dayStartRaw = mktime(&local);
+  if (dayStartRaw <= 0) return 0;
+
+  const uint32_t dayStart = static_cast<uint32_t>(dayStartRaw);
+  const uint32_t revision = storage_->revision();
+  if (todayCountRevision_ == revision && todayCountDayStart_ == dayStart) {
+    return todayCountCache_;
+  }
+
+  uint32_t count = 0;
+  const uint32_t total = storage_->recentCount();
+  for (uint32_t i = total; i > 0; i--) {
+    uint32_t epoch = 0;
+    if (!storage_->readRecent(i - 1, epoch)) continue;
+    if (epoch < dayStart) break;
+    count++;
+  }
+
+  todayCountCache_ = count;
+  todayCountDayStart_ = dayStart;
+  todayCountRevision_ = revision;
+  return count;
+}
+
+String DisplayService::todayCountText() {
+  if (!time_ || !time_->valid()) return "-";
+  return String(todayCount());
+}
+
 void DisplayService::renderFrame(bool autarkMode, ScreenMode mode) {
   currentAutarkMode_ = autarkMode;
   clearBuffer();
@@ -459,35 +493,37 @@ void DisplayService::renderLive(bool autarkMode) {
 }
 
 void DisplayService::renderStandard(bool autarkMode) {
-  const uint32_t count = storage_ ? storage_->recentCount() : 0;
+  const String count = todayCountText();
   drawText(2, 1, "UNTERBRECHUNGEN");
   drawHLine(0, 10, WIDTH);
-  drawText(2, 15, String("ZEIT  ") + timeText());
-  drawText(2, 27, String("GESAMT ") + String(count));
-  drawText(2, 39, rtcText());
-  drawText(2, 51, autarkMode ? "AUTARK" : networkText());
+  drawText(2, 15, "HEUTE");
+  drawText(80, 13, count, 2);
+  drawText(2, 29, String("ZEIT  ") + timeText());
+  drawText(2, 41, String("DATUM ") + shortDate());
+  drawText(2, 53, autarkMode ? String("AUTARK ") + rtcText() : rtcText() + String(" ") + networkText());
 }
 
 void DisplayService::renderCompact(bool autarkMode) {
-  const uint32_t count = storage_ ? storage_->recentCount() : 0;
+  const String count = todayCountText();
   drawText(2, 1, timeText());
   drawText(62, 1, shortDate());
   drawHLine(0, 11, WIDTH);
-  drawText(2, 17, String("UNTERBR ") + String(count));
-  drawText(2, 29, rtcText());
-  drawText(2, 41, autarkMode ? "AUTARK" : networkText());
-  drawText(2, 53, dimmed_ ? "DISPLAY GEDIMMT" : "DISPLAY AKTIV");
+  drawText(2, 17, "HEUTE");
+  drawText(78, 15, count, 2);
+  drawText(2, 33, rtcText());
+  drawText(2, 44, autarkMode ? "AUTARK" : networkText());
+  drawText(2, 55, dimmed_ ? "GEDIMMT" : "DISPLAY AKTIV");
 }
 
 void DisplayService::renderClock(bool autarkMode) {
-  const uint32_t count = storage_ ? storage_->recentCount() : 0;
+  const String count = todayCountText();
   String clock = timeText();
   if (clock.length() > 5) clock = clock.substring(0, 5);
   drawText(15, 3, clock, 2);
   drawHLine(0, 21, WIDTH);
   drawText(34, 27, shortDate());
-  drawText(2, 40, String("EREIGNISSE ") + String(count));
-  drawText(2, 52, autarkMode ? "AUTARK" : networkText());
+  drawText(2, 40, String("HEUTE ") + count);
+  drawText(2, 52, autarkMode ? String("AUTARK ") + rtcText() : rtcText() + String(" ") + networkText());
 }
 
 void DisplayService::armActivityTimers(bool autarkMode) {
