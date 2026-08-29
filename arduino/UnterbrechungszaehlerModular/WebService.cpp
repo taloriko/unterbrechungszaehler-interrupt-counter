@@ -17,6 +17,7 @@
 #include "WebUiPatch.h"
 #include "WebUiFixes.h"
 #include "WebUiNetwork.h"
+#include "WebUiDisplay.h"
 
 namespace {
 String exportDownloadName(const char* baseName, TimeService* timeService) {
@@ -47,6 +48,10 @@ String exportDownloadName(const char* baseName, TimeService* timeService) {
 
 String attachmentHeader(const String& filename) {
   return String("attachment; filename=\"") + filename + "\"";
+}
+
+bool boolArg(const String& value) {
+  return value == "1" || value == "true" || value == "on" || value == "yes";
 }
 }
 
@@ -104,6 +109,7 @@ void WebService::registerRoutes() {
     server_.sendContent_P(WEB_UI_PATCH);
     server_.sendContent_P(WEB_UI_FIXES);
     server_.sendContent_P(WEB_UI_NETWORK);
+    server_.sendContent_P(WEB_UI_DISPLAY);
     server_.sendContent("");
   });
 
@@ -111,6 +117,7 @@ void WebService::registerRoutes() {
   server_.on("/api/events", HTTP_GET, [this]() { sendEvents(); });
   server_.on("/api/autark", HTTP_GET, [this]() { sendAutark(); });
   server_.on("/api/aggregate", HTTP_GET, [this]() { sendAggregate(); });
+  server_.on("/api/display-preview", HTTP_GET, [this]() { sendDisplayPreview(); });
 
   server_.on("/api/add", HTTP_POST, [this]() {
     if (autark_ && autark_->active()) {
@@ -121,7 +128,7 @@ void WebService::registerRoutes() {
       sendJsonError(503, "event_not_stored");
       return;
     }
-    if (display_) display_->notifyActivity(false);
+    if (display_) display_->notifyEvent(false);
     server_.send(200, "application/json", "{\"ok\":true}");
   });
 
@@ -134,6 +141,7 @@ void WebService::registerRoutes() {
       sendJsonError(404, "no_event");
       return;
     }
+    if (display_) display_->notifyActivity(false);
     server_.send(200, "application/json", "{\"ok\":true}");
   });
 
@@ -189,13 +197,33 @@ void WebService::registerRoutes() {
       sendJsonError(404, "display_unavailable");
       return;
     }
-    const int brightness = server_.arg("brightness").toInt();
-    const int dimAfter = server_.arg("dimAfter").toInt();
-    if (brightness < 1 || brightness > 255 || dimAfter < 5 || dimAfter > 3600) {
+
+    const int brightness = server_.hasArg("brightness") ? server_.arg("brightness").toInt() : display_->brightness();
+    const int dimBrightness = server_.hasArg("dimBrightness") ? server_.arg("dimBrightness").toInt() : display_->dimBrightness();
+    const int dimAfter = server_.hasArg("dimAfter") ? server_.arg("dimAfter").toInt() : display_->dimAfterSeconds();
+    const long offAfter = server_.hasArg("offAfter") ? server_.arg("offAfter").toInt() : static_cast<long>(display_->offAfterSeconds());
+    const int layoutValue = server_.hasArg("layout") ? server_.arg("layout").toInt() : static_cast<int>(display_->layout());
+    const bool wakeOnEvent = server_.hasArg("wakeOnEvent") ? boolArg(server_.arg("wakeOnEvent")) : display_->wakeOnEvent();
+    const bool inverted = server_.hasArg("inverted") ? boolArg(server_.arg("inverted")) : display_->inverted();
+    const bool rotation180 = server_.hasArg("rotation180") ? boolArg(server_.arg("rotation180")) : display_->rotation180();
+
+    if (brightness < 1 || brightness > 255 ||
+        dimBrightness < 1 || dimBrightness > 255 ||
+        dimAfter < 5 || dimAfter > 3600 ||
+        offAfter < 0 || offAfter > 86400 || (offAfter > 0 && offAfter < 5) ||
+        layoutValue < 0 || layoutValue > 2) {
       sendJsonError(400, "invalid_display_settings");
       return;
     }
-    if (!display_->setSettings(static_cast<uint8_t>(brightness), static_cast<uint16_t>(dimAfter))) {
+
+    if (!display_->setSettings(static_cast<uint8_t>(brightness),
+                               static_cast<uint8_t>(dimBrightness),
+                               static_cast<uint16_t>(dimAfter),
+                               static_cast<uint32_t>(offAfter),
+                               wakeOnEvent,
+                               inverted,
+                               rotation180,
+                               static_cast<DisplayLayout>(layoutValue))) {
       sendJsonError(500, "display_settings_failed");
       return;
     }
@@ -213,7 +241,7 @@ void WebService::sendStatus() {
   const size_t fsUsed = storage_ ? storage_->fsUsedBytes() : 0;
 
   String json;
-  json.reserve(1750);
+  json.reserve(2100);
   json = "{\"ok\":true";
   json += ",\"version\":\"" + String(UicConfig::APP_VERSION) + "\"";
   json += ",\"deviceDate\":\"" + (time_ ? time_->localDate() : String("-")) + "\"";
@@ -249,7 +277,14 @@ void WebService::sendStatus() {
   json += ",\"displayActive\":" + String(display_ && display_->active() ? "true" : "false");
   json += ",\"displayDimmed\":" + String(display_ && display_->dimmed() ? "true" : "false");
   json += ",\"displayBrightness\":" + String(display_ ? display_->brightness() : 0);
+  json += ",\"displayDimBrightness\":" + String(display_ ? display_->dimBrightness() : 0);
   json += ",\"displayDimAfter\":" + String(display_ ? display_->dimAfterSeconds() : 0);
+  json += ",\"displayOffAfter\":" + String(display_ ? display_->offAfterSeconds() : 0);
+  json += ",\"displayWakeOnEvent\":" + String(display_ && display_->wakeOnEvent() ? "true" : "false");
+  json += ",\"displayInverted\":" + String(display_ && display_->inverted() ? "true" : "false");
+  json += ",\"displayRotation180\":" + String(display_ && display_->rotation180() ? "true" : "false");
+  json += ",\"displayLayout\":" + String(display_ ? static_cast<uint8_t>(display_->layout()) : 0);
+  json += ",\"displayFrameRevision\":" + String(display_ ? display_->frameRevision() : 0);
   json += ",\"autarkMode\":" + String(autark_ && autark_->active() ? "true" : "false");
   json += ",\"autarkSession\":" + String(autark_ ? autark_->sessionId() : 0);
   json += ",\"autarkElapsed\":" + String(autark_ ? (autark_->active() ? autark_->elapsedSeconds() : autark_->lastElapsedSeconds()) : 0);
@@ -338,10 +373,6 @@ void WebService::sendAggregate() {
   }
 
   const int selectedOffset = analytics_->baseYear() - selectedYear;
-
-  // Die Antwort ist nur wenige Kilobyte gross. Ein zusammenhaengender JSON-
-  // Block ist auf dem ESP32 erheblich schneller als rund 1.000 einzelne
-  // sendContent()-Aufrufe und verhindert die bisher sichtbare Heatmap-Latenz.
   String json;
   json.reserve(12000);
   json = "{\"ok\":true";
@@ -387,8 +418,6 @@ void WebService::sendAggregate() {
   }
 
   json += "],\"yearMonth\":[";
-  // Die UI zeigt derzeit die letzten fuenf Jahre. Es werden daher nicht mehr
-  // ungenutzte 16 Jahreszeilen uebertragen als tatsaechlich angezeigt werden.
   const uint8_t yearRows = min<uint8_t>(5, UicConfig::LONGTERM_CACHE_YEARS);
   for (uint8_t y = 0; y < yearRows; y++) {
     if (y) json += ',';
@@ -402,6 +431,38 @@ void WebService::sendAggregate() {
   json += ']';
   json += ",\"buildMs\":" + String(millis() - started);
   json += '}';
+
+  server_.sendHeader("Cache-Control", "no-store");
+  server_.send(200, "application/json", json);
+}
+
+void WebService::sendDisplayPreview() {
+  if (!display_ || !display_->present()) {
+    sendJsonError(404, "display_unavailable");
+    return;
+  }
+
+  static const char HEX[] = "0123456789ABCDEF";
+  const uint8_t* frame = display_->framebuffer();
+  String hex;
+  hex.reserve(DisplayService::FRAMEBUFFER_SIZE * 2);
+  for (size_t i = 0; i < DisplayService::FRAMEBUFFER_SIZE; i++) {
+    hex += HEX[(frame[i] >> 4) & 0x0F];
+    hex += HEX[frame[i] & 0x0F];
+  }
+
+  String json;
+  json.reserve(2450);
+  json = "{\"ok\":true,\"width\":128,\"height\":64";
+  json += ",\"active\":" + String(display_->active() ? "true" : "false");
+  json += ",\"dimmed\":" + String(display_->dimmed() ? "true" : "false");
+  json += ",\"brightness\":" + String(display_->brightness());
+  json += ",\"effectiveBrightness\":" + String(display_->effectiveBrightness());
+  json += ",\"inverted\":" + String(display_->inverted() ? "true" : "false");
+  json += ",\"rotation180\":" + String(display_->rotation180() ? "true" : "false");
+  json += ",\"layout\":" + String(static_cast<uint8_t>(display_->layout()));
+  json += ",\"revision\":" + String(display_->frameRevision());
+  json += ",\"frame\":\"" + hex + "\"}";
 
   server_.sendHeader("Cache-Control", "no-store");
   server_.send(200, "application/json", json);
