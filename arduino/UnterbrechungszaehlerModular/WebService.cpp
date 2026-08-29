@@ -37,10 +37,7 @@ void WebService::begin(StorageService* storage,
 }
 
 void WebService::tick(bool enabled) {
-  if (!enabled) {
-    stop();
-    return;
-  }
+  if (!enabled) { stop(); return; }
   startIfNeeded();
   if (started_) server_.handleClient();
 }
@@ -72,6 +69,7 @@ void WebService::registerRoutes() {
   server_.on("/api/add", HTTP_POST, [this]() {
     if (autark_ && autark_->active()) { sendJsonError(409, "autark_active"); return; }
     if (!counter_ || !counter_->addNormalEvent(false)) { sendJsonError(503, "event_not_stored"); return; }
+    if (display_) display_->notifyActivity(false);
     server_.send(200, "application/json", "{\"ok\":true}");
   });
   server_.on("/api/delete-last", HTTP_POST, [this]() {
@@ -100,6 +98,14 @@ void WebService::registerRoutes() {
     if (!display_ || !display_->showTest(autark_ && autark_->active())) { sendJsonError(404, "display_unavailable"); return; }
     server_.send(200, "application/json", "{\"ok\":true}");
   });
+  server_.on("/api/display-settings", HTTP_POST, [this]() {
+    if (!display_ || !display_->present()) { sendJsonError(404, "display_unavailable"); return; }
+    const int brightness = server_.arg("brightness").toInt();
+    const int dimAfter = server_.arg("dimAfter").toInt();
+    if (brightness < 1 || brightness > 255 || dimAfter < 5 || dimAfter > 3600) { sendJsonError(400, "invalid_display_settings"); return; }
+    if (!display_->setSettings(static_cast<uint8_t>(brightness), static_cast<uint16_t>(dimAfter))) { sendJsonError(500, "display_settings_failed"); return; }
+    server_.send(200, "application/json", "{\"ok\":true}");
+  });
   server_.on("/export.csv", HTTP_GET, [this]() { exportNormalCsv(); });
   server_.on("/autark.csv", HTTP_GET, [this]() { exportAutarkCsv(); });
   server_.onNotFound([this]() { server_.send(404, "text/plain", "Not found"); });
@@ -109,7 +115,7 @@ void WebService::sendStatus() {
   const size_t fsTotal = storage_ ? storage_->fsTotalBytes() : 0;
   const size_t fsUsed = storage_ ? storage_->fsUsedBytes() : 0;
   String json;
-  json.reserve(1300);
+  json.reserve(1500);
   json = "{\"ok\":true";
   json += ",\"version\":\"" + String(UicConfig::APP_VERSION) + "\"";
   json += ",\"deviceDate\":\"" + (time_ ? time_->localDate() : String("-")) + "\"";
@@ -120,6 +126,8 @@ void WebService::sendStatus() {
   json += ",\"last\":" + String(storage_ ? storage_->lastEvent() : 0);
   json += ",\"eventCount\":" + String(storage_ ? storage_->recentCount() : 0);
   json += ",\"ringCapacity\":" + String(storage_ ? storage_->recentCapacity() : 0);
+  json += ",\"historyDays\":" + String(UicConfig::HISTORY_DAYS);
+  json += ",\"webEventLimit\":" + String(UicConfig::WEB_EVENT_LIMIT);
   json += ",\"archiveCount\":" + String(storage_ ? storage_->archiveCount() : 0);
   json += ",\"archiveCapacity\":" + String(storage_ ? storage_->archiveCapacity() : 0);
   json += ",\"archiveSync\":" + String(storage_ && storage_->archiveSynchronized() ? "true" : "false");
@@ -137,6 +145,10 @@ void WebService::sendStatus() {
   json += ",\"rtcDate\":\"" + (rtc_ ? rtc_->dateText() : String("-")) + "\"";
   json += ",\"rtcTime\":\"" + (rtc_ ? rtc_->timeText() : String("-")) + "\"";
   json += ",\"displayPresent\":" + String(display_ && display_->present() ? "true" : "false");
+  json += ",\"displayActive\":" + String(display_ && display_->active() ? "true" : "false");
+  json += ",\"displayDimmed\":" + String(display_ && display_->dimmed() ? "true" : "false");
+  json += ",\"displayBrightness\":" + String(display_ ? display_->brightness() : 0);
+  json += ",\"displayDimAfter\":" + String(display_ ? display_->dimAfterSeconds() : 0);
   json += ",\"autarkMode\":" + String(autark_ && autark_->active() ? "true" : "false");
   json += ",\"autarkSession\":" + String(autark_ ? autark_->sessionId() : 0);
   json += ",\"autarkElapsed\":" + String(autark_ ? (autark_->active() ? autark_->elapsedSeconds() : autark_->lastElapsedSeconds()) : 0);
@@ -148,12 +160,20 @@ void WebService::sendStatus() {
 
 void WebService::sendEvents() {
   server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
-  server_.send(200, "application/json", "{\"ok\":true,\"events\":[");
+  server_.send(200, "application/json", "{\"ok\":true,\"limit\":" + String(UicConfig::WEB_EVENT_LIMIT) + ",\"historyDays\":" + String(UicConfig::HISTORY_DAYS) + ",\"events\":[");
+  bool first = true;
   if (storage_) {
-    for (uint32_t i = 0; i < storage_->recentCount(); i++) {
+    const uint32_t count = storage_->recentCount();
+    uint32_t start = count > UicConfig::WEB_EVENT_LIMIT ? count - UicConfig::WEB_EVENT_LIMIT : 0;
+    uint32_t cutoff = 0;
+    if (time_ && time_->valid()) cutoff = time_->epoch() - static_cast<uint32_t>(UicConfig::HISTORY_DAYS) * 86400UL;
+
+    for (uint32_t i = start; i < count; i++) {
       uint32_t epoch = 0;
       if (!storage_->readRecent(i, epoch)) continue;
-      if (i) server_.sendContent(",");
+      if (cutoff && epoch < cutoff) continue;
+      if (!first) server_.sendContent(",");
+      first = false;
       server_.sendContent(String(epoch));
     }
   }
