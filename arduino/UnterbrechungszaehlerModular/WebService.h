@@ -33,6 +33,7 @@ private:
   void sendAutark();
   void sendAggregate();
   void exportNormalCsv();
+  void exportArchiveCsv();
   void exportAutarkCsv();
   bool testNtp(const String& host);
   void sendJsonError(int code, const char* error);
