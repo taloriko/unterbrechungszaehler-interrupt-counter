@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-08-29-8
+
+- Datum wieder unter der Uhrzeit im linken Kopfbereich eingeblendet
+- normaler Daten-Refresh im Export zeigt jetzt wie Autark den Status `Aktualisiere...`, danach Anzahl der geladenen Eintraege und Uhrzeit oder eine Fehlermeldung
+- neue Spracheinstellung in der Geraeteansicht
+- Sprachvarianten: Deutsch, Schwaebisch, Englisch, Italienisch und Franzoesisch
+- Sprachwahl mit Flaggen bzw. Schwaebisch-Symbol
+- nicht-deutsche Sprachfassungen werden sichtbar als automatisch uebersetzt und ungeprueft gekennzeichnet
+- neue Darstellungseinstellung mit `System`, Sonne und Mond
+- `System` uebernimmt automatisch die Hell-/Dunkel-Einstellung des verwendeten Endgeraets
+- manuell gewaehlter Hell- oder Dunkelmodus wird lokal im Browser gespeichert
+- Sprache und Darstellung werden pro Endgeraet lokal im Browser gespeichert und erzeugen keine zusaetzlichen Flash-Schreibvorgaenge auf dem ESP32
+
 ## 2026-08-29-7
 
 - Versionsnummer auf den fortlaufenden Stand `2026-08-29-7` korrigiert
