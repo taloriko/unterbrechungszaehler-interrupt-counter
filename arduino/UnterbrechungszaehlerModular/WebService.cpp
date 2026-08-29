@@ -15,6 +15,7 @@
 #include "TimeService.h"
 #include "WebUi.h"
 #include "WebUiPatch.h"
+#include "WebUiFixes.h"
 
 namespace {
 String exportDownloadName(const char* baseName, TimeService* timeService) {
@@ -102,6 +103,7 @@ void WebService::registerRoutes() {
     server_.send(200, "text/html; charset=utf-8", "");
     server_.sendContent_P(WEB_UI);
     server_.sendContent_P(WEB_UI_PATCH);
+    server_.sendContent_P(WEB_UI_FIXES);
     server_.sendContent("");
   });
 
