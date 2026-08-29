@@ -24,7 +24,7 @@ const txt=(de,en)=>document.documentElement.lang==='en'?en:de;
 const fmt=n=>new Intl.NumberFormat(document.documentElement.lang==='en'?'en-US':'de-DE').format(Number(n||0));
 let webEventCount=null;
 function pct(a,b){return b>0?Math.max(0,Math.min(100,a/b*100)):0}
-function isoWeekFromDevice(){let el=$('deviceDateHead'),out=$('headWeek');if(!el||!out)return;let m=(el.textContent||'').match(/(\d{2})\.(\d{2})\.(\d{4})/);if(!m){out.textContent='';return}let d=new Date(Date.UTC(+m[3],+m[2]-1,+m[1])),day=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-day);let y=new Date(Date.UTC(d.getUTCFullYear(),0,1));let w=Math.ceil((((d-y)/86400000)+1)/7);out.textContent='| '+txt('KW ','CW ')+w}
+function isoWeekFromDevice(){let el=$('deviceDateHead'),out=$('headWeek');if(!el||!out)return;let m=(el.textContent||'').match(/(\d{2})\.(\d{2})\.(\d{4})/);if(!m){out.textContent='';return}let d=new Date(Date.UTC(+m[3],+m[2]-1,+m[1])),day=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-day);let y=new Date(Date.UTC(d.getUTCFullYear(),0,1));let w=Math.ceil((((d-y)/86400000)+1)/7);out.textContent=txt('KW ','CW ')+w}
 function addWeek(){let date=$('deviceDateHead');if(!date||$('headWeek'))return;let s=document.createElement('span');s.id='headWeek';s.className='headWeek';date.insertAdjacentElement('afterend',s);isoWeekFromDevice()}
 function addBeta(){let tab=document.querySelector('.tab[data-view="autark"]');if(!tab||tab.querySelector('.beta'))return;let b=document.createElement('span');b.className='beta';b.textContent='BETA';tab.appendChild(b)}
 function updateThemeButtons(){let current=localStorage.getItem('uic-theme')||'system';document.querySelectorAll('[data-theme-choice]').forEach(b=>b.classList.toggle('active',b.dataset.themeChoice===current))}
