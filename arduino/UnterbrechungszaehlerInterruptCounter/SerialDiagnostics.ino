@@ -4,17 +4,6 @@
 
 #include <esp_system.h>
 
-static const char* SERIAL_DIAG_VERSION = "2026-08-29-12";
-
-class RuntimeVersionInitializer {
-public:
-  RuntimeVersionInitializer() {
-    APP_VERSION = SERIAL_DIAG_VERSION;
-  }
-};
-
-RuntimeVersionInitializer runtimeVersionInitializer;
-
 static bool diagInitialized = false;
 static bool diagLastWifi = false;
 static bool diagLastAp = false;
@@ -51,10 +40,9 @@ static void diagPrintSeparator() {
 
 static void diagPrintFallbackStatus() {
   if (apActive) {
+    String apIp = WiFi.softAPIP().toString();
     Serial.printf("[AP] Fallback-WLAN AKTIV | SSID=%s | IP=%s | URL=http://%s\n",
-                  FALLBACK_AP_SSID,
-                  WiFi.softAPIP().toString().c_str(),
-                  WiFi.softAPIP().toString().c_str());
+                  FALLBACK_AP_SSID, apIp.c_str(), apIp.c_str());
   } else {
     Serial.printf("[AP] Fallback-WLAN AUS | SSID=%s | feste IP=%s\n",
                   FALLBACK_AP_SSID,
