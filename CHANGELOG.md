@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-08-29-10
+
+- serielle Diagnoseausgaben wiederhergestellt
+- Diagnose bewusst in separate Datei `SerialDiagnostics.ino` ausgelagert, damit UI-Aenderungen sie nicht erneut entfernen
+- Startausgabe mit Firmware-Version, Reset-Grund, Chip, CPU, Heap, Flash und NTP-Server
+- Statusausgaben fuer LittleFS, normalen Ringspeicher und Autark-Ringspeicher
+- Meldungen bei WLAN-Verbindung und WLAN-Verlust
+- Meldungen beim Starten und Abschalten des lokalen Fallback-Hotspots
+- Meldungen bei gueltiger bzw. fehlender Zeit und Anzeige der Zeitquelle
+- Meldungen beim Ein- und Ausschalten des Autark-Modus
+- Meldungen bei neuen Ereignissen und beim Loeschen des letzten Ereignisses
+- Meldungen fuer physische Tastpulse und UI-Aktionen
+- kompakte Systemstatuszeile alle 60 Sekunden mit Modus, WLAN/IP/RSSI, Zeitquelle, Speicherzaehlern und freiem Heap
+- Baudrate bleibt `115200`
+
 ## 2026-08-29-9
 
 - stabile Weboberflaeche wieder auf Basis von `2026-08-29-7` aufgebaut
