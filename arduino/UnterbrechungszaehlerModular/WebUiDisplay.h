@@ -18,10 +18,27 @@ static const char WEB_UI_DISPLAY[] PROGMEM = R"HTML(
 .oledPreviewMeta{text-align:center;margin-top:8px;font-size:.72rem;color:var(--muted)}
 .displayAdvanced{border-top:1px solid var(--line);padding-top:12px;margin-top:12px}.displayChecks{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0}.displayCheck{display:inline-flex;align-items:center;gap:6px;font-size:.86rem}.displayCheck input{width:17px;height:17px}
 .displayHint{font-size:.76rem;color:var(--muted);margin-top:4px}
-.displaySimulationRow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 13px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg)}
+.displaySimulationRow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 13px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg);transition:border-color .18s,box-shadow .18s}
 .displaySimulationText{min-width:0}.displaySimulationText b{display:block;font-size:.88rem}.displaySimulationText span{font-size:.76rem;color:var(--muted)}
 .simToggle{display:inline-flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap}.simToggle input{position:absolute;opacity:0;pointer-events:none}.simTrack{width:42px;height:24px;border-radius:999px;background:var(--line);position:relative;transition:.2s}.simTrack:after{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;border-radius:50%;background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:.2s}.simToggle input:checked+.simTrack{background:var(--accent)}.simToggle input:checked+.simTrack:after{transform:translateX(18px)}.simToggle input:focus-visible+.simTrack{outline:2px solid var(--accent);outline-offset:2px}
 .hwIcon.simulated{opacity:1!important;filter:none!important;color:var(--accent)!important;border-color:var(--accent)!important}
+
+/* Auch ohne Hardware bleibt klar sichtbar, dass die Simulation einschaltbar ist. */
+#displayCard.moduleCard.unavailable{opacity:1!important;filter:none!important}
+#displayCard.moduleCard.unavailable>h3{opacity:.55}
+#displayCard.moduleCard.unavailable>#oledPreviewBlock,
+#displayCard.moduleCard.unavailable>.settingsRow,
+#displayCard.moduleCard.unavailable>.displayAdvanced,
+#displayCard.moduleCard.unavailable>.actions,
+#displayCard.moduleCard.unavailable>p.infoHelp{opacity:.38;filter:grayscale(1)}
+#displayCard.moduleCard.unavailable>#displaySimulationRow{opacity:1!important;filter:none!important;border-color:var(--accent);box-shadow:0 0 0 2px rgba(33,102,209,.10)}
+
+/* Klare optische Rueckmeldung fuer Display speichern / testen. */
+#displaySave,#displayTest{transition:transform .08s,background .15s,border-color .15s,color .15s,box-shadow .15s}
+#displaySave:active,#displayTest:active{transform:translateY(1px) scale(.97)}
+.displayActionRunning{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important;box-shadow:0 0 0 3px rgba(33,102,209,.18)!important}
+.displayActionSuccess{background:var(--ok)!important;border-color:var(--ok)!important;color:#fff!important;box-shadow:0 0 0 3px rgba(22,128,58,.17)!important}
+.displayActionError{background:var(--danger)!important;border-color:var(--danger)!important;color:#fff!important;box-shadow:0 0 0 3px rgba(180,35,24,.15)!important}
 @media(max-width:520px){.oledPreviewBlock{padding:9px}.oledShell{padding:10px 12px}.oledOffOverlay{inset:10px 12px}.oledPreviewHead{align-items:flex-start;flex-direction:column}.displaySimulationRow{align-items:flex-start}}
 </style>
 <script>
@@ -105,6 +122,21 @@ function syncPair(a,b){
 }
 
 function markDirty(){displayDirty=true}
+function actionState(button,className,label){
+  if(!button)return;
+  button.classList.remove('displayActionRunning','displayActionSuccess','displayActionError');
+  if(className)button.classList.add(className);
+  button.textContent=label;
+}
+function releaseAction(button,label,delay){
+  setTimeout(()=>{
+    if(!button)return;
+    button.dataset.actionBusy='0';
+    actionState(button,'',label);
+    button.disabled=!displayAvailable;
+  },delay||1200);
+}
+
 function hookDisplayControls(){
   syncPair('displayDimBrightness','displayDimBrightnessNumber');
   ['displayBrightness','displayBrightnessNumber','displayDimAfter','displayOffAfter','displayLayout','displayWakeOnEvent','displayInvert','displayRotation'].forEach(id=>{const el=$(id);if(el&&!el.dataset.displayHook){el.dataset.displayHook='1';el.addEventListener('input',markDirty)}});
@@ -115,14 +147,21 @@ function hookDisplayControls(){
     simulation.addEventListener('change',()=>setDisplaySimulation(simulation.checked));
   }
 
-  // Der alte Button besitzt bereits einen Listener fuer die fruehere Zweifeld-
-  // API. Klonen entfernt diesen Listener, danach gilt nur noch die neue API.
-  const old=$('displaySave');
-  if(old&&!old.dataset.extended){
-    const button=old.cloneNode(true);
+  // Die klassischen Button-Handler werden durch Klonen entfernt. So gibt es
+  // genau einen Request und die Rueckmeldung kann direkt am Button erfolgen.
+  const oldSave=$('displaySave');
+  if(oldSave&&!oldSave.dataset.extended){
+    const button=oldSave.cloneNode(true);
     button.dataset.extended='1';
-    old.replaceWith(button);
+    oldSave.replaceWith(button);
     button.addEventListener('click',saveDisplaySettings);
+  }
+  const oldTest=$('displayTest');
+  if(oldTest&&!oldTest.dataset.extended){
+    const button=oldTest.cloneNode(true);
+    button.dataset.extended='1';
+    oldTest.replaceWith(button);
+    button.addEventListener('click',testDisplay);
   }
 }
 
@@ -157,7 +196,13 @@ async function refreshDisplayStatus(){
 }
 
 async function saveDisplaySettings(){
+  const button=$('displaySave');
   const state=$('displayState');
+  if(!button||button.dataset.actionBusy==='1')return;
+  button.dataset.actionBusy='1';
+  button.disabled=true;
+  actionState(button,'displayActionRunning',text('Speichert …','Saving …'));
+
   const params=new URLSearchParams();
   params.set('brightness',currentValue('displayBrightness',127));
   params.set('dimBrightness',currentValue('displayDimBrightness',32));
@@ -172,8 +217,35 @@ async function saveDisplaySettings(){
     if(!r.ok)throw new Error(await r.text());
     displayDirty=false;
     if(state){state.textContent=text('Display-Einstellungen gespeichert.','Display settings saved.');state.className='small statusOk'}
+    actionState(button,'displayActionSuccess',text('Gespeichert ✓','Saved ✓'));
+    releaseAction(button,text('Display speichern','Save display'),1200);
     await loadPreview(true);
-  }catch(e){if(state){state.textContent=text('Display-Einstellungen konnten nicht gespeichert werden.','Display settings could not be saved.');state.className='small statusBad'}}
+  }catch(e){
+    if(state){state.textContent=text('Display-Einstellungen konnten nicht gespeichert werden.','Display settings could not be saved.');state.className='small statusBad'}
+    actionState(button,'displayActionError',text('Speichern fehlgeschlagen','Save failed'));
+    releaseAction(button,text('Display speichern','Save display'),1700);
+  }
+}
+
+async function testDisplay(){
+  const button=$('displayTest');
+  const state=$('displayState');
+  if(!button||button.dataset.actionBusy==='1')return;
+  button.dataset.actionBusy='1';
+  button.disabled=true;
+  actionState(button,'displayActionRunning',text('Test läuft …','Testing …'));
+  try{
+    const r=await fetch('/api/display-test',{method:'POST',cache:'no-store'});
+    if(!r.ok)throw new Error(await r.text());
+    if(state){state.textContent=text('Display-Test gestartet.','Display test started.');state.className='small statusOk'}
+    actionState(button,'displayActionSuccess',text('Test gestartet ✓','Test started ✓'));
+    releaseAction(button,text('Display testen','Test display'),1300);
+    await loadPreview(true);
+  }catch(e){
+    if(state){state.textContent=text('Display-Test konnte nicht gestartet werden.','Display test could not be started.');state.className='small statusBad'}
+    actionState(button,'displayActionError',text('Test fehlgeschlagen','Test failed'));
+    releaseAction(button,text('Display testen','Test display'),1700);
+  }
 }
 
 function updateHeaderState(d){
@@ -193,7 +265,10 @@ function applySettings(d,force){
   const card=$('displayCard');
   if(card){
     card.classList.toggle('unavailable',!displayAvailable);
-    card.querySelectorAll('input,select,button').forEach(el=>{el.disabled=!displayAvailable&&el.id!=='displaySimulation'});
+    card.querySelectorAll('input,select,button').forEach(el=>{
+      if(el.dataset.actionBusy==='1')return;
+      el.disabled=!displayAvailable&&el.id!=='displaySimulation';
+    });
   }
 
   const sim=$('displaySimulation');
