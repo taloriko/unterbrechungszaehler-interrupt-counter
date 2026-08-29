@@ -10,6 +10,8 @@ Im normalen Betrieb arbeitet der ESP32 mit WLAN, NTP, mDNS und Weboberfläche.
 - langer Druck von ca. 3 Sekunden: letzten Eintrag löschen
 - alternativ kann der virtuelle Taster in der Weboberfläche verwendet werden
 
+Wichtig: Im normalen Betrieb wird ein Ereignis **nur gespeichert, wenn eine gültige absolute Uhrzeit vorhanden ist**.
+
 ## LED-Rückmeldung
 
 Die Rückmeldung erfolgt über die LED an **GPIO2**. Bei manchen ESP32-Boards ist dieser Anschluss mit **D2** gekennzeichnet bzw. mit der Onboard-LED verbunden.
@@ -18,7 +20,7 @@ Die Rückmeldung erfolgt über die LED an **GPIO2**. Bei manchen ESP32-Boards is
 - 3x schnell: letzter Eintrag gelöscht
 - 2x schnell + 2x langsam: Warnung, z. B. fehlende Zeit, Verbindung oder Speicherproblem
 
-## Weboberfläche
+## Weboberfläche im normalen WLAN
 
 Nach erfolgreicher WLAN-Verbindung ist die Oberfläche normalerweise erreichbar unter:
 
@@ -36,7 +38,36 @@ http://192.168.1.123
 
 Die tatsächliche IP-Adresse hängt vom verwendeten Netzwerk ab.
 
-Die Weboberfläche enthält aktuell die Bereiche:
+## Lokaler Zugriff ohne verbundenes WLAN
+
+Solange der ESP32 das konfigurierte WLAN noch nicht erreicht hat, stellt er zusätzlich einen eigenen offenen Hotspot bereit:
+
+```text
+WLAN: Unterbrechungszaehler
+Adresse: http://192.168.4.1
+```
+
+Vorgehen:
+
+1. Mit dem Smartphone mit dem WLAN `Unterbrechungszaehler` verbinden.
+2. Im Browser `http://192.168.4.1` öffnen.
+3. Die Weboberfläche kann sofort lokal verwendet werden.
+
+Sobald der ESP32 sein normales WLAN erreicht, wird der Fallback-Hotspot automatisch abgeschaltet.
+
+## Zeit vom Smartphone übernehmen
+
+Wenn NTP noch keine gültige Uhrzeit geliefert hat, versucht die Weboberfläche beim Öffnen automatisch einmalig, die aktuelle Zeit des Smartphones bzw. Browsers an den ESP32 zu übertragen.
+
+Die Zeit wird nur übernommen, wenn auf dem ESP32 noch **keine gültige Zeit** vorhanden ist.
+
+Damit gilt im normalen Betrieb weiterhin:
+
+**Keine gültige Zeit = keine Speicherung eines Ereignisses.**
+
+Nach erfolgreicher Übernahme der Handyzeit können Ereignisse lokal gespeichert werden. Sobald NTP verfügbar ist, läuft die normale NTP-Synchronisation weiter.
+
+## Bereiche der Weboberfläche
 
 - Heute
 - Verlauf
