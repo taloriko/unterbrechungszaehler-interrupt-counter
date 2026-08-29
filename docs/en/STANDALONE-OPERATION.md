@@ -31,16 +31,37 @@ To reduce power consumption, the software:
 
 Events are still recorded via GPIO27.
 
-## Storage without NTP
+## RTC support
 
-Standalone mode uses a separate ring buffer for up to 10,000 records.
+If a **DS3231 RTC** is present at I2C address `0x68` during boot, it is detected automatically.
 
-Events can be stored without valid NTP time by using elapsed time within the current session.
+- valid RTC time is used as system time
+- standalone operation can use absolute time without Wi-Fi/NTP
+- after a successful NTP sync in normal mode, the RTC is updated automatically
+- if the RTC OSF flag is set or the stored date/time is implausible, the module is shown as detected but its time is treated as invalid
+
+## OLED boot status
+
+If a **SH1106 128 × 64 OLED** is present at `0x3C` or `0x3D`, it briefly shows the startup state in standalone mode:
+
+- standalone mode
+- RTC detected / not detected
+- RTC time OK / invalid
+- current time
+- system ready
+
+The display switches off completely after **15 seconds** to reduce power consumption and OLED burn-in.
+
+## Storage without RTC
+
+Standalone mode keeps its separate ring buffer for up to 10,000 records.
+
+If no valid RTC is available, events can still be stored using elapsed time within the current session.
 
 When returning to normal operation, Wi-Fi and NTP are started again.
 
 ## Limitation
 
-If the ESP32 loses power completely during a standalone session, the duration of that power loss cannot be reconstructed without an additional real-time clock (RTC).
+Without an RTC, a complete ESP32 power loss during a standalone session cannot be reconstructed in absolute time. With a valid DS3231, absolute time is available again after reboot.
 
 More information about suitable batteries, power banks and expected runtime will follow.
