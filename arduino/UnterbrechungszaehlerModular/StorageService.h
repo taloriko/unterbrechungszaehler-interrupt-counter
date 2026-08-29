@@ -66,6 +66,15 @@ public:
   bool deleteLastEvent();
   bool readRecent(uint32_t chronologicalIndex, uint32_t& epoch);
   bool readArchive(uint32_t chronologicalIndex, uint32_t& epoch);
+
+  // Liest mehrere chronologische Langzeitwerte mit nur einem Datei-Zugriff.
+  // Diese Methode ist fuer Heatmaps und Statistiken gedacht und vermeidet
+  // das sehr langsame Oeffnen/Schliessen der Datei fuer jeden Einzelwert.
+  bool readArchiveChunk(uint32_t chronologicalStart,
+                        uint32_t maxItems,
+                        uint32_t* epochs,
+                        uint32_t& readCount);
+
   uint32_t lastEvent();
 
   bool startAutarkSession(uint32_t anchorEpoch, uint32_t& sessionId);
@@ -92,6 +101,11 @@ private:
   bool writeTimestampHeader(File& file, const RingDescriptor& ring);
   bool appendTimestamp(RingDescriptor& ring, uint32_t epoch);
   bool readTimestamp(RingDescriptor& ring, uint32_t chronologicalIndex, uint32_t& epoch);
+  bool readTimestampChunk(RingDescriptor& ring,
+                          uint32_t chronologicalStart,
+                          uint32_t maxItems,
+                          uint32_t* epochs,
+                          uint32_t& readCount);
   bool popTimestamp(RingDescriptor& ring);
   uint32_t lastTimestamp(RingDescriptor& ring);
   size_t timestampOffset(uint32_t index) const;
