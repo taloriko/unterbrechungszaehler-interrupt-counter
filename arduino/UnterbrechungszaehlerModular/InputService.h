@@ -5,10 +5,11 @@
 class CounterService;
 class AutarkService;
 class LedService;
+class DisplayService;
 
 class InputService {
 public:
-  void begin(CounterService* counter, AutarkService* autark, LedService* led);
+  void begin(CounterService* counter, AutarkService* autark, LedService* led, DisplayService* display);
   void tick();
 
   bool autarkSwitchOn() const { return autarkStable_ == LOW; }
@@ -20,6 +21,7 @@ private:
   CounterService* counter_ = nullptr;
   AutarkService* autark_ = nullptr;
   LedService* led_ = nullptr;
+  DisplayService* display_ = nullptr;
 
   bool buttonRaw_ = HIGH;
   bool buttonStable_ = HIGH;
