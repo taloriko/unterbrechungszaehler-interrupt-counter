@@ -79,7 +79,9 @@ function hideKvPair(id){
 }
 
 function reorganizeDevice(){
+  var deviceGrid=q('device')&&q('device').querySelector('.infoGrid');
   var date=q('devDate'),deviceBox=date&&date.closest('.infoBox');
+  if(deviceBox&&deviceGrid&&!deviceGrid.contains(deviceBox))deviceGrid.insertBefore(deviceBox,deviceGrid.firstChild);
   if(deviceBox){
     var h=deviceBox.querySelector('h3');if(h)h.innerHTML='<span class="infoIcon">&#128421;</span>Geraet';
     hideKvPair('devDate');hideKvPair('devTime');hideKvPair('devTimeSource');
