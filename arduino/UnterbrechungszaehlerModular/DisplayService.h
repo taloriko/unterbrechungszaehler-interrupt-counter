@@ -28,7 +28,12 @@ public:
   void notifyEvent(bool autarkMode);
   void off();
 
+  // present() bedeutet weiterhin: echte Hardware am I2C-Bus erkannt.
+  // available() ist wahr, wenn echte Hardware vorhanden ODER die Simulation
+  // bewusst aktiviert wurde.
   bool present() const { return present_; }
+  bool simulationEnabled() const { return simulationEnabled_; }
+  bool available() const { return present_ || simulationEnabled_; }
   bool active() const { return active_; }
   bool dimmed() const { return dimmed_; }
   uint8_t address() const { return address_; }
@@ -44,6 +49,7 @@ public:
   const uint8_t* framebuffer() const { return framebuffer_; }
   uint32_t frameRevision() const { return frameRevision_; }
 
+  bool setSimulationEnabled(bool enabled);
   bool setSettings(uint8_t brightness,
                    uint8_t dimBrightness,
                    uint16_t dimAfterSeconds,
@@ -96,6 +102,7 @@ private:
   Preferences preferences_;
 
   bool present_ = false;
+  bool simulationEnabled_ = false;
   bool active_ = false;
   bool dimmed_ = false;
   bool currentAutarkMode_ = false;
