@@ -4,7 +4,7 @@
 
 namespace UicConfig {
 
-static constexpr char APP_VERSION[] = "2026-08-29-reboot-11";
+static constexpr char APP_VERSION[] = "2026-08-29-reboot-12";
 static constexpr char HOSTNAME[] = "unterbrechungen";
 static constexpr char FALLBACK_AP_SSID[] = "Unterbrechungszaehler";
 static constexpr char TZ_INFO[] = "CET-1CEST,M3.5.0,M10.5.0/3";
