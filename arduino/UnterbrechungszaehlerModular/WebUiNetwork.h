@@ -7,36 +7,40 @@
 // additive UI-Schicht getrennt von der eigentlichen WebUi.
 static const char WEB_UI_NETWORK[] PROGMEM = R"HTML(
 <style>
-/* Uhrzeit und KW in einer Zeile, Datum sauber darunter. */
-.headTime{display:grid!important;grid-template-columns:max-content max-content;column-gap:7px;row-gap:2px;align-items:baseline;text-align:left!important;line-height:1.2}
+/* Uhrzeit und KW in einer Zeile, Datum sauber darunter. Der Trenner bekommt
+   links und rechts exakt denselben Abstand. */
+.headTime{display:grid!important;grid-template-columns:max-content max-content;column-gap:0;row-gap:2px;align-items:baseline;text-align:left!important;line-height:1.2}
 .headTime #deviceClock{font-size:.86rem}
 .headTime .headWeek{display:inline!important;margin:0!important;font-size:.8rem;color:var(--muted);white-space:nowrap}
+.headTime .headWeek::before{content:'|';display:inline-block;margin:0 7px;color:var(--muted)}
 .headTime .headDate{display:block!important;grid-column:1/-1;margin:0!important;font-size:.74rem;color:var(--muted)}
 
-/* Zusatzmodule und Verbindungsstatus gemeinsam oben rechts. */
-.headWifi{display:flex!important;align-items:center;justify-content:flex-end;gap:5px;white-space:nowrap}
-.headWifi .headModules{display:inline-flex;gap:4px;margin:0 3px 0 0}
+/* Zusatzmodule und Verbindungsstatus gemeinsam oben rechts. Alle Status-Icons
+   haben exakt denselben Abstand. Nur der Text bekommt etwas Luft zum Icon. */
+.headWifi{display:flex!important;align-items:center;justify-content:flex-end;gap:4px;white-space:nowrap}
+.headWifi .headModules{display:inline-flex;gap:4px;margin:0}
 .headWifi .dot{display:none!important}
 .wifiStateIcon{color:var(--muted)}
 .wifiStateIcon.available{color:var(--ok);border-color:var(--ok)}
 .wifiStateIcon.unavailable{color:var(--danger)}
 .wifiStateIcon svg{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
-.headerWifiText{font-size:.8rem;color:var(--muted);margin-left:2px}
+.headerWifiText{font-size:.8rem;color:var(--muted);margin-left:4px}
 
-/* WLAN-Signalstaerke in den Einstellungen. */
+/* WLAN-Signalstaerke direkt im Reiter Geraet. */
 .wifiSignalWrap{margin-top:12px}
-.wifiSignalHead{display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:.82rem;color:var(--muted);margin-bottom:5px}
-.wifiSignalHead b{color:var(--text);font-weight:600}
-.wifiSignalBar{height:12px;background:var(--line);border-radius:7px;overflow:hidden}
+.wifiSignalBar{height:12px;background:var(--line);border-radius:7px;overflow:hidden;position:relative}
 .wifiSignalBar>span{display:block;height:100%;width:0;transition:width .25s ease,background .25s ease}
 .wifiSignalBar>span.good{background:var(--ok)}
 .wifiSignalBar>span.warn{background:#d49a00}
 .wifiSignalBar>span.bad{background:var(--danger)}
 .wifiSignalBar>span.none{background:var(--line)}
+/* Vier feine Teilstriche bei 20/40/60/80 %. */
+.wifiSignalBar::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(to right,transparent 19.6%,var(--card) 19.6% 20%,transparent 20% 39.6%,var(--card) 39.6% 40%,transparent 40% 59.6%,var(--card) 59.6% 60%,transparent 60% 79.6%,var(--card) 79.6% 80%,transparent 80%)}
 
 @media(max-width:720px){
   .headerWifiText{display:none}
   .headWifi{gap:3px}
+  .headWifi .headModules{gap:3px}
 }
 </style>
 <script>
@@ -67,7 +71,7 @@ function setupHeaderTime(){
   }
   clock.insertAdjacentElement('afterend',week);
   const number=isoWeekFromDate();
-  week.textContent=number===null?'':'| '+text('KW ','CW ')+number;
+  week.textContent=number===null?'':text('KW ','CW ')+number;
 }
 
 function wifiSvg(){
@@ -93,28 +97,28 @@ function setupHeaderStatus(){
   conn.classList.add('headerWifiText');
 }
 
-function addWifiSettings(){
-  if($('settingsWifiCard'))return;
-  const grid=document.querySelector('#settings .infoGrid');
-  if(!grid)return;
+function ensureDeviceWifi(){
+  const state=$('devWifi');
+  if(!state)return;
+  const box=state.closest('.infoBox');
+  const kv=state.closest('.kv');
+  if(!box||!kv)return;
 
-  const card=document.createElement('div');
-  card.id='settingsWifiCard';
-  card.className='infoBox';
-  card.innerHTML='<h3><span class="moduleIcon">📶</span> WLAN</h3>'+
-    '<div class="kv">'+
-      '<span>'+text('Status','Status')+'</span><span id="settingsWifiState">-</span>'+
-      '<span>'+text('IP-Adresse','IP address')+'</span><span id="settingsWifiIp">-</span>'+
-      '<span>'+text('Signal','Signal')+'</span><span id="settingsWifiRssi">-</span>'+
-    '</div>'+
-    '<div class="wifiSignalWrap">'+
-      '<div class="wifiSignalHead"><span>'+text('Signalstärke','Signal strength')+'</span><b id="settingsWifiQuality">-</b></div>'+
-      '<div class="wifiSignalBar"><span id="settingsWifiBar" class="none"></span></div>'+
-    '</div>'+
-    '<p class="infoHelp">'+text('Grün ab −60 dBm, gelb bis −75 dBm, darunter rot. Je näher der Wert an 0 dBm liegt, desto stärker ist das WLAN-Signal.','Green from −60 dBm, yellow down to −75 dBm, below that red. The closer the value is to 0 dBm, the stronger the Wi-Fi signal.')+'</p>';
-
-  const rtc=$('rtcCard');
-  if(rtc)grid.insertBefore(card,rtc);else grid.appendChild(card);
+  if(!$('deviceWifiRssi')){
+    kv.insertAdjacentHTML('beforeend',
+      '<span id="deviceWifiSignalLabel"></span><span id="deviceWifiRssi">-</span>'+ 
+      '<span id="deviceWifiRatingLabel"></span><span id="deviceWifiQuality">-</span>');
+  }
+  if(!$('deviceWifiBar')){
+    const wrap=document.createElement('div');
+    wrap.className='wifiSignalWrap';
+    wrap.innerHTML='<div class="wifiSignalBar"><span id="deviceWifiBar" class="none"></span></div>';
+    box.appendChild(wrap);
+  }
+  const signalLabel=$('deviceWifiSignalLabel');
+  const ratingLabel=$('deviceWifiRatingLabel');
+  if(signalLabel)signalLabel.textContent=text('Signal','Signal');
+  if(ratingLabel)ratingLabel.textContent=text('Bewertung','Rating');
 }
 
 function qualityPercent(rssi){
@@ -134,7 +138,7 @@ function updateWifi(d){
   if(!d)return;
   setupHeaderTime();
   setupHeaderStatus();
-  addWifiSettings();
+  ensureDeviceWifi();
 
   const local=!d.wifi&&d.ip&&d.ip!=='-';
   const connected=!!d.wifi;
@@ -144,10 +148,7 @@ function updateWifi(d){
     icon.title=connected?(text('WLAN verbunden','Wi-Fi connected')+(d.rssi?' · '+d.rssi+' dBm':'')):(local?text('Lokaler Zugangspunkt aktiv','Local access point active'):text('Offline','Offline'));
   }
 
-  const state=$('settingsWifiState'),ip=$('settingsWifiIp'),rssi=$('settingsWifiRssi'),quality=$('settingsWifiQuality'),bar=$('settingsWifiBar');
-  if(state)state.textContent=connected?text('WLAN verbunden','Wi-Fi connected'):(local?text('Lokaler Zugangspunkt','Local access point'):text('Offline','Offline'));
-  if(ip)ip.textContent=d.ip||'-';
-
+  const rssi=$('deviceWifiRssi'),quality=$('deviceWifiQuality'),bar=$('deviceWifiBar');
   const dbm=Number(d.rssi||0);
   if(!connected||!dbm){
     if(rssi)rssi.textContent='-';
@@ -180,19 +181,14 @@ function hookStatus(){
 
 setupHeaderTime();
 setupHeaderStatus();
-addWifiSettings();
+ensureDeviceWifi();
 hookStatus();
 
-// Beim Sprachwechsel werden die dynamisch erzeugten Texte neu aufgebaut.
 const language=$('languageSelect');
-if(language)language.addEventListener('change',()=>{
-  setTimeout(()=>{
-    const card=$('settingsWifiCard');
-    if(card)card.remove();
-    addWifiSettings();
-    setupHeaderTime();
-  },0);
-});
+if(language)language.addEventListener('change',()=>setTimeout(()=>{
+  ensureDeviceWifi();
+  setupHeaderTime();
+},0));
 })();
 </script>
 )HTML";
