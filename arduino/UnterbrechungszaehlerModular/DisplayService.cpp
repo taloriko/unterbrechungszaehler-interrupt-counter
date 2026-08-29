@@ -38,7 +38,7 @@ const char* layoutName(DisplayLayout layout) {
   switch (layout) {
     case DisplayLayout::Compact: return "kompakt";
     case DisplayLayout::Clock: return "uhr";
-    default: return "standard";
+    default: return "tagesuebersicht";
   }
 }
 }
@@ -84,13 +84,28 @@ void DisplayService::tick() {
     flush();
   }
 
-  if (screenMode_ == ScreenMode::Live && now - lastFrameAt_ >= 1000UL) {
-    renderFrame(currentAutarkMode_, ScreenMode::Live);
-    flush();
+  if (screenMode_ == ScreenMode::Live) {
+    const uint32_t minute = minuteKey();
+    const bool wifiConnected = network_ && network_->connected();
+    const bool apActive = network_ && network_->accessPointActive();
+    const bool rtcPresent = rtc_ && rtc_->present();
+    const bool rtcValid = rtcPresent && rtc_->timeValid();
+
+    if (minute != lastMinuteKey_ ||
+        wifiConnected != lastWifiConnected_ ||
+        apActive != lastApActive_ ||
+        rtcPresent != lastRtcPresent_ ||
+        rtcValid != lastRtcValid_) {
+      renderFrame(currentAutarkMode_, ScreenMode::Live);
+      flush();
+    }
   }
 
   if (!dimmed_ && dimAt_ != 0 && static_cast<int32_t>(now - dimAt_) >= 0) {
-    if (setContrast(dimBrightness_)) dimmed_ = true;
+    if (setContrast(dimBrightness_)) {
+      dimmed_ = true;
+      frameRevision_++;
+    }
   }
 
   if (offAt_ != 0 && static_cast<int32_t>(now - offAt_) >= 0) off();
@@ -155,11 +170,13 @@ void DisplayService::wake(bool autarkMode, bool resetTimers) {
 
 void DisplayService::off() {
   if (!available()) return;
+  const bool wasActive = active_;
   if (present_) command(0xAE);
   active_ = false;
   dimmed_ = false;
   dimAt_ = 0;
   offAt_ = 0;
+  if (wasActive) frameRevision_++;
 }
 
 bool DisplayService::setSimulationEnabled(bool enabled) {
@@ -182,6 +199,7 @@ bool DisplayService::setSimulationEnabled(bool enabled) {
       dimmed_ = false;
       dimAt_ = 0;
       offAt_ = 0;
+      frameRevision_++;
     }
   }
   return true;
@@ -397,13 +415,67 @@ void DisplayService::drawHLine(int16_t x, int16_t y, int16_t width) {
   for (int16_t i = 0; i < width; i++) pixel(x + i, y);
 }
 
+void DisplayService::drawVLine(int16_t x, int16_t y, int16_t height) {
+  for (int16_t i = 0; i < height; i++) pixel(x, y + i);
+}
+
+void DisplayService::drawWifiIcon(int16_t centerX, int16_t centerY, bool connected) {
+  // Kleine 15x13-Pixel-WLAN-Glyphe fuer die rechte Statusspalte.
+  for (int16_t x = -6; x <= 6; x++) {
+    if (abs(x) >= 3) pixel(centerX + x, centerY - 5);
+  }
+  for (int16_t x = -4; x <= 4; x++) {
+    if (abs(x) >= 2) pixel(centerX + x, centerY - 2);
+  }
+  pixel(centerX - 2, centerY + 1);
+  pixel(centerX + 2, centerY + 1);
+  pixel(centerX, centerY + 4);
+  pixel(centerX - 1, centerY + 4);
+  pixel(centerX + 1, centerY + 4);
+
+  if (!connected) {
+    for (int16_t i = -5; i <= 5; i++) pixel(centerX + i, centerY + i / 2);
+  }
+}
+
+void DisplayService::drawRtcIcon(int16_t centerX, int16_t centerY, bool valid) {
+  // Abgerundete Uhr ohne zusaetzliche Schrift.
+  drawHLine(centerX - 4, centerY - 6, 9);
+  drawHLine(centerX - 4, centerY + 6, 9);
+  drawVLine(centerX - 6, centerY - 4, 9);
+  drawVLine(centerX + 6, centerY - 4, 9);
+  pixel(centerX - 5, centerY - 5);
+  pixel(centerX + 5, centerY - 5);
+  pixel(centerX - 5, centerY + 5);
+  pixel(centerX + 5, centerY + 5);
+  drawVLine(centerX, centerY - 3, 4);
+  drawHLine(centerX, centerY, 4);
+
+  if (!valid) {
+    for (int16_t i = -4; i <= 4; i++) pixel(centerX + i, centerY - i);
+  }
+}
+
 String DisplayService::timeText() const {
-  return time_ && time_->valid() ? time_->localTime() : String("--:--:--");
+  if (!time_ || !time_->valid()) return "--:--";
+  String value = time_->localTime();
+  return value.length() >= 5 ? value.substring(0, 5) : value;
+}
+
+uint32_t DisplayService::minuteKey() const {
+  if (!time_ || !time_->valid()) return 0;
+  return time_->epoch() / 60UL;
 }
 
 String DisplayService::shortDate() const {
   if (!time_ || !time_->valid()) return "--.--.----";
   return time_->localDate();
+}
+
+String DisplayService::shortDateCompact() const {
+  if (!time_ || !time_->valid()) return "--.--";
+  String value = time_->localDate();
+  return value.length() >= 5 ? value.substring(0, 5) : value;
 }
 
 String DisplayService::rtcText() const {
@@ -490,17 +562,36 @@ void DisplayService::renderLive(bool autarkMode) {
     case DisplayLayout::Clock: renderClock(autarkMode); break;
     default: renderStandard(autarkMode); break;
   }
+
+  lastMinuteKey_ = minuteKey();
+  lastWifiConnected_ = network_ && network_->connected();
+  lastApActive_ = network_ && network_->accessPointActive();
+  lastRtcPresent_ = rtc_ && rtc_->present();
+  lastRtcValid_ = lastRtcPresent_ && rtc_->timeValid();
 }
 
 void DisplayService::renderStandard(bool autarkMode) {
   const String count = todayCountText();
-  drawText(2, 1, "UNTERBRECHUNGEN");
-  drawHLine(0, 10, WIDTH);
-  drawText(2, 15, "HEUTE");
-  drawText(80, 13, count, 2);
-  drawText(2, 29, String("ZEIT  ") + timeText());
-  drawText(2, 41, String("DATUM ") + shortDate());
-  drawText(2, 53, autarkMode ? String("AUTARK ") + rtcText() : rtcText() + String(" ") + networkText());
+
+  // Ruhige Tagesuebersicht: links Datum/Uhrzeit, mittig der Tageszaehler,
+  // rechts nur die zwei relevanten Statussymbole.
+  drawVLine(34, 4, 56);
+  drawVLine(96, 4, 56);
+
+  drawText(2, 12, shortDateCompact());
+  drawText(2, 43, timeText());
+
+  drawText(50, 5, "HEUTE");
+  uint8_t scale = count.length() <= 3 ? 3 : (count.length() <= 5 ? 2 : 1);
+  const int16_t textWidth = static_cast<int16_t>(count.length() * 6 * scale - scale);
+  const int16_t countX = 65 - textWidth / 2;
+  const int16_t countY = scale == 3 ? 25 : (scale == 2 ? 29 : 33);
+  drawText(countX, countY, count, scale);
+
+  const bool wifiOk = !autarkMode && network_ && network_->connected();
+  const bool rtcOk = rtc_ && rtc_->present() && rtc_->timeValid();
+  drawWifiIcon(112, 18, wifiOk);
+  drawRtcIcon(112, 47, rtcOk);
 }
 
 void DisplayService::renderCompact(bool autarkMode) {
@@ -517,9 +608,7 @@ void DisplayService::renderCompact(bool autarkMode) {
 
 void DisplayService::renderClock(bool autarkMode) {
   const String count = todayCountText();
-  String clock = timeText();
-  if (clock.length() > 5) clock = clock.substring(0, 5);
-  drawText(15, 3, clock, 2);
+  drawText(15, 3, timeText(), 2);
   drawHLine(0, 21, WIDTH);
   drawText(34, 27, shortDate());
   drawText(2, 40, String("HEUTE ") + count);
