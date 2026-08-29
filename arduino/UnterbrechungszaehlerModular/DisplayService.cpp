@@ -35,6 +35,7 @@ const uint8_t FONT_UPPER[26][5] = {
 void DisplayService::begin(RtcService* rtc, TimeService* time) {
   rtc_ = rtc;
   time_ = time;
+  loadSettings();
 
   if (probe(UicConfig::OLED_ADDRESS_1)) {
     present_ = true;
@@ -45,13 +46,20 @@ void DisplayService::begin(RtcService* rtc, TimeService* time) {
   }
 
   Serial.printf("[DISPLAY] SH1106 %s", present_ ? "erkannt" : "nicht erkannt");
-  if (present_) Serial.printf(" | Adresse 0x%02X", address_);
+  if (present_) Serial.printf(" | Adresse 0x%02X | Helligkeit %u | Dimmen %us", address_, brightness_, dimAfterSeconds_);
   Serial.println();
 }
 
 void DisplayService::tick() {
-  if (!active_ || offAt_ == 0) return;
-  if (static_cast<int32_t>(millis() - offAt_) >= 0) off();
+  if (!active_) return;
+  const uint32_t now = millis();
+
+  if (!dimmed_ && dimAt_ != 0 && static_cast<int32_t>(now - dimAt_) >= 0) {
+    const uint8_t dimValue = max<uint8_t>(12, static_cast<uint8_t>(brightness_ / 4));
+    if (setContrast(dimValue)) dimmed_ = true;
+  }
+
+  if (offAt_ != 0 && static_cast<int32_t>(now - offAt_) >= 0) off();
 }
 
 void DisplayService::showBootStatus(bool autarkMode) {
@@ -64,11 +72,59 @@ bool DisplayService::showTest(bool autarkMode) {
   return active_;
 }
 
+void DisplayService::notifyActivity(bool autarkMode) {
+  if (!present_) return;
+  currentAutarkMode_ = autarkMode;
+
+  if (!active_) {
+    render(autarkMode, false);
+    return;
+  }
+
+  setContrast(brightness_);
+  command(0xAF);
+  dimmed_ = false;
+  armActivityTimers(autarkMode);
+}
+
 void DisplayService::off() {
   if (!present_) return;
   command(0xAE);
   active_ = false;
+  dimmed_ = false;
+  dimAt_ = 0;
   offAt_ = 0;
+}
+
+bool DisplayService::setSettings(uint8_t brightness, uint16_t dimAfterSeconds) {
+  if (brightness < 1) brightness = 1;
+  if (dimAfterSeconds < 5) dimAfterSeconds = 5;
+  if (dimAfterSeconds > 3600) dimAfterSeconds = 3600;
+
+  preferences_.begin("interrupt", false);
+  const bool b1 = preferences_.putUChar("oledBright", brightness) > 0;
+  const bool b2 = preferences_.putUShort("oledDimSec", dimAfterSeconds) > 0;
+  preferences_.end();
+  if (!b1 || !b2) return false;
+
+  brightness_ = brightness;
+  dimAfterSeconds_ = dimAfterSeconds;
+  if (active_) {
+    setContrast(brightness_);
+    dimmed_ = false;
+    armActivityTimers(currentAutarkMode_);
+  }
+  return true;
+}
+
+void DisplayService::loadSettings() {
+  preferences_.begin("interrupt", true);
+  brightness_ = preferences_.getUChar("oledBright", 127);
+  dimAfterSeconds_ = preferences_.getUShort("oledDimSec", 60);
+  preferences_.end();
+
+  if (brightness_ < 1) brightness_ = 1;
+  if (dimAfterSeconds_ < 5 || dimAfterSeconds_ > 3600) dimAfterSeconds_ = 60;
 }
 
 bool DisplayService::probe(uint8_t address) {
@@ -84,16 +140,21 @@ bool DisplayService::command(uint8_t commandValue) {
   return Wire.endTransmission() == 0;
 }
 
+bool DisplayService::setContrast(uint8_t value) {
+  return command(0x81) && command(value);
+}
+
 bool DisplayService::initializeController() {
   const uint8_t commands[] = {
     0xAE, 0xD5, 0x80, 0xA8, 0x3F, 0xD3, 0x00, 0x40,
-    0xAD, 0x8B, 0xA1, 0xC8, 0xDA, 0x12, 0x81, 0x7F,
-    0xD9, 0x22, 0xDB, 0x35, 0xA4, 0xA6, 0xAF
+    0xAD, 0x8B, 0xA1, 0xC8, 0xDA, 0x12, 0xD9, 0x22,
+    0xDB, 0x35, 0xA4, 0xA6
   };
   for (size_t i = 0; i < sizeof(commands); i++) {
     if (!command(commands[i])) return false;
   }
-  return true;
+  if (!setContrast(brightness_)) return false;
+  return command(0xAF);
 }
 
 void DisplayService::clear() {
@@ -153,6 +214,12 @@ void DisplayService::text(uint8_t page, const String& value) {
   for (size_t i = count; i < 21; i++) writeData(blank, sizeof(blank));
 }
 
+void DisplayService::armActivityTimers(bool autarkMode) {
+  currentAutarkMode_ = autarkMode;
+  dimAt_ = millis() + static_cast<uint32_t>(dimAfterSeconds_) * 1000UL;
+  offAt_ = autarkMode ? millis() + UicConfig::DISPLAY_BOOT_MS : 0;
+}
+
 void DisplayService::render(bool autarkMode, bool testMode) {
   if (!present_ || !initializeController()) return;
   clear();
@@ -166,7 +233,9 @@ void DisplayService::render(bool autarkMode, bool testMode) {
   line += time_ && time_->valid() ? time_->localTime() : "--:--:--";
   text(4, line);
   text(6, autarkMode ? "AUTARK BEREIT" : "SYSTEM BEREIT");
+  setContrast(brightness_);
   command(0xAF);
   active_ = true;
-  offAt_ = millis() + UicConfig::DISPLAY_BOOT_MS;
+  dimmed_ = false;
+  armActivityTimers(autarkMode);
 }
