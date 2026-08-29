@@ -3,6 +3,7 @@
 #include <ESPmDNS.h>
 #include <LittleFS.h>
 #include <time.h>
+#include <sys/time.h>
 #include <WiFiUdp.h>
 #include <Preferences.h>
 #include <esp_sleep.h>
@@ -19,8 +20,12 @@
 // LED:      GPIO2 (if available on board)
 // ============================================================
 
-const char* APP_VERSION = "2026-08-28-6";
+const char* APP_VERSION = "2026-08-29-1";
 const char* HOSTNAME = "unterbrechungen";
+const char* FALLBACK_AP_SSID = "Unterbrechungszaehler";
+IPAddress FALLBACK_AP_IP(192, 168, 4, 1);
+IPAddress FALLBACK_AP_GATEWAY(192, 168, 4, 1);
+IPAddress FALLBACK_AP_SUBNET(255, 255, 255, 0);
 const uint8_t BUTTON_PIN = 27;
 const uint8_t LED_PIN = 2;
 // Schiebeschalter: GPIO33 -> GND = Autarker Modus (Beta). Offen = Netz/WLAN.
@@ -37,6 +42,7 @@ const char* DEFAULT_NTP_1 = "pool.ntp.org";
 const char* NTP_2 = "time.cloudflare.com";
 const char* NTP_3 = "time.google.com";
 String primaryNtp = DEFAULT_NTP_1;
+String timeSource = "none";
 Preferences preferences;
 
 // Binary ring buffer. 10,000 records use only about 40 kB plus header.
@@ -106,6 +112,7 @@ bool autarkRingOk = false;
 bool autarkMode = false;
 bool webServerStarted = false;
 bool mdnsStarted = false;
+bool apActive = false;
 bool autarkRaw = HIGH;
 bool autarkStable = HIGH;
 uint32_t autarkChangedAt = 0;
@@ -168,9 +175,9 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
 <section id="export" class="view"><div class="card"><h2>Export & Datensicherung</h2><p>CSV mit Datum, Uhrzeit und Unix-Zeitstempel. Der Dateiname enthaelt den Zeitpunkt des Exports.</p><div class="actions"><a class="btn primary" href="/export.csv">CSV herunterladen</a><button id="refreshBtn" class="btn">Daten neu laden</button></div><p id="eventTotal" class="muted"></p><p class="small">Der Ringspeicher behaelt immer die neuesten Eintraege. Ist er voll, wird der jeweils aelteste Eintrag ueberschrieben.</p></div></section>
 <section id="device" class="view">
 <div class="infoGrid">
-<div class="infoBox"><h3><span class="infoIcon">&#128337;</span>Geraet & Zeit</h3><div class="kv"><span>Datum</span><span id="devDate">-</span><span>Uhrzeit</span><span id="devTime">-</span><span>Uptime</span><span id="devUptime">-</span><span>Firmware</span><span id="devVersion">-</span><span>Hostname</span><span id="devHost">-</span></div></div>
+<div class="infoBox"><h3><span class="infoIcon">&#128337;</span>Geraet & Zeit</h3><div class="kv"><span>Datum</span><span id="devDate">-</span><span>Uhrzeit</span><span id="devTime">-</span><span>Zeitquelle</span><span id="devTimeSource">-</span><span>Uptime</span><span id="devUptime">-</span><span>Firmware</span><span id="devVersion">-</span><span>Hostname</span><span id="devHost">-</span></div></div>
 <div class="infoBox"><h3><span class="infoIcon">&#129504;</span>ESP32 & RAM</h3><div class="kv"><span>Chip</span><span id="devChip">-</span><span>Revision</span><span id="devRevision">-</span><span>Kerne</span><span id="devCores">-</span><span>CPU</span><span id="devCpu">-</span><span>RAM gesamt</span><span id="heapTotal">-</span><span>RAM frei</span><span id="devHeap">-</span><span>RAM belegt</span><span id="heapUsed">-</span></div><div class="progress free"><div id="heapBar"></div></div><div class="small">Balken = aktuell freier Heap-RAM.</div></div>
-<div class="infoBox"><h3><span class="infoIcon">&#128246;</span>WLAN & NTP</h3><div class="kv"><span>Status</span><span id="devWifi">-</span><span>IP-Adresse</span><span id="devIp">-</span><span>Signal</span><span id="devRssi">-</span></div><label class="small" for="ntpServer"><b>Primaerer NTP-Server</b></label><div class="fieldRow"><input id="ntpServer" type="text" maxlength="120" placeholder="pool.ntp.org" spellcheck="false"><button id="ntpSaveBtn" class="btn">Pruefen & speichern</button></div><div id="ntpResult" class="ntpResult">Beim Speichern wird DNS und eine echte NTP-Antwort kurz geprueft. Cloudflare und Google bleiben als Fallback aktiv.</div></div>
+<div class="infoBox"><h3><span class="infoIcon">&#128246;</span>WLAN & NTP</h3><div class="kv"><span>Status</span><span id="devWifi">-</span><span>IP-Adresse</span><span id="devIp">-</span><span>Signal</span><span id="devRssi">-</span><span>Lokaler Fallback</span><span id="devFallback">-</span></div><label class="small" for="ntpServer"><b>Primaerer NTP-Server</b></label><div class="fieldRow"><input id="ntpServer" type="text" maxlength="120" placeholder="pool.ntp.org" spellcheck="false"><button id="ntpSaveBtn" class="btn">Pruefen & speichern</button></div><div id="ntpResult" class="ntpResult">Beim Speichern wird DNS und eine echte NTP-Antwort kurz geprueft. Cloudflare und Google bleiben als Fallback aktiv.</div><p class="small">Solange das konfigurierte WLAN nicht verbunden ist, stellt der ESP32 das offene WLAN <b>Unterbrechungszaehler</b> bereit. Zugriff: <b>http://192.168.4.1</b>. Sobald das normale WLAN verbunden ist, wird der Fallback-Hotspot abgeschaltet.</p></div>
 <div class="infoBox"><h3><span class="infoIcon">&#128190;</span>LittleFS</h3><div class="kv"><span>Gesamt</span><span id="fsTotal">-</span><span>Belegt</span><span id="fsUsed">-</span><span>Frei</span><span id="fsFree">-</span></div><div class="progress"><div id="fsBar"></div></div></div>
 <div class="infoBox"><h3><span class="infoIcon">&#128260;</span>Ringspeicher</h3><div class="kv"><span>Eintraege</span><span id="ringCount">-</span><span>Kapazitaet</span><span id="ringCapacity">-</span><span>Frei</span><span id="ringFree">-</span><span>Speichermodus</span><span>Ring / FIFO</span></div><div class="progress"><div id="ringBar"></div></div><div class="small">Bei 100 % wird beim naechsten Ereignis automatisch der aelteste Datensatz ersetzt.</div></div>
 <div class="infoBox"><h3><span class="infoIcon">&#9889;</span>Flash / Programm</h3><div class="kv"><span>Flash gesamt</span><span id="flashTotal">-</span><span>Sketch</span><span id="sketchUsed">-</span><span>Sketch-Partition frei</span><span id="sketchFree">-</span></div><div class="progress"><div id="flashBar"></div></div><div class="small">Balken = Belegung der fuer den Sketch verfuegbaren Programm-Partition.</div></div>
@@ -191,7 +198,7 @@ const char INDEX_HTML[] PROGMEM = R"HTML(
 <script>
 (function(){
 'use strict';
-var events=[];var lastKnown=0;var statusData=null;var lastActionSeq=null;var autarkData=null;
+var events=[];var lastKnown=0;var statusData=null;var lastActionSeq=null;var autarkData=null;var browserTimeAttempted=false;
 function el(id){return document.getElementById(id)}
 function pad(n){return String(n).padStart(2,'0')}
 function dateKey(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
@@ -210,10 +217,11 @@ function renderHistory(){var m=grouped();var days=Object.keys(m).sort().reverse(
 function renderHeat(){var names=['So','Mo','Di','Mi','Do','Fr','Sa'];var a=[];for(var d=0;d<7;d++)a[d]=new Array(24).fill(0);var max=1;events.forEach(function(ts){var x=new Date(ts*1000);a[x.getDay()][x.getHours()]++;max=Math.max(max,a[x.getDay()][x.getHours()])});var html='<table class="heat"><thead><tr><th></th>';for(var h=6;h<=20;h++)html+='<th>'+h+'</th>';html+='</tr></thead><tbody>';[1,2,3,4,5,6,0].forEach(function(day){html+='<tr><th>'+names[day]+'</th>';for(var hour=6;hour<=20;hour++){var v=a[day][hour];var alpha=v?0.15+0.75*(v/max):0;html+='<td style="background:rgba(33,102,209,'+alpha.toFixed(2)+')">'+(v||'')+'</td>'}html+='</tr>'});html+='</tbody></table>';el('heatWrap').innerHTML=html}
 function renderDetails(){var m=grouped();var days=Object.keys(m).sort().reverse();var old=el('dateSelect').value;var opts='';days.forEach(function(k){var p=k.split('-');opts+='<option value="'+k+'">'+p[2]+'.'+p[1]+'.'+p[0]+' - '+m[k].length+'</option>'});el('dateSelect').innerHTML=opts;if(old&&m[old])el('dateSelect').value=old;renderDetailRows()}
 function renderDetailRows(){var m=grouped();var arr=m[el('dateSelect').value]||[];var rows='';for(var i=0;i<arr.length;i++)rows+='<tr><td>'+hms(new Date(arr[i]*1000))+'</td><td>'+(i?duration(arr[i]-arr[i-1]):'-')+'</td></tr>';el('detailRows').innerHTML=rows||'<tr><td colspan="2" class="muted">Keine Ereignisse.</td></tr>'}
-function renderDevice(){var d=statusData;if(!d)return;el('devDate').textContent=d.deviceDate||'-';el('devTime').textContent=d.deviceTime||'-';el('deviceClock').textContent='Geraetezeit: '+(d.deviceDate||'--')+' '+(d.deviceTime||'--');el('devUptime').textContent=uptime(d.uptime);el('devVersion').textContent=d.version||'-';el('footerVersion').textContent=d.version||'-';el('devHost').textContent=d.hostname||'-';el('devChip').textContent=d.chipModel||'-';el('devRevision').textContent=d.chipRevision;el('devCores').textContent=d.chipCores;el('devCpu').textContent=d.cpuMHz+' MHz';el('heapTotal').textContent=bytes(d.heapTotal);el('devHeap').textContent=bytes(d.heapFree);el('heapUsed').textContent=bytes(Math.max(0,(d.heapTotal||0)-(d.heapFree||0)));el('heapBar').style.width=(d.heapTotal?Math.min(100,d.heapFree/d.heapTotal*100):0)+'%';el('devWifi').textContent=d.wifi?'Verbunden':'Offline';el('devIp').textContent=d.ip||'-';el('devRssi').textContent=d.wifi?(d.rssi+' dBm'):'-';if(document.activeElement!==el('ntpServer'))el('ntpServer').value=d.ntpPrimary||'';el('fsTotal').textContent=bytes(d.fsTotal);el('fsUsed').textContent=bytes(d.fsUsed);el('fsFree').textContent=bytes(d.fsFree);el('fsBar').style.width=(d.fsTotal?Math.min(100,d.fsUsed/d.fsTotal*100):0)+'%';el('ringCount').textContent=d.eventCount;el('ringCapacity').textContent=d.ringCapacity;el('ringFree').textContent=Math.max(0,d.ringCapacity-d.eventCount);el('ringBar').style.width=(d.ringCapacity?Math.min(100,d.eventCount/d.ringCapacity*100):0)+'%';el('flashTotal').textContent=bytes(d.flashTotal);el('sketchUsed').textContent=bytes(d.sketchUsed);el('sketchFree').textContent=bytes(d.sketchFree);var sp=(d.sketchUsed||0)+(d.sketchFree||0);el('flashBar').style.width=(sp?Math.min(100,d.sketchUsed/sp*100):0)+'%';el('autarkState').textContent=d.autarkMode?'AKTIV':'Netz/WLAN';el('autarkSession').textContent=d.autarkSession||'-';el('autarkElapsed').textContent=duration(d.autarkElapsed||0);el('autarkCount').textContent=d.autarkCount;el('autarkCapacity').textContent=d.autarkCapacity;el('autarkFree').textContent=Math.max(0,d.autarkCapacity-d.autarkCount);el('autarkSessionEvents').textContent=d.autarkSessionEvents||0;el('autarkBar').style.width=(d.autarkCapacity?Math.min(100,d.autarkCount/d.autarkCapacity*100):0)+'%'}
+function renderDevice(){var d=statusData;if(!d)return;el('devDate').textContent=d.deviceDate||'-';el('devTime').textContent=d.deviceTime||'-';el('devTimeSource').textContent=d.timeSource==='ntp'?'NTP':(d.timeSource==='browser'?'Handy / Browser':'-');el('deviceClock').textContent='Geraetezeit: '+(d.deviceDate||'--')+' '+(d.deviceTime||'--');el('devUptime').textContent=uptime(d.uptime);el('devVersion').textContent=d.version||'-';el('footerVersion').textContent=d.version||'-';el('devHost').textContent=d.hostname||'-';el('devChip').textContent=d.chipModel||'-';el('devRevision').textContent=d.chipRevision;el('devCores').textContent=d.chipCores;el('devCpu').textContent=d.cpuMHz+' MHz';el('heapTotal').textContent=bytes(d.heapTotal);el('devHeap').textContent=bytes(d.heapFree);el('heapUsed').textContent=bytes(Math.max(0,(d.heapTotal||0)-(d.heapFree||0)));el('heapBar').style.width=(d.heapTotal?Math.min(100,d.heapFree/d.heapTotal*100):0)+'%';el('devWifi').textContent=d.wifi?'Verbunden':(d.apActive?'Fallback-Hotspot aktiv':'Offline');el('devIp').textContent=d.ip||'-';el('devRssi').textContent=d.wifi?(d.rssi+' dBm'):'-';el('devFallback').textContent=d.apActive?(d.apSsid+' / '+d.apIp):'aus';if(document.activeElement!==el('ntpServer'))el('ntpServer').value=d.ntpPrimary||'';el('fsTotal').textContent=bytes(d.fsTotal);el('fsUsed').textContent=bytes(d.fsUsed);el('fsFree').textContent=bytes(d.fsFree);el('fsBar').style.width=(d.fsTotal?Math.min(100,d.fsUsed/d.fsTotal*100):0)+'%';el('ringCount').textContent=d.eventCount;el('ringCapacity').textContent=d.ringCapacity;el('ringFree').textContent=Math.max(0,d.ringCapacity-d.eventCount);el('ringBar').style.width=(d.ringCapacity?Math.min(100,d.eventCount/d.ringCapacity*100):0)+'%';el('flashTotal').textContent=bytes(d.flashTotal);el('sketchUsed').textContent=bytes(d.sketchUsed);el('sketchFree').textContent=bytes(d.sketchFree);var sp=(d.sketchUsed||0)+(d.sketchFree||0);el('flashBar').style.width=(sp?Math.min(100,d.sketchUsed/sp*100):0)+'%';el('autarkState').textContent=d.autarkMode?'AKTIV':'Netz/WLAN';el('autarkSession').textContent=d.autarkSession||'-';el('autarkElapsed').textContent=duration(d.autarkElapsed||0);el('autarkCount').textContent=d.autarkCount;el('autarkCapacity').textContent=d.autarkCapacity;el('autarkFree').textContent=Math.max(0,d.autarkCapacity-d.autarkCount);el('autarkSessionEvents').textContent=d.autarkSessionEvents||0;el('autarkBar').style.width=(d.autarkCapacity?Math.min(100,d.autarkCount/d.autarkCapacity*100):0)+'%'}
 function render(){renderToday();renderHistory();renderHeat();renderDetails();renderDevice();el('eventTotal').textContent='Gespeicherte Ereignisse: '+events.length+(statusData&&statusData.ringCapacity?' / '+statusData.ringCapacity:'')}
-async function loadStatus(){var r=await fetch('/api/status?x='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);statusData=await r.json();setConnection(statusData.wifi,statusData.wifi?'Verbunden':'Offline');renderDevice();if(lastActionSeq===null){lastActionSeq=statusData.actionSeq||0}else if((statusData.actionSeq||0)!==lastActionSeq){lastActionSeq=statusData.actionSeq||0;flashCards(statusData.actionKind===2?'delete':'add');await loadAll()}else if(statusData.eventCount!==events.length||statusData.last!==lastKnown){await loadAll()}return statusData}
-async function loadAll(){try{var r=await fetch('/api/events?x='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);var data=await r.json();events=(data.events||[]).sort(function(a,b){return a-b});lastKnown=events.length?events[events.length-1]:0;setConnection(true,'Verbunden');showNotice(data.timeValid?'':'Uhrzeit noch nicht per NTP synchronisiert. Im normalen Modus werden Ereignisse bis dahin nicht gespeichert; der Autarke Modus kann relativ weiterzaehlen.');render()}catch(err){setConnection(false,'Offline');showNotice('Keine Verbindung zur Daten-API: '+err.message)}}
+async function syncBrowserTime(){if(browserTimeAttempted)return;browserTimeAttempted=true;var epoch=Math.floor(Date.now()/1000);if(epoch<1700000000)return;try{var r=await fetch('/api/time?epoch='+epoch,{method:'POST',cache:'no-store'});var d=await r.json();if(r.ok&&d.ok){showNotice('');await loadAll()}}catch(e){}}
+async function loadStatus(){var r=await fetch('/api/status?x='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);statusData=await r.json();var reachable=statusData.wifi||statusData.apActive;setConnection(reachable,statusData.wifi?'WLAN verbunden':(statusData.apActive?'Lokal verbunden':'Offline'));renderDevice();if(!statusData.timeValid&&!statusData.autarkMode)syncBrowserTime();if(lastActionSeq===null){lastActionSeq=statusData.actionSeq||0}else if((statusData.actionSeq||0)!==lastActionSeq){lastActionSeq=statusData.actionSeq||0;flashCards(statusData.actionKind===2?'delete':'add');await loadAll()}else if(statusData.eventCount!==events.length||statusData.last!==lastKnown){await loadAll()}return statusData}
+async function loadAll(){try{var r=await fetch('/api/events?x='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);var data=await r.json();events=(data.events||[]).sort(function(a,b){return a-b});lastKnown=events.length?events[events.length-1]:0;setConnection(true,'Verbunden');showNotice(data.timeValid?'':'Noch keine gueltige Uhrzeit. Im Normalbetrieb werden bis dahin keine Ereignisse gespeichert. Beim lokalen Aufruf wird automatisch versucht, die Zeit dieses Handys/Browsers zu uebernehmen.');render()}catch(err){setConnection(false,'Offline');showNotice('Keine Verbindung zur Daten-API: '+err.message)}}
 async function loadAutark(){try{var r=await fetch('/api/autark?x='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);autarkData=await r.json();var rec=autarkData.records||[],anchors={};rec.forEach(function(x){var a=anchors[x.session]||(anchors[x.session]={});if(x.type===1&&x.epoch)a.start=x.epoch;if(x.type===3&&x.epoch){a.end=x.epoch;a.endElapsed=x.elapsed}});var rows='';rec.slice().reverse().forEach(function(x){var typ=x.type===1?'Akku-Betrieb':(x.type===2?'Puls':'Ende / Netz');var when='+'+duration(x.elapsed),a=anchors[x.session],ep=x.epoch||0;if(!ep&&a){if(a.start)ep=a.start+x.elapsed;else if(a.end&&a.endElapsed>=x.elapsed)ep=a.end-(a.endElapsed-x.elapsed)}if(ep){var dt=new Date(ep*1000);when=dmy(dt)+' '+hms(dt)+' <span class="muted">(+'+duration(x.elapsed)+')</span>'}rows+='<tr><td>#'+x.session+' - '+typ+'</td><td>'+when+'</td></tr>'});el('autarkRows').innerHTML=rows||'<tr><td colspan="2" class="muted">Noch keine Autark-Daten.</td></tr>'}catch(e){el('autarkRows').innerHTML='<tr><td colspan="2" class="muted">Autark-Daten konnten nicht geladen werden.</td></tr>'}}
 async function post(path){try{var r=await fetch(path,{method:'POST',cache:'no-store'});var text=await r.text();if(!r.ok)throw new Error(text||('HTTP '+r.status));await loadAll();await loadStatus()}catch(err){showNotice('Aktion fehlgeschlagen: '+err.message)}}
 async function saveNtp(){var input=el('ntpServer'),btn=el('ntpSaveBtn'),out=el('ntpResult');var host=(input.value||'').trim();if(!host){out.className='ntpResult err';out.textContent='Bitte einen Hostnamen oder eine IPv4-Adresse eintragen.';return}btn.disabled=true;out.className='ntpResult';out.textContent='Pruefe NTP-Server...';try{var r=await fetch('/api/ntp?server='+encodeURIComponent(host),{method:'POST',cache:'no-store'});var d=await r.json();if(!r.ok||!d.ok)throw new Error(d.message||'NTP-Server nicht erreichbar');out.className='ntpResult ok';out.textContent='OK: '+d.server+' antwortet als '+d.ip+' nach ca. '+d.latencyMs+' ms und wurde gespeichert.';await loadStatus()}catch(err){out.className='ntpResult err';out.textContent='Fehler: '+err.message}finally{btn.disabled=false}}
@@ -674,12 +682,13 @@ String buildStatusJson() {
   bool wifi = WiFi.status() == WL_CONNECTED;
   size_t fsTotal = fsOk ? LittleFS.totalBytes() : 0;
   size_t fsUsed = fsOk ? LittleFS.usedBytes() : 0;
-  String ip = wifi ? WiFi.localIP().toString() : String("-");
+  String ip = wifi ? WiFi.localIP().toString() : (apActive ? WiFi.softAPIP().toString() : String("-"));
   String json;
-  json.reserve(640);
+  json.reserve(780);
   json = "{\"ok\":true";
   json += ",\"version\":\"" + String(APP_VERSION) + "\"";
   json += ",\"timeValid\":" + String(timeIsValid() ? "true" : "false");
+  json += ",\"timeSource\":\"" + timeSource + "\"";
   json += ",\"deviceDate\":\"" + localDateString() + "\"";
   json += ",\"deviceTime\":\"" + localTimeString() + "\"";
   json += ",\"uptime\":" + String(millis() / 1000UL);
@@ -687,6 +696,9 @@ String buildStatusJson() {
   json += ",\"wifi\":" + String(wifi ? "true" : "false");
   json += ",\"rssi\":" + String(wifi ? WiFi.RSSI() : 0);
   json += ",\"ip\":\"" + ip + "\"";
+  json += ",\"apActive\":" + String(apActive ? "true" : "false");
+  json += ",\"apSsid\":\"" + String(FALLBACK_AP_SSID) + "\"";
+  json += ",\"apIp\":\"" + String(FALLBACK_AP_IP.toString()) + "\"";
   json += ",\"hostname\":\"" + String(HOSTNAME) + ".local\"";
   json += ",\"ntpPrimary\":\"" + primaryNtp + "\"";
   json += ",\"chipModel\":\"" + String(ESP.getChipModel()) + "\"";
@@ -715,7 +727,6 @@ String buildStatusJson() {
   json += "}";
   return json;
 }
-
 
 String exportFileName() {
   if (!timeIsValid()) return String("unterbrechungen_ohne-zeit.csv");
@@ -807,10 +818,25 @@ bool saveNtpConfig(const String& host) {
   return ok;
 }
 
+bool setBrowserTime(uint32_t epoch) {
+  if (timeIsValid()) return false;
+  if (epoch <= 1700000000UL || epoch >= 4102444800UL) return false;
+  struct timeval tv = {};
+  tv.tv_sec = (time_t)epoch;
+  tv.tv_usec = 0;
+  if (settimeofday(&tv, nullptr) != 0) return false;
+  setenv("TZ", TZ_INFO, 1);
+  tzset();
+  timeSource = "browser";
+  Serial.printf("Zeit lokal vom Browser/Handy uebernommen: %lu\n", (unsigned long)epoch);
+  return timeIsValid();
+}
+
 // ============================================================
 // WEB API
 // ============================================================
 void setupWebServer() {
+  if (webServerStarted) return;
   server.on("/", HTTP_GET, []() {
     server.send_P(200, "text/html; charset=utf-8", INDEX_HTML);
   });
@@ -823,6 +849,24 @@ void setupWebServer() {
   server.on("/api/status", HTTP_GET, []() {
     server.sendHeader("Cache-Control", "no-store");
     server.send(200, "application/json; charset=utf-8", buildStatusJson());
+  });
+
+  server.on("/api/time", HTTP_POST, []() {
+    if (autarkMode) {
+      server.send(409, "application/json; charset=utf-8", "{\"ok\":false,\"message\":\"Im Autark-Modus wird keine Browserzeit uebernommen.\"}");
+      return;
+    }
+    if (timeIsValid()) {
+      server.send(200, "application/json; charset=utf-8", "{\"ok\":true,\"accepted\":false,\"message\":\"Geraetezeit bereits gueltig.\"}");
+      return;
+    }
+    String epochText = server.arg("epoch");
+    uint32_t epoch = strtoul(epochText.c_str(), nullptr, 10);
+    if (!setBrowserTime(epoch)) {
+      server.send(400, "application/json; charset=utf-8", "{\"ok\":false,\"message\":\"Ungueltige Browserzeit.\"}");
+      return;
+    }
+    server.send(200, "application/json; charset=utf-8", "{\"ok\":true,\"accepted\":true,\"source\":\"browser\"}");
   });
 
   server.on("/api/ntp", HTTP_POST, []() {
@@ -917,50 +961,56 @@ void setupWebServer() {
 // ============================================================
 // WIFI / TIME / MDNS
 // ============================================================
+void startFallbackAccessPoint() {
+  if (apActive || autarkMode) return;
+  WiFi.mode(WIFI_AP_STA);
+  if (!WiFi.softAPConfig(FALLBACK_AP_IP, FALLBACK_AP_GATEWAY, FALLBACK_AP_SUBNET)) {
+    Serial.println("Fallback-AP: feste IP konnte nicht gesetzt werden.");
+  }
+  if (WiFi.softAP(FALLBACK_AP_SSID)) {
+    apActive = true;
+    Serial.printf("Fallback-WLAN offen: %s\n", FALLBACK_AP_SSID);
+    Serial.printf("Lokaler Zugriff: http://%s\n", WiFi.softAPIP().toString().c_str());
+  } else {
+    Serial.println("Fallback-WLAN konnte nicht gestartet werden.");
+  }
+}
+
+void stopFallbackAccessPoint() {
+  if (!apActive) return;
+  WiFi.softAPdisconnect(true);
+  apActive = false;
+  if (WiFi.status() == WL_CONNECTED) WiFi.mode(WIFI_STA);
+  Serial.println("Fallback-WLAN abgeschaltet - normales WLAN verbunden.");
+}
+
 void connectWifi() {
-  WiFi.mode(WIFI_STA);
+  startFallbackAccessPoint();
   WiFi.setHostname(HOSTNAME);
   WiFi.setAutoReconnect(true);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.printf("Verbinde mit WLAN: %s", WIFI_SSID);
-  uint32_t start = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - start < 20000) {
-    delay(250);
-    Serial.print('.');
-  }
-  Serial.println();
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.print("IP-Adresse: ");
-    Serial.println(WiFi.localIP());
-  } else {
-    Serial.println("WLAN noch nicht verbunden. Neuer Versuch im Hintergrund.");
-  }
+  lastWifiRetry = millis();
+  Serial.printf("WLAN-Verbindung im Hintergrund gestartet: %s\n", WIFI_SSID);
 }
 
 void setupTime() {
   configTzTime(TZ_INFO, primaryNtp.c_str(), NTP_2, NTP_3);
-  Serial.printf("NTP synchronisieren [%s]", primaryNtp.c_str());
-  uint32_t start = millis();
-  while (!timeIsValid() && millis() - start < 12000) {
-    delay(250);
-    Serial.print('.');
-  }
-  Serial.println(timeIsValid() ? " OK" : " noch nicht synchronisiert");
+  Serial.printf("NTP im Hintergrund gestartet [%s].\n", primaryNtp.c_str());
 }
 
 void setupMdns() {
+  if (mdnsStarted) return;
   if (WiFi.status() == WL_CONNECTED && MDNS.begin(HOSTNAME)) {
     MDNS.addService("http", "tcp", 80);
     mdnsStarted = true;
     Serial.printf("Webadresse: http://%s.local\n", HOSTNAME);
-  } else {
-    Serial.println("mDNS konnte nicht gestartet werden.");
   }
 }
 
 void stopNetworkForAutark() {
   if (mdnsStarted) { MDNS.end(); mdnsStarted = false; }
   if (webServerStarted) { server.stop(); webServerStarted = false; }
+  if (apActive) { WiFi.softAPdisconnect(true); apActive = false; }
   WiFi.setAutoReconnect(false);
   WiFi.disconnect(true, true);
   WiFi.mode(WIFI_OFF);
@@ -1001,14 +1051,9 @@ void exitAutarkMode() {
   gpio_wakeup_disable((gpio_num_t)BUTTON_PIN);
   gpio_wakeup_disable((gpio_num_t)AUTARK_PIN);
   setCpuFrequencyMhz(240);
-  Serial.printf("AUTARK AUS - Session %lu nach %lu s. WLAN startet.\n", (unsigned long)session, (unsigned long)elapsed);
+  Serial.printf("AUTARK AUS - Session %lu nach %lu s. Netzwerk startet.\n", (unsigned long)session, (unsigned long)elapsed);
   connectWifi();
   setupTime();
-  if (timeIsValid()) {
-    updateLastAutarkEndAnchor(session, (uint32_t)time(nullptr));
-    pendingAutarkEndSession = 0; pendingAutarkEndElapsed = 0;
-  }
-  setupMdns();
   setupWebServer();
 }
 
@@ -1032,12 +1077,18 @@ void autarkIdleSleep() {
 void maintainWifi() {
   if (autarkMode) return;
   if (WiFi.status() == WL_CONNECTED) {
+    if (apActive) stopFallbackAccessPoint();
+    if (!mdnsStarted) setupMdns();
+    if (timeIsValid() && timeSource == "none") timeSource = "ntp";
     if (pendingAutarkEndSession && timeIsValid()) {
       updateLastAutarkEndAnchor(pendingAutarkEndSession, (uint32_t)time(nullptr));
       pendingAutarkEndSession = 0; pendingAutarkEndElapsed = 0;
     }
     return;
   }
+
+  if (mdnsStarted) { MDNS.end(); mdnsStarted = false; }
+  if (!apActive) startFallbackAccessPoint();
   if (millis() - lastWifiRetry < WIFI_RETRY_MS) return;
   lastWifiRetry = millis();
   Serial.println("WLAN reconnect...");
@@ -1088,7 +1139,7 @@ void processButton() {
   }
 
   if (!timeIsValid()) {
-    Serial.println("NICHT gespeichert: NTP-Zeit ungueltig.");
+    Serial.println("NICHT gespeichert: Keine gueltige absolute Zeit.");
     blinkWarning();
     return;
   }
@@ -1106,7 +1157,7 @@ void processButton() {
   // valid the event remains stored locally, but the requested warning pattern
   // signals that the device is currently offline.
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("Ereignis lokal gespeichert, aber WLAN ist offline.");
+    Serial.println("Ereignis lokal gespeichert, aber normales WLAN ist offline.");
     blinkWarning();
   } else {
     blink(1, 90, 0);
@@ -1152,7 +1203,6 @@ void setup() {
   } else {
     connectWifi();
     setupTime();
-    setupMdns();
     setupWebServer();
     if (fsOk && ringOk) blink(2, 80, 80);
   }
