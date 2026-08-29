@@ -5,7 +5,7 @@
 > [!WARNING]
 > **KI-Hinweis:** Dieses Projekt wurde maßgeblich mit Unterstützung von KI erstellt und anschließend praktisch getestet und weiterentwickelt. Wem die Verwendung von KI-generiertem Code grundsätzlich nicht passt, kann hier aufhören.
 
-> **Stand dieser README:** `2026-08-29-17`
+> **Stand dieser README:** `2026-08-29-18`
 
 ## Was ist das?
 
@@ -21,6 +21,9 @@ Der Eingang arbeitet mit einem potentialfreien Kontakt und kann deshalb auch fü
 
 - Ereigniserfassung per physischem oder virtuellem Taster
 - Datum und Uhrzeit automatisch per NTP
+- optionale **DS3231 RTC** als lokale Zeitquelle
+- optionales **1,3 Zoll SH1106 OLED 128 × 64**
+- automatische Hardware-Erkennung beim Boot
 - lokale Weboberfläche auf dem ESP32
 - Tagesübersicht, Verlauf und Detailansicht
 - Heatmap Wochentag / Uhrzeit mit einstellbarem Zeitbereich
@@ -31,6 +34,23 @@ Der Eingang arbeitet mit einem potentialfreien Kontakt und kann deshalb auch fü
 - Fallback-WLAN bei nicht erreichbarem normalen WLAN
 - serielle Diagnose mit `115200 Baud`
 - Autark-Modus **BETA** für Akku-/Powerbank-Betrieb
+
+### Optionale Hardware-Erweiterungen
+
+RTC und OLED teilen sich den I2C-Bus:
+
+- `GPIO21` = SDA
+- `GPIO22` = SCL
+- Versorgung mit `3,3 V`
+
+Unterstützt werden aktuell:
+
+- DS3231 RTC an `0x68`
+- SH1106 OLED 128 × 64 an `0x3C` oder `0x3D`
+
+Beim Boot werden beide Module einmal automatisch gesucht. In der Weboberfläche werden RTC- und Display-Symbole immer angezeigt: erkannt = aktiv, nicht erkannt = ausgegraut. Passende Einstellungen erscheinen nur, wenn das jeweilige Modul vorhanden ist.
+
+Im Autark-Modus übernimmt eine gültige DS3231 die Zeit auch ohne WLAN/NTP. Ein erkanntes OLED zeigt beim Start für **15 Sekunden** den Autark-/RTC-Status und schaltet danach vollständig ab.
 
 ### Speicherung
 
@@ -72,7 +92,7 @@ Reiter:
 
 Unter **Gerät** werden unter anderem WLAN, Zeitquelle, RAM, Flash, LittleFS sowie normaler und Langzeit-Ringspeicher angezeigt.
 
-Unter **Einstellungen** befinden sich Sprache, Darstellung und der Zeitbereich der Wochentag/Uhrzeit-Heatmap.
+Unter **Einstellungen** befinden sich Sprache, Darstellung und der Zeitbereich der Wochentag/Uhrzeit-Heatmap. Wenn RTC oder OLED erkannt wurden, werden dort zusätzlich die jeweiligen Hardware-Einstellungen eingeblendet.
 
 ## Screenshots
 
