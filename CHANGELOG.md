@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-08-29-12
+
+- Einstellungen aus der Geraeteansicht in einen eigenen Reiter verschoben
+- Ursache der wirkungslosen Heatmap-Zeiteinstellung behoben
+- Wochentag/Uhrzeit-Heatmap wird jetzt mit dem gespeicherten Bereich neu geladen
+- Standardbereich bleibt `05:00` bis `18:00`, Endstunde inklusive
+- zweite Heatmap `Monat / Woche` vor der Jahresauswertung hinzugefuegt
+- Monat/Woche zeigt je Monat die Ereignisse in Woche 1 bis 5 des Monats
+- dritte Heatmap `Jahr / Monat` korrigiert und direkt aus `/api/events` aufgebaut
+- Jahr/Monat zeigt damit vorhandene Ereignisse wie z. B. August 2026 sofort an
+- Heatmaps werden beim Oeffnen und waehrend sichtbarer Ansicht regelmaessig aktualisiert
+- serielle Diagnose zeigt den Fallback-AP jetzt explizit mit Status, SSID, IP und URL
+- periodische Statuszeile zeigt bei aktivem Fallback ebenfalls die AP-IP
+
 ## 2026-08-29-11
 
 - Heatmap erweitert um konfigurierbaren Zeitbereich
