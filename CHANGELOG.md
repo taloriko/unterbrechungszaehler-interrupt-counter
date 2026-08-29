@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-08-29-7
+
+- Versionsnummer auf den fortlaufenden Stand `2026-08-29-7` korrigiert
+- Datum aus dem Kopfbereich der Weboberflaeche entfernt
+- Ueberschrift mittig und zurueckhaltender gestaltet
+- kleines Icon direkt an der mittigen Ueberschrift
+- Geraetezeit links im Kopfbereich angeordnet
+- WLAN-/Lokaler-Verbindungsstatus rechts im Kopfbereich angeordnet
+- Autark-Ansicht: `Neu laden` zeigt jetzt sichtbar `Aktualisiere...`, Erfolg mit Anzahl der geladenen Eintraege und Uhrzeit oder eine Fehlermeldung
+
 ## 2026-08-29-1
 
 - Start von WLAN und NTP nicht mehr blockierend
