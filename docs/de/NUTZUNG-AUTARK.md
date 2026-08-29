@@ -31,16 +31,37 @@ Zur Reduzierung des Energieverbrauchs werden softwareseitig:
 
 Die Ereignisse werden weiterhin über GPIO27 erfasst.
 
-## Speicherung ohne NTP
+## RTC-Unterstützung
 
-Für den Autark-Betrieb existiert ein eigener Ringspeicher mit bis zu 10.000 Datensätzen.
+Ist beim Boot eine **DS3231 RTC** an I2C-Adresse `0x68` vorhanden, wird sie automatisch erkannt.
 
-Ereignisse können auch ohne gültige NTP-Zeit über die relative Laufzeit innerhalb einer Session gespeichert werden.
+- gültige RTC-Zeit wird als Systemzeit übernommen
+- der Autark-Betrieb kann damit auch ohne WLAN/NTP absolute Zeit verwenden
+- nach erfolgreicher NTP-Synchronisation im Normalbetrieb wird die RTC aktualisiert
+- ist das OSF-Flag der RTC gesetzt oder die Zeit unplausibel, wird die RTC als erkannt, aber zeitlich ungültig angezeigt
+
+## OLED-Startanzeige
+
+Ist ein **SH1106 OLED 128 × 64** an `0x3C` oder `0x3D` vorhanden, zeigt es beim Start im Autark-Modus kurz den Zustand an:
+
+- Autark-Modus
+- RTC erkannt / nicht erkannt
+- RTC-Zeit OK / ungültig
+- aktuelle Zeit
+- System bereit
+
+Nach **15 Sekunden** wird das Display vollständig abgeschaltet. Dadurch bleibt der Energieverbrauch im Autark-Betrieb gering und OLED-Einbrennen wird vermieden.
+
+## Speicherung ohne RTC
+
+Für den Autark-Betrieb existiert weiterhin ein eigener Ringspeicher mit bis zu 10.000 Datensätzen.
+
+Ist keine gültige RTC vorhanden, können Ereignisse weiterhin über die relative Laufzeit innerhalb einer Session gespeichert werden.
 
 Beim Zurückschalten in den normalen Betrieb werden WLAN und NTP wieder gestartet.
 
 ## Einschränkung
 
-Wird der ESP32 während einer Autark-Session vollständig stromlos, kann die Dauer dieser stromlosen Zeit ohne zusätzliche Echtzeituhr (RTC) nicht rekonstruiert werden.
+Ohne RTC kann eine vollständige Stromunterbrechung des ESP32 während einer Autark-Session zeitlich nicht rekonstruiert werden. Mit gültiger DS3231-Zeit steht nach dem Neustart wieder eine absolute Uhrzeit zur Verfügung.
 
 Weitere Angaben zu geeigneten Akkus, Powerbanks und erreichbaren Laufzeiten folgen.
