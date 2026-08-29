@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-08-29-11
+
+- Heatmap erweitert um konfigurierbaren Zeitbereich
+- Einstellungen fuer Start- und Endstunde in der Geraeteansicht
+- Standardbereich `05:00` bis `18:00`, Endstunde inklusive
+- Eingabepruefung: nur 0 bis 23 Uhr und Start muss kleiner als Ende sein
+- ungueltige Werte werden nicht gespeichert
+- Heatmap-Zeitbereich wird lokal im Browser gespeichert und erzeugt keine zusaetzlichen ESP32-Flash-Schreibzyklen
+- bestehende Wochentag/Uhrzeit-Heatmap verwendet den eingestellten Bereich
+- zweite Heatmap `Jahr / Monat` hinzugefuegt
+- Jahr/Monat-Heatmap zeigt die Ereignisanzahl je Monat und Jahr
+- Erweiterung in separate Datei `HeatmapExtension.ino` ausgelagert, um die stabile Hauptoberflaeche moeglichst wenig anzufassen
+- neue Heatmap-Texte fuer Deutsch, Schwaebisch, Englisch, Italienisch und Franzoesisch vorbereitet
+
 ## 2026-08-29-10
 
 - serielle Diagnoseausgaben wiederhergestellt
