@@ -90,6 +90,8 @@ private:
   void renderClock(bool autarkMode);
   void armActivityTimers(bool autarkMode);
   void wake(bool autarkMode, bool resetTimers);
+  uint32_t todayCount();
+  String todayCountText();
   String shortDate() const;
   String timeText() const;
   String rtcText() const;
@@ -116,6 +118,13 @@ private:
   uint32_t offAfterSeconds_ = 0;
   DisplayLayout layout_ = DisplayLayout::Standard;
   ScreenMode screenMode_ = ScreenMode::Boot;
+
+  // Tageszaehler wird nur bei Datenaenderung oder Tageswechsel neu bestimmt.
+  // Durch binaere Suche im chronologischen Ringspeicher sind dafuer selbst bei
+  // 10.000 Eintraegen nur rund 14 Lesezugriffe notwendig.
+  uint32_t todayCountCache_ = 0;
+  uint32_t todayCountDayStart_ = 0;
+  uint32_t todayCountRevision_ = 0xFFFFFFFFUL;
 
   uint32_t dimAt_ = 0;
   uint32_t offAt_ = 0;
