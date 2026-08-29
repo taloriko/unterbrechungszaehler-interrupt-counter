@@ -93,10 +93,12 @@ static void diagPrintPeriodicStatus() {
   } else {
     Serial.printf(" | Fallback-AP=AUS | AP-IP=%s", FALLBACK_AP_IP.toString().c_str());
   }
-  Serial.printf(" | Zeit=%s/%s | Events=%lu | Autark=%lu | Heap=%u\n",
+  Serial.printf(" | Zeit=%s/%s | Events=%lu | Langzeit=%lu/%lu | Autark=%lu | Heap=%u\n",
                 timeIsValid() ? "OK" : "UNGUELTIG",
                 timeSource.c_str(),
                 (unsigned long)ringHeader.count,
+                (unsigned long)longTermHeader.count,
+                (unsigned long)LONGTERM_CAPACITY,
                 (unsigned long)autarkHeader.count,
                 ESP.getFreeHeap());
 }
@@ -192,6 +194,10 @@ static void diagCheckTransitions() {
 }
 
 void serialEventRun(void) {
+  // Arduino-ESP32 calls serialEventRun after loop(); use that existing hook to
+  // service the long-term archive without modifying the stable main loop.
+  longTermArchiveTick();
+
   if (!diagInitialized) {
     diagInitialized = true;
     diagLastWifi = WiFi.status() == WL_CONNECTED;
