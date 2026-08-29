@@ -106,7 +106,17 @@ void setup() {
   autark.begin(&storage, &timeService, &led);
   display.begin(&rtc, &timeService);
   input.begin(&counter, &autark, &led, &display);
+
+  // Heatmap-Daten werden einmal beim Start vorbereitet. Dadurch ist der
+  // erste Aufruf der Heatmap nicht mehr der Moment, in dem das Archiv erst
+  // komplett ausgewertet werden muss.
   analytics.begin(&storage);
+  const uint32_t analyticsStarted = millis();
+  const bool analyticsReady = analytics.warmCurrent();
+  Serial.printf("[ANALYTIK] Vorbereitet=%s in %lu ms\n",
+                analyticsReady ? "JA" : "NEIN",
+                static_cast<unsigned long>(millis() - analyticsStarted));
+
   web.begin(&storage, &timeService, &network, &counter, &autark, &rtc, &display, &analytics);
 
   if (input.autarkSwitchOn() && storage.autarkReady()) {
