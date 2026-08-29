@@ -192,8 +192,25 @@ void WebService::registerRoutes() {
     server_.send(200, "application/json", "{\"ok\":true}");
   });
 
+  server_.on("/api/display-simulation", HTTP_POST, [this]() {
+    if (!display_) {
+      sendJsonError(500, "display_service_unavailable");
+      return;
+    }
+    const bool enabled = boolArg(server_.arg("enabled"));
+    if (!display_->setSimulationEnabled(enabled)) {
+      sendJsonError(500, "display_simulation_failed");
+      return;
+    }
+    String json = String("{\"ok\":true,\"simulation\":") +
+                  (display_->simulationEnabled() ? "true" : "false") +
+                  ",\"hardwarePresent\":" +
+                  (display_->present() ? "true" : "false") + "}";
+    server_.send(200, "application/json", json);
+  });
+
   server_.on("/api/display-settings", HTTP_POST, [this]() {
-    if (!display_ || !display_->present()) {
+    if (!display_ || !display_->available()) {
       sendJsonError(404, "display_unavailable");
       return;
     }
@@ -241,7 +258,7 @@ void WebService::sendStatus() {
   const size_t fsUsed = storage_ ? storage_->fsUsedBytes() : 0;
 
   String json;
-  json.reserve(2100);
+  json.reserve(2250);
   json = "{\"ok\":true";
   json += ",\"version\":\"" + String(UicConfig::APP_VERSION) + "\"";
   json += ",\"deviceDate\":\"" + (time_ ? time_->localDate() : String("-")) + "\"";
@@ -274,6 +291,8 @@ void WebService::sendStatus() {
   json += ",\"rtcDate\":\"" + (rtc_ ? rtc_->dateText() : String("-")) + "\"";
   json += ",\"rtcTime\":\"" + (rtc_ ? rtc_->timeText() : String("-")) + "\"";
   json += ",\"displayPresent\":" + String(display_ && display_->present() ? "true" : "false");
+  json += ",\"displaySimulation\":" + String(display_ && display_->simulationEnabled() ? "true" : "false");
+  json += ",\"displayAvailable\":" + String(display_ && display_->available() ? "true" : "false");
   json += ",\"displayActive\":" + String(display_ && display_->active() ? "true" : "false");
   json += ",\"displayDimmed\":" + String(display_ && display_->dimmed() ? "true" : "false");
   json += ",\"displayBrightness\":" + String(display_ ? display_->brightness() : 0);
@@ -437,7 +456,7 @@ void WebService::sendAggregate() {
 }
 
 void WebService::sendDisplayPreview() {
-  if (!display_ || !display_->present()) {
+  if (!display_ || !display_->available()) {
     sendJsonError(404, "display_unavailable");
     return;
   }
@@ -452,8 +471,10 @@ void WebService::sendDisplayPreview() {
   }
 
   String json;
-  json.reserve(2450);
+  json.reserve(2550);
   json = "{\"ok\":true,\"width\":128,\"height\":64";
+  json += ",\"hardwarePresent\":" + String(display_->present() ? "true" : "false");
+  json += ",\"simulation\":" + String(display_->simulationEnabled() ? "true" : "false");
   json += ",\"active\":" + String(display_->active() ? "true" : "false");
   json += ",\"dimmed\":" + String(display_->dimmed() ? "true" : "false");
   json += ",\"brightness\":" + String(display_->brightness());
