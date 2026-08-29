@@ -1,0 +1,124 @@
+key;bereich;de;schwaebisch;en;it;fr;typ
+app.title;Kopf;Unterbrechungszähler;Unterbrechungszähler;Interruption Counter;Contatore interruzioni;Compteur d’interruptions;statisch
+connection.connecting;Kopf;Verbinden...;Verbinda...;Connecting...;Connessione...;Connexion...;dynamisch
+connection.wifi;Kopf;WLAN verbunden;WLAN verbunda;Wi-Fi connected;Wi-Fi connesso;Wi-Fi connecté;dynamisch
+connection.local;Kopf;Lokal verbunden;Lokal verbunda;Connected locally;Connesso localmente;Connecté localement;dynamisch
+connection.offline;Kopf;Offline;Offline;Offline;Offline;Hors ligne;dynamisch
+tab.today;Navigation;Heute;Heit;Today;Oggi;Aujourd’hui;statisch
+tab.history;Navigation;Verlauf;Verlauf;History;Cronologia;Historique;statisch
+tab.heatmap;Navigation;Heatmap;Heatmap;Heatmap;Mappa di calore;Carte thermique;statisch
+tab.details;Navigation;Details;Details;Details;Dettagli;Détails;statisch
+tab.export;Navigation;Export;Export;Export;Esporta;Export;statisch
+tab.device;Navigation;Gerät;Grät;Device;Dispositivo;Appareil;statisch
+tab.autark;Navigation;Autark;Autark;Standalone;Autonomo;Autonome;statisch
+today.count;Heute;Unterbrechungen heute;Unterbrechunga heit;Interruptions today;Interruzioni oggi;Interruptions aujourd’hui;statisch
+today.avg_gap;Heute;Ø Abstand;Ø Abstand;Avg. gap;Intervallo medio;Intervalle moyen;statisch
+today.max_gap;Heute;längster Abstand;längschter Abstand;longest gap;intervallo più lungo;intervalle le plus long;statisch
+today.last;Heute;letzte;letschte;last;ultima;dernière;statisch
+today.by_time;Heute;Unterbrechungen nach Uhrzeit;Unterbrechunga nach Uhrzeit;Interruptions by time;Interruzioni per ora;Interruptions par heure;statisch
+today.latest;Heute;Letzte Ereignisse;Letschte Ereignisse;Latest events;Ultimi eventi;Derniers événements;statisch
+common.time;Allgemein;Zeit;Zeit;Time;Ora;Heure;statisch
+common.gap;Allgemein;Abstand;Abstand;Gap;Intervallo;Intervalle;statisch
+common.date;Allgemein;Datum;Datum;Date;Data;Date;statisch
+common.count;Allgemein;Anzahl;Anzahl;Count;Numero;Nombre;statisch
+common.status;Allgemein;Status;Status;Status;Stato;État;statisch
+common.total;Allgemein;Gesamt;Gsamt;Total;Totale;Total;statisch
+common.used;Allgemein;Belegt;Belegt;Used;Usato;Utilisé;statisch
+common.free;Allgemein;Frei;Frei;Free;Libero;Libre;statisch
+common.capacity;Allgemein;Kapazität;Kapazität;Capacity;Capacità;Capacité;statisch
+common.entries;Allgemein;Einträge;Einträg;Entries;Voci;Entrées;statisch
+common.off;Allgemein;aus;aus;off;spento;arrêt;statisch
+common.no_events;Allgemein;Noch keine Ereignisse.;No koi Ereignisse.;No events yet.;Nessun evento.;Aucun événement.;dynamisch
+common.no_data;Allgemein;Noch keine Daten.;No koi Dada.;No data yet.;Nessun dato.;Aucune donnée.;dynamisch
+common.no_events_day;Allgemein;Keine Ereignisse.;Koi Ereignisse.;No events.;Nessun evento.;Aucun événement.;dynamisch
+operation.title;Heute;Bedienung;Bedienung;Operation;Utilizzo;Utilisation;statisch
+operation.short_title;Heute;Kurz drücken;Kurz drucka;Short press;Pressione breve;Appui court;statisch
+operation.short_text;Heute;Speichert eine neue Unterbrechung mit Datum und Uhrzeit.;Speichert a neue Unterbrechung mit Datum ond Uhrzeit.;Stores a new interruption with date and time.;Salva una nuova interruzione con data e ora.;Enregistre une nouvelle interruption avec date et heure.;statisch
+operation.long_title;Heute;Ca. 3 Sekunden halten;Etwa 3 Sekunda halda;Hold for about 3 seconds;Tenere premuto circa 3 secondi;Maintenir environ 3 secondes;statisch
+operation.long_text;Heute;Löscht den zuletzt gespeicherten Eintrag. Bestätigung: 3x schnell.;Löscht dr letschte Eintrag. Bestätigung: 3x schnell.;Deletes the last stored entry. Confirmation: 3x fast.;Elimina l’ultima voce salvata. Conferma: 3x veloce.;Supprime la dernière entrée enregistrée. Confirmation : 3x rapide.;statisch
+operation.warning_title;Heute;Warnsignal;Warnsignal;Warning signal;Segnale di avviso;Signal d’avertissement;statisch
+operation.warning_text;Heute;Keine gültige Zeit, kein WLAN oder Speicherproblem: 2x schnell + 2x langsam.;Koi gültige Zeit, koi WLAN oder Speicherproblem: 2x schnell + 2x langsam.;No valid time, no Wi-Fi or storage problem: 2x fast + 2x slow.;Ora non valida, Wi-Fi assente o problema di memoria: 2x veloce + 2x lento.;Heure non valide, Wi-Fi absent ou problème de stockage : 2x rapide + 2x lent.;statisch
+history.daily;Verlauf;Tagesverlauf;Tagesverlauf;Daily history;Andamento giornaliero;Historique quotidien;statisch
+history.overview;Verlauf;Übersicht;Übersicht;Overview;Panoramica;Aperçu;statisch
+heatmap.title;Heatmap;Heatmap - Wochentag / Uhrzeit;Heatmap - Wochadag / Uhrzeit;Heatmap - weekday / time;Mappa di calore - giorno / ora;Carte thermique - jour / heure;statisch
+details.title;Details;Tagesdetail;Tagesdetail;Day detail;Dettaglio giorno;Détail du jour;statisch
+export.title;Export;Export & Datensicherung;Export & Dadasicherung;Export & backup;Esporta e backup;Export et sauvegarde;statisch
+export.description;Export;CSV mit Datum, Uhrzeit und Unix-Zeitstempel. Der Dateiname enthält den Zeitpunkt des Exports.;CSV mit Datum, Uhrzeit ond Unix-Zeitstempel. Dr Dateiname enthält dr Exportzeitpunkt.;CSV with date, time and Unix timestamp. The filename contains the export time.;CSV con data, ora e timestamp Unix. Il nome file contiene l’ora di esportazione.;CSV avec date, heure et horodatage Unix. Le nom du fichier contient l’heure de l’export.;statisch
+export.download;Export;CSV herunterladen;CSV runterlada;Download CSV;Scarica CSV;Télécharger CSV;statisch
+common.reload;Allgemein;Daten neu laden;Dada neu lada;Reload data;Ricarica dati;Recharger les données;statisch
+export.ring_info;Export;Der Ringspeicher behält immer die neuesten Einträge. Ist er voll, wird der jeweils älteste Eintrag überschrieben.;Dr Ringspeicher behält emmer dia neuschta Einträg. Wenn er voll isch, wird dr älteschte überschrieba.;The ring buffer always keeps the newest entries. When full, the oldest entry is overwritten.;Il buffer circolare conserva sempre le voci più recenti. Quando è pieno, la voce più vecchia viene sovrascritta.;Le tampon circulaire conserve toujours les entrées les plus récentes. Lorsqu’il est plein, la plus ancienne est écrasée.;statisch
+export.event_total;Export;Gespeicherte Ereignisse: {count} / {capacity};Gspeicherte Ereignisse: {count} / {capacity};Stored events: {count} / {capacity};Eventi memorizzati: {count} / {capacity};Événements enregistrés : {count} / {capacity};dynamisch
+refresh.updating;Rückmeldung;Aktualisiere...;Aktualisier...;Updating...;Aggiornamento...;Actualisation...;dynamisch
+refresh.updated;Rückmeldung;Aktualisiert: {count} Einträge · {time};Aktualisiert: {count} Einträg · {time};Updated: {count} entries · {time};Aggiornato: {count} voci · {time};Actualisé : {count} entrées · {time};dynamisch
+refresh.failed;Rückmeldung;Aktualisierung fehlgeschlagen;Aktualisierung fehlgschlaga;Update failed;Aggiornamento non riuscito;Échec de l’actualisation;dynamisch
+time.invalid_notice;Rückmeldung;Noch keine gültige Uhrzeit. Im Normalbetrieb werden bis dahin keine Ereignisse gespeichert. Beim lokalen Aufruf wird automatisch versucht, die Zeit dieses Handys/Browsers zu übernehmen.;No koi gültige Uhrzeit. Im Normalbetrieb wird bis dahin nix gspeichert. Lokal wird versucht, d Zeit vom Handy/Browser z neh.;No valid time yet. In normal operation no events are stored until then. When opened locally, the device automatically tries to use this phone/browser time.;Ora non ancora valida. In modalità normale non vengono salvati eventi fino ad allora. In accesso locale viene tentato automaticamente l’uso dell’ora del telefono/browser.;Aucune heure valide pour le moment. En fonctionnement normal, aucun événement n’est enregistré jusque-là. En accès local, l’heure du téléphone/navigateur est utilisée automatiquement si possible.;dynamisch
+api.events_error;Rückmeldung;Keine Verbindung zur Daten-API: {error};Koi Verbindung zur Dada-API: {error};No connection to data API: {error};Nessuna connessione all’API dati: {error};Pas de connexion à l’API de données : {error};dynamisch
+action.failed;Rückmeldung;Aktion fehlgeschlagen: {error};Aktion fehlgschlaga: {error};Action failed: {error};Azione non riuscita: {error};Échec de l’action : {error};dynamisch
+action.delete_confirm;Rückmeldung;Letzten Eintrag wirklich löschen?;Letschte Eintrag wirklich löscha?;Really delete the last entry?;Eliminare davvero l’ultima voce?;Supprimer réellement la dernière entrée ?;dynamisch
+device.settings;Gerät;Einstellungen;Einstellungen;Settings;Impostazioni;Paramètres;statisch
+device.language;Gerät;Sprache;Sproch;Language;Lingua;Langue;statisch
+device.translation_note;Gerät;Diese Übersetzung wurde automatisch erstellt und ist ungeprüft.;Dia Übersetzung isch automatisch gmacht ond no net geprüft.;This translation was generated automatically and has not been reviewed.;Questa traduzione è stata generata automaticamente e non è stata verificata.;Cette traduction a été générée automatiquement et n’a pas été vérifiée.;dynamisch
+device.appearance;Gerät;Darstellung;Darstellung;Appearance;Aspetto;Affichage;statisch
+device.theme_system;Gerät;System;System;System;Sistema;Système;statisch
+device.theme_help;Gerät;System folgt automatisch der Hell-/Dunkel-Einstellung des Endgeräts. Sonne oder Mond überschreiben diese Vorgabe nur auf diesem Endgerät.;System richtet sich automatisch nach em Endgrät. Sonn oder Mond überschreibt des bloß auf dem Endgrät.;System automatically follows this device’s light/dark setting. Sun or moon overrides it only on this device.;Sistema segue automaticamente l’impostazione chiaro/scuro del dispositivo. Sole o luna la sostituiscono solo su questo dispositivo.;Système suit automatiquement le réglage clair/sombre de l’appareil. Soleil ou lune le remplace uniquement sur cet appareil.;statisch
+device.time_title;Gerät;Gerät & Zeit;Grät & Zeit;Device & time;Dispositivo e ora;Appareil et heure;statisch
+device.time_source;Gerät;Zeitquelle;Zeitquell;Time source;Origine ora;Source de l’heure;statisch
+device.time_browser;Gerät;Handy / Browser;Handy / Browser;Phone / browser;Telefono / browser;Téléphone / navigateur;dynamisch
+device.uptime;Gerät;Uptime;Laufzeit;Uptime;Uptime;Disponibilité;statisch
+device.firmware;Gerät;Firmware;Firmware;Firmware;Firmware;Firmware;statisch
+device.hostname;Gerät;Hostname;Hostname;Hostname;Hostname;Nom d’hôte;statisch
+device.esp_ram;Gerät;ESP32 & RAM;ESP32 & RAM;ESP32 & RAM;ESP32 e RAM;ESP32 et RAM;statisch
+device.chip;Gerät;Chip;Chip;Chip;Chip;Puce;statisch
+device.revision;Gerät;Revision;Revision;Revision;Revisione;Révision;statisch
+device.cores;Gerät;Kerne;Kern;Cores;Core;Cœurs;statisch
+device.cpu;Gerät;CPU;CPU;CPU;CPU;CPU;statisch
+device.ram_total;Gerät;RAM gesamt;RAM gsamt;Total RAM;RAM totale;RAM totale;statisch
+device.ram_free;Gerät;RAM frei;RAM frei;Free RAM;RAM libera;RAM libre;statisch
+device.ram_used;Gerät;RAM belegt;RAM belegt;Used RAM;RAM usata;RAM utilisée;statisch
+device.ram_help;Gerät;Balken = aktuell freier Heap-RAM.;Balken = grad freier Heap-RAM.;Bar = currently free heap RAM.;Barra = RAM heap attualmente libera.;Barre = RAM du tas actuellement libre.;statisch
+device.wifi_ntp;Gerät;WLAN & NTP;WLAN & NTP;Wi-Fi & NTP;Wi-Fi e NTP;Wi-Fi et NTP;statisch
+device.ip;Gerät;IP-Adresse;IP-Adresse;IP address;Indirizzo IP;Adresse IP;statisch
+device.signal;Gerät;Signal;Signal;Signal;Segnale;Signal;statisch
+device.local_fallback;Gerät;Lokaler Fallback;Lokaler Fallback;Local fallback;Fallback locale;Accès local de secours;statisch
+device.ntp_primary;Gerät;Primärer NTP-Server;Primärer NTP-Server;Primary NTP server;Server NTP primario;Serveur NTP principal;statisch
+device.ntp_save;Gerät;Prüfen & speichern;Prüfa & speichra;Check & save;Verifica e salva;Vérifier et enregistrer;statisch
+device.ntp_help;Gerät;Beim Speichern wird DNS und eine echte NTP-Antwort kurz geprüft. Cloudflare und Google bleiben als Fallback aktiv.;Beim Speichra wird DNS ond a echte NTP-Antwort geprüft. Cloudflare ond Google bleibet Fallback.;On save, DNS and a real NTP response are checked briefly. Cloudflare and Google remain active as fallbacks.;Al salvataggio vengono verificati brevemente DNS e una risposta NTP reale. Cloudflare e Google restano fallback.;Lors de l’enregistrement, le DNS et une vraie réponse NTP sont brièvement vérifiés. Cloudflare et Google restent en secours.;statisch
+device.fallback_help;Gerät;Solange das konfigurierte WLAN nicht verbunden ist, stellt der ESP32 das offene WLAN Unterbrechungszaehler bereit. Zugriff: http://192.168.4.1. Sobald das normale WLAN verbunden ist, wird der Fallback-Hotspot abgeschaltet.;Solang s normale WLAN net verbunda isch, macht dr ESP32 s offene WLAN Unterbrechungszaehler auf. Zugriff: http://192.168.4.1.;While the configured Wi-Fi is not connected, the ESP32 provides the open Wi-Fi Unterbrechungszaehler. Access: http://192.168.4.1. The fallback hotspot is disabled after normal Wi-Fi connects.;Finché il Wi-Fi configurato non è connesso, l’ESP32 offre la rete aperta Unterbrechungszaehler. Accesso: http://192.168.4.1. L’hotspot fallback viene disattivato dopo la connessione normale.;Tant que le Wi-Fi configuré n’est pas connecté, l’ESP32 fournit le réseau ouvert Unterbrechungszaehler. Accès : http://192.168.4.1. Le point d’accès de secours est désactivé après la connexion normale.;statisch
+device.littlefs;Gerät;LittleFS;LittleFS;LittleFS;LittleFS;LittleFS;statisch
+device.ring;Gerät;Ringspeicher;Ringspeicher;Ring buffer;Buffer circolare;Tampon circulaire;statisch
+device.storage_mode;Gerät;Speichermodus;Speichermodus;Storage mode;Modalità memoria;Mode de stockage;statisch
+device.ring_help;Gerät;Bei 100 % wird beim nächsten Ereignis automatisch der älteste Datensatz ersetzt.;Bei 100 % wird beim nächschta Ereignis dr älteschte Datensatz ersetzt.;At 100%, the oldest record is automatically replaced by the next event.;Al 100%, il record più vecchio viene sostituito automaticamente dal prossimo evento.;À 100 %, l’enregistrement le plus ancien est automatiquement remplacé par le prochain événement.;statisch
+device.flash;Gerät;Flash / Programm;Flash / Programm;Flash / program;Flash / programma;Flash / programme;statisch
+device.flash_total;Gerät;Flash gesamt;Flash gsamt;Total flash;Flash totale;Flash totale;statisch
+device.sketch;Gerät;Sketch;Sketch;Sketch;Sketch;Sketch;statisch
+device.sketch_free;Gerät;Sketch-Partition frei;Sketch-Partition frei;Free sketch partition;Partizione sketch libera;Partition sketch libre;statisch
+device.flash_help;Gerät;Balken = Belegung der für den Sketch verfügbaren Programm-Partition.;Balken = Belegung von dr Sketch-Partition.;Bar = usage of the program partition available for the sketch.;Barra = utilizzo della partizione programma disponibile per lo sketch.;Barre = utilisation de la partition programme disponible pour le sketch.;statisch
+ntp.enter_host;Rückmeldung;Bitte einen Hostnamen oder eine IPv4-Adresse eintragen.;Bitte Hostname oder IPv4-Adresse oitraga.;Please enter a hostname or IPv4 address.;Inserire un hostname o un indirizzo IPv4.;Veuillez saisir un nom d’hôte ou une adresse IPv4.;dynamisch
+ntp.checking;Rückmeldung;Prüfe NTP-Server...;Prüf NTP-Server...;Checking NTP server...;Verifica server NTP...;Vérification du serveur NTP...;dynamisch
+ntp.unreachable;Rückmeldung;NTP-Server nicht erreichbar;NTP-Server net erreichbar;NTP server unreachable;Server NTP non raggiungibile;Serveur NTP inaccessible;dynamisch
+ntp.success;Rückmeldung;OK: {server} antwortet als {ip} nach ca. {latency} ms und wurde gespeichert.;OK: {server} antwortet als {ip} nach ca. {latency} ms ond isch gspeichert.;OK: {server} responds as {ip} after about {latency} ms and was saved.;OK: {server} risponde come {ip} dopo circa {latency} ms ed è stato salvato.;OK : {server} répond via {ip} après environ {latency} ms et a été enregistré.;dynamisch
+ntp.error;Rückmeldung;Fehler: {error};Fehler: {error};Error: {error};Errore: {error};Erreur : {error};dynamisch
+autark.title;Autark;Autarker Modus;Autarker Modus;Standalone mode;Modalità autonoma;Mode autonome;statisch
+autark.switch;Autark;Schiebeschalter;Schiebeschalter;Slide switch;Interruttore a slitta;Interrupteur coulissant;statisch
+autark.active_session;Autark;Aktive Session;Aktive Session;Active session;Sessione attiva;Session active;statisch
+autark.runtime;Autark;Laufzeit;Laufzeit;Runtime;Durata;Durée;statisch
+autark.description;Autark;Geschlossener Kontakt = Autark. WLAN, mDNS und Webserver werden abgeschaltet; CPU 80 MHz und Light-Sleep zwischen Bedienungen.;Kontakt zua = Autark. WLAN, mDNS ond Webserver aus; CPU 80 MHz ond Light-Sleep.;Closed contact = standalone. Wi-Fi, mDNS and web server are disabled; CPU 80 MHz and light sleep between interactions.;Contatto chiuso = autonomo. Wi-Fi, mDNS e server web disattivati; CPU 80 MHz e light sleep tra le operazioni.;Contact fermé = autonome. Wi-Fi, mDNS et serveur web désactivés ; CPU 80 MHz et veille légère entre les actions.;statisch
+autark.time_no_ntp;Autark;Zeit ohne NTP;Zeit ohne NTP;Time without NTP;Ora senza NTP;Heure sans NTP;statisch
+autark.time_text;Autark;Beim Umschalten wird ein Marker Akku-Betrieb gespeichert. Danach werden Pulse als Laufzeit seit diesem Marker erfasst.;Beim Umschalta wird dr Marker Akku-Betrieb gspeichert. Danach sind d Pulse Laufzeit seit dem Marker.;When switching, a Battery operation marker is stored. Pulses are then recorded as elapsed time since that marker.;Al cambio modalità viene salvato un marcatore Funzionamento a batteria. Gli impulsi sono registrati come tempo trascorso da quel marcatore.;Lors du basculement, un marqueur Fonctionnement sur batterie est enregistré. Les impulsions sont ensuite enregistrées comme temps écoulé depuis ce marqueur.;statisch
+autark.ring;Autark;Autark-Ringspeicher;Autark-Ringspeicher;Standalone ring buffer;Buffer circolare autonomo;Tampon circulaire autonome;statisch
+autark.datasets;Autark;Datensätze;Datensätz;Records;Record;Enregistrements;statisch
+autark.current_pulses;Autark;Aktuelle Pulse;Aktuelle Pulse;Current pulses;Impulsi attuali;Impulsions actuelles;statisch
+autark.power;Autark;Stromsparstrategie;Stromsparstrategie;Power-saving strategy;Strategia risparmio energetico;Stratégie d’économie d’énergie;statisch
+autark.webserver;Autark;Webserver;Webserver;Web server;Server web;Serveur web;statisch
+autark.idle;Autark;Idle;Idle;Idle;Idle;Inactif;statisch
+autark.last_entries;Autark;Letzte Autark-Einträge;Letschte Autark-Einträg;Latest standalone entries;Ultime voci autonome;Dernières entrées autonomes;statisch
+autark.download;Autark;Autark-CSV herunterladen;Autark-CSV runterlada;Download standalone CSV;Scarica CSV autonomo;Télécharger le CSV autonome;statisch
+autark.session_type;Autark;Session / Typ;Session / Typ;Session / type;Sessione / tipo;Session / type;statisch
+autark.time_reference;Autark;Zeitbezug;Zeitbezug;Time reference;Riferimento temporale;Référence temporelle;statisch
+autark.no_data;Autark;Noch keine Autark-Daten.;No koi Autark-Dada.;No standalone data yet.;Nessun dato autonomo.;Aucune donnée autonome.;dynamisch
+autark.load_error;Autark;Autark-Daten konnten nicht geladen werden.;Autark-Dada hend net glada werda könna.;Standalone data could not be loaded.;Impossibile caricare i dati autonomi.;Impossible de charger les données autonomes.;dynamisch
+autark.type_start;Autark;Akku-Betrieb;Akku-Betrieb;Battery operation;Funzionamento a batteria;Fonctionnement sur batterie;dynamisch
+autark.type_event;Autark;Puls;Puls;Pulse;Impulso;Impulsion;dynamisch
+autark.type_end;Autark;Ende / Netz;Ende / Netz;End / mains;Fine / rete;Fin / secteur;dynamisch
+footer.made;Footer;Mit Liebe ❤️ gemacht – aus dem Schmerz heraus;Mit Liebe ❤️ gmacht – aus em Schmerz raus;Made with love ❤️ – born from the pain;Fatto con amore ❤️ – nato dal dolore;Fait avec amour ❤️ – né de la douleur;statisch
+footer.project;Footer;Projekt auf GitHub;Projekt auf GitHub;Project on GitHub;Progetto su GitHub;Projet sur GitHub;statisch
