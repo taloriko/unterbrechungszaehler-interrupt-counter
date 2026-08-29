@@ -1,0 +1,37 @@
+name: Modular reboot check
+
+on:
+  push:
+    branches:
+      - "reboot/**"
+  pull_request:
+    paths:
+      - "arduino/UnterbrechungszaehlerModular/**"
+      - "tools/check_translations.py"
+
+jobs:
+  translations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Sprachschluessel pruefen
+        run: python tools/check_translations.py
+
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Arduino CLI installieren
+        uses: arduino/setup-arduino-cli@v2
+      - name: ESP32 Core installieren
+        run: |
+          arduino-cli config init
+          arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core install esp32:esp32 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+      - name: Test-Secrets anlegen
+        run: cp arduino/UnterbrechungszaehlerModular/Secrets.example.h arduino/UnterbrechungszaehlerModular/Secrets.h
+      - name: Firmware kompilieren
+        run: arduino-cli compile --fqbn esp32:esp32:esp32 arduino/UnterbrechungszaehlerModular
