@@ -60,12 +60,11 @@ function buildSettings(){
     panel.insertBefore(s,q('device')||q('autark'));
   }
 
-  var deviceGrid=q('device')&&q('device').querySelector('.infoGrid');
   var settingsHost=q('extOriginalSettings');
   if(settingsHost)settingsHost.style.gridColumn='1 / -1';
-  if(deviceGrid&&settingsHost){
-    var original=deviceGrid.querySelector('.infoBox');
-    if(original&&!settingsHost.contains(original))settingsHost.appendChild(original);
+  if(settingsHost&&!settingsHost.dataset.sourceMoved){
+    var language=q('languageSelect'),original=language&&language.closest('.infoBox');
+    if(original){settingsHost.appendChild(original);settingsHost.dataset.sourceMoved='1'}
   }
 }
 
