@@ -97,8 +97,6 @@ void WebService::registerRoutes() {
   routesRegistered_ = true;
 
   server_.on("/", HTTP_GET, [this]() {
-    // Basisoberflaeche und kleine additive UI-Erweiterungen werden getrennt
-    // aus PROGMEM gestreamt. So muss die komplette Seite nicht in den RAM.
     server_.sendHeader("Cache-Control", "no-store");
     server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
     server_.send(200, "text/html; charset=utf-8", "");
@@ -315,7 +313,13 @@ void WebService::sendAutark() {
 }
 
 void WebService::sendAggregate() {
-  if (!analytics_ || !storage_ || !analytics_->ensureBaseAggregates()) {
+  if (!analytics_ || !storage_) {
+    sendJsonError(503, "aggregate_unavailable");
+    return;
+  }
+
+  const uint32_t started = millis();
+  if (!analytics_->ensureBaseAggregates()) {
     sendJsonError(503, "aggregate_unavailable");
     return;
   }
@@ -334,60 +338,73 @@ void WebService::sendAggregate() {
   }
 
   const int selectedOffset = analytics_->baseYear() - selectedYear;
-  server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
-  server_.send(200, "application/json", "{\"ok\":true");
-  server_.sendContent(",\"stored\":" + String(storage_->archiveCount()));
-  server_.sendContent(",\"capacity\":" + String(storage_->archiveCapacity()));
-  server_.sendContent(",\"baseYear\":" + String(analytics_->baseYear()));
-  server_.sendContent(",\"selectedYear\":" + String(selectedYear));
-  server_.sendContent(",\"selectedWeekYear\":" + String(weekYear));
-  server_.sendContent(",\"selectedWeek\":" + String(week));
 
-  server_.sendContent(",\"years\":[");
+  // Die Antwort ist nur wenige Kilobyte gross. Ein zusammenhaengender JSON-
+  // Block ist auf dem ESP32 erheblich schneller als rund 1.000 einzelne
+  // sendContent()-Aufrufe und verhindert die bisher sichtbare Heatmap-Latenz.
+  String json;
+  json.reserve(12000);
+  json = "{\"ok\":true";
+  json += ",\"stored\":" + String(storage_->archiveCount());
+  json += ",\"capacity\":" + String(storage_->archiveCapacity());
+  json += ",\"baseYear\":" + String(analytics_->baseYear());
+  json += ",\"selectedYear\":" + String(selectedYear);
+  json += ",\"selectedWeekYear\":" + String(weekYear);
+  json += ",\"selectedWeek\":" + String(week);
+
+  json += ",\"years\":[";
   bool first = true;
   for (uint8_t y = 0; y < UicConfig::LONGTERM_CACHE_YEARS; y++) {
     if (!analytics_->yearUsed(y) && y > 4) continue;
-    if (!first) server_.sendContent(",");
+    if (!first) json += ',';
     first = false;
-    server_.sendContent(String(analytics_->baseYear() - y));
+    json += String(analytics_->baseYear() - y);
   }
 
-  server_.sendContent("],\"weekdayHour\":[");
+  json += "],\"weekdayHour\":[";
   for (uint8_t d = 0; d < 7; d++) {
-    if (d) server_.sendContent(",");
-    server_.sendContent("[");
+    if (d) json += ',';
+    json += '[';
     for (uint8_t h = 0; h < 24; h++) {
-      if (h) server_.sendContent(",");
-      server_.sendContent(String(analytics_->selectedWeekdayHour(d, h)));
+      if (h) json += ',';
+      json += String(analytics_->selectedWeekdayHour(d, h));
     }
-    server_.sendContent("]");
+    json += ']';
   }
 
-  server_.sendContent("],\"monthWeek\":[");
+  json += "],\"monthWeek\":[";
   for (uint8_t m = 0; m < 12; m++) {
-    if (m) server_.sendContent(",");
-    server_.sendContent("[");
+    if (m) json += ',';
+    json += '[';
     for (uint8_t w = 0; w < 53; w++) {
-      if (w) server_.sendContent(",");
+      if (w) json += ',';
       const uint16_t amount = selectedOffset >= 0 && selectedOffset < UicConfig::LONGTERM_CACHE_YEARS
                                 ? analytics_->monthWeek(selectedOffset, m, w)
                                 : 0;
-      server_.sendContent(String(amount));
+      json += String(amount);
     }
-    server_.sendContent("]");
+    json += ']';
   }
 
-  server_.sendContent("],\"yearMonth\":[");
-  for (uint8_t y = 0; y < UicConfig::LONGTERM_CACHE_YEARS; y++) {
-    if (y) server_.sendContent(",");
-    server_.sendContent("[");
+  json += "],\"yearMonth\":[";
+  // Die UI zeigt derzeit die letzten fuenf Jahre. Es werden daher nicht mehr
+  // ungenutzte 16 Jahreszeilen uebertragen als tatsaechlich angezeigt werden.
+  const uint8_t yearRows = min<uint8_t>(5, UicConfig::LONGTERM_CACHE_YEARS);
+  for (uint8_t y = 0; y < yearRows; y++) {
+    if (y) json += ',';
+    json += '[';
     for (uint8_t m = 0; m < 12; m++) {
-      if (m) server_.sendContent(",");
-      server_.sendContent(String(analytics_->yearMonth(y, m)));
+      if (m) json += ',';
+      json += String(analytics_->yearMonth(y, m));
     }
-    server_.sendContent("]");
+    json += ']';
   }
-  server_.sendContent("]}");
+  json += ']';
+  json += ",\"buildMs\":" + String(millis() - started);
+  json += '}';
+
+  server_.sendHeader("Cache-Control", "no-store");
+  server_.send(200, "application/json", json);
 }
 
 void WebService::exportNormalCsv() {
@@ -435,9 +452,6 @@ void WebService::exportArchiveCsv() {
     return;
   }
 
-  // Der Langzeitspeicher kann 100.000 Werte enthalten. Deshalb wird der
-  // Export direkt zum Browser gestreamt und keine zweite grosse Datei im
-  // LittleFS angelegt.
   server_.sendHeader("Content-Disposition", attachmentHeader(exportDownloadName("unterbrechungen_langzeit", time_)));
   server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
   server_.send(200, "text/csv; charset=utf-8", "Datum;Zeit;Unixzeit\r\n");
