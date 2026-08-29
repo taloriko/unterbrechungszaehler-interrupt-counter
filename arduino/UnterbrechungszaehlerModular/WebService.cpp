@@ -442,13 +442,13 @@ void WebService::sendDisplayPreview() {
     return;
   }
 
-  static const char HEX[] = "0123456789ABCDEF";
+  static const char HEX_DIGITS[] = "0123456789ABCDEF";
   const uint8_t* frame = display_->framebuffer();
   String hex;
   hex.reserve(DisplayService::FRAMEBUFFER_SIZE * 2);
   for (size_t i = 0; i < DisplayService::FRAMEBUFFER_SIZE; i++) {
-    hex += HEX[(frame[i] >> 4) & 0x0F];
-    hex += HEX[frame[i] & 0x0F];
+    hex += HEX_DIGITS[(frame[i] >> 4) & 0x0F];
+    hex += HEX_DIGITS[frame[i] & 0x0F];
   }
 
   String json;
