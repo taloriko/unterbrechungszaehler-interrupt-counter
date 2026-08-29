@@ -3,12 +3,14 @@
 #include "AutarkService.h"
 #include "Config.h"
 #include "CounterService.h"
+#include "DisplayService.h"
 #include "LedService.h"
 
-void InputService::begin(CounterService* counter, AutarkService* autark, LedService* led) {
+void InputService::begin(CounterService* counter, AutarkService* autark, LedService* led, DisplayService* display) {
   counter_ = counter;
   autark_ = autark;
   led_ = led;
+  display_ = display;
 
   pinMode(UicConfig::BUTTON_PIN, INPUT_PULLUP);
   pinMode(UicConfig::AUTARK_PIN, INPUT_PULLUP);
@@ -48,8 +50,11 @@ void InputService::processButton() {
     return;
   }
 
-  if (autark_->active()) autark_->addEvent();
-  else counter_->addNormalEvent(true);
+  bool stored = false;
+  if (autark_->active()) stored = autark_->addEvent();
+  else stored = counter_->addNormalEvent(true);
+
+  if (stored && display_) display_->notifyActivity(autark_->active());
 }
 
 void InputService::processAutarkSwitch() {
