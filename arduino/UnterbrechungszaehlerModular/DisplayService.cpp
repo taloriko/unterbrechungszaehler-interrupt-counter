@@ -122,12 +122,8 @@ void DisplayService::notifyActivity(bool autarkMode) {
   bootUntil_ = 0;
   renderFrame(autarkMode, ScreenMode::Live);
 
-  if (!active_) {
-    if (!initializeController()) return;
-    flush();
-  } else {
-    flush();
-  }
+  if (!active_ && !initializeController()) return;
+  flush();
   wake(autarkMode, true);
 }
 
@@ -296,7 +292,7 @@ void DisplayService::writeData(const uint8_t* data, size_t length) {
 }
 
 void DisplayService::flush() {
-  if (!present_ || !active_) return;
+  if (!present_) return;
   for (uint8_t page = 0; page < 8; page++) {
     setPage(page);
     writeData(framebuffer_ + static_cast<size_t>(page) * WIDTH, WIDTH);
@@ -410,7 +406,7 @@ void DisplayService::renderTest(bool autarkMode) {
   drawText(2, 2, "DISPLAY TEST");
   drawHLine(0, 11, WIDTH);
   drawText(2, 17, "128 X 64 PIXEL");
-  drawText(2, 29, String("HELL ") + brightness_ + " DIM " + dimBrightness_);
+  drawText(2, 29, String("HELL ") + String(brightness_) + " DIM " + String(dimBrightness_));
   drawText(2, 41, rotation180_ ? "ROTATION 180" : "ROTATION 0");
   drawText(2, 53, autarkMode ? "MODUS AUTARK" : "MODUS NORMAL");
 }
@@ -428,7 +424,7 @@ void DisplayService::renderStandard(bool autarkMode) {
   drawText(2, 1, "UNTERBRECHUNGEN");
   drawHLine(0, 10, WIDTH);
   drawText(2, 15, String("ZEIT  ") + timeText());
-  drawText(2, 27, String("GESAMT ") + count);
+  drawText(2, 27, String("GESAMT ") + String(count));
   drawText(2, 39, rtcText());
   drawText(2, 51, autarkMode ? "AUTARK" : networkText());
 }
@@ -438,7 +434,7 @@ void DisplayService::renderCompact(bool autarkMode) {
   drawText(2, 1, timeText());
   drawText(62, 1, shortDate());
   drawHLine(0, 11, WIDTH);
-  drawText(2, 17, String("UNTERBR ") + count);
+  drawText(2, 17, String("UNTERBR ") + String(count));
   drawText(2, 29, rtcText());
   drawText(2, 41, autarkMode ? "AUTARK" : networkText());
   drawText(2, 53, dimmed_ ? "DISPLAY GEDIMMT" : "DISPLAY AKTIV");
@@ -451,7 +447,7 @@ void DisplayService::renderClock(bool autarkMode) {
   drawText(15, 3, clock, 2);
   drawHLine(0, 21, WIDTH);
   drawText(34, 27, shortDate());
-  drawText(2, 40, String("EREIGNISSE ") + count);
+  drawText(2, 40, String("EREIGNISSE ") + String(count));
   drawText(2, 52, autarkMode ? "AUTARK" : networkText());
 }
 
