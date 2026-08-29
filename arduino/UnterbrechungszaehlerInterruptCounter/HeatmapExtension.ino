@@ -1,5 +1,5 @@
 // HeatmapExtension.ino
-// Lightweight browser-side extension for settings and long-term heatmaps.
+// Browser-side UI extension for settings and long-term heatmaps.
 // Heatmaps use /api/aggregate so the browser never needs the complete archive.
 
 static const char HEATMAP_EXTENSION_JS[] PROGMEM = R"JS(
@@ -7,6 +7,7 @@ static const char HEATMAP_EXTENSION_JS[] PROGMEM = R"JS(
 'use strict';
 
 var lastAggregate=null;
+var initialWeek=currentIsoWeek();
 
 function q(id){return document.getElementById(id)}
 function pad(n){return String(n).padStart(2,'0')}
@@ -16,12 +17,18 @@ function getRange(){
   if(!Number.isInteger(s)||!Number.isInteger(e)||s<0||s>23||e<0||e>23||s>=e){s=5;e=18}
   return{s:s,e:e};
 }
+function currentIsoWeek(){
+  var now=new Date(),d=new Date(Date.UTC(now.getFullYear(),now.getMonth(),now.getDate()));
+  var day=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-day);
+  var year=d.getUTCFullYear(),start=new Date(Date.UTC(year,0,1));
+  return{year:year,week:Math.ceil((((d-start)/86400000)+1)/7)};
+}
 
 function installUiPolish(){
   if(!q('extUiPolish')){
     var style=document.createElement('style');
     style.id='extUiPolish';
-    style.textContent='.tabpanel{border-radius:0 0 12px 12px}.longTermProgress{height:12px;background:var(--line);border-radius:7px;overflow:hidden;margin:8px 0}.longTermProgress>div{height:100%;background:var(--accent);width:0}';
+    style.textContent='.tabpanel{border-radius:0 0 12px 12px}.longTermProgress{height:12px;background:var(--line);border-radius:7px;overflow:hidden;margin:8px 0}.longTermProgress>div{height:100%;background:var(--accent);width:0}.heatControls{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:10px 0 14px}.heatControl{display:flex;flex-direction:column;gap:4px;min-width:95px}.heatControl label{font-size:.78rem;color:var(--muted)}.heatControl select,.heatControl input{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text)}';
     document.head.appendChild(style);
   }
 
@@ -30,13 +37,12 @@ function installUiPolish(){
 
   if(!document.querySelector('link[data-uic-favicon]')){
     var icon=document.createElement('link');
-    icon.rel='icon';icon.type='image/svg+xml';icon.dataset.uicFavicon='1';icon.href='/favicon.svg?v=17';
+    icon.rel='icon';icon.type='image/svg+xml';icon.dataset.uicFavicon='1';icon.href='/favicon.svg?v=20';
     document.head.appendChild(icon);
   }
 }
 
-function buildUi(){
-  installUiPolish();
+function buildSettings(){
   var tabs=document.querySelector('.tabs');
   var autarkTab=document.querySelector('.tab[data-view="autark"]');
   if(tabs&&!document.querySelector('.tab[data-view="settings"]')){
@@ -50,33 +56,58 @@ function buildUi(){
   var panel=document.querySelector('.tabpanel');
   if(panel&&!q('settings')){
     var s=document.createElement('section');s.id='settings';s.className='view';
-    s.innerHTML='<div class="infoGrid"><div id="extOriginalSettings"></div><div class="infoBox"><h3><span class="infoIcon">&#128293;</span>Heatmap-Zeitbereich</h3><div class="settingsRow"><label for="heatStartHour">Startstunde</label><input id="heatStartHour" type="number" min="0" max="23" step="1" style="font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text)"></div><div class="settingsRow"><label for="heatEndHour">Endstunde</label><input id="heatEndHour" type="number" min="0" max="23" step="1" style="font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--text)"></div><div class="actions"><button id="heatRangeSaveBtn" class="btn" type="button">Zeitbereich speichern</button><span id="heatRangeState" class="small"></span></div><p class="small">Standard 05 bis 18 Uhr, Endstunde inklusive. Start muss kleiner als Ende sein.</p></div></div>';
+    s.innerHTML='<div class="infoGrid"><div id="extOriginalSettings"></div></div>';
     panel.insertBefore(s,q('device')||q('autark'));
   }
 
   var deviceGrid=q('device')&&q('device').querySelector('.infoGrid');
   var settingsHost=q('extOriginalSettings');
+  if(settingsHost)settingsHost.style.gridColumn='1 / -1';
   if(deviceGrid&&settingsHost){
     var original=deviceGrid.querySelector('.infoBox');
     if(original&&!settingsHost.contains(original))settingsHost.appendChild(original);
   }
+}
 
+function buildDeviceExtension(){
+  var deviceGrid=q('device')&&q('device').querySelector('.infoGrid');
   if(deviceGrid&&!q('longTermStorageBox')){
     var lt=document.createElement('div');lt.className='infoBox';lt.id='longTermStorageBox';
     lt.innerHTML='<h3><span class="infoIcon">&#128451;</span>Langzeit-Ringspeicher</h3><div class="kv"><span>Eintraege</span><span id="longTermCount">-</span><span>Kapazitaet</span><span id="longTermCapacity">100000</span><span>Frei</span><span id="longTermFree">-</span><span>Speichermodus</span><span>Ring / FIFO</span></div><div class="longTermProgress"><div id="longTermBar"></div></div><p class="small">Langzeitarchiv fuer Heatmaps und Statistiken. Bei 100 % wird automatisch der aelteste Datensatz ersetzt.</p>';
     var flashBox=Array.from(deviceGrid.querySelectorAll('.infoBox')).find(function(x){return x.textContent.indexOf('Flash / Programm')>=0});
     if(flashBox)deviceGrid.insertBefore(lt,flashBox);else deviceGrid.appendChild(lt);
   }
+}
 
-  var heat=q('heatmap');
-  if(heat&&!q('monthWeekHeatWrap')){
-    var root=heat.querySelector('.grid');
-    if(!root){
-      var oldCard=heat.querySelector('.card');
-      root=document.createElement('div');root.className='grid';
-      if(oldCard){oldCard.classList.add('span12');root.appendChild(oldCard)}
-      heat.appendChild(root);
-    }
+function buildHeatmapUi(){
+  var heat=q('heatmap');if(!heat)return;
+  var root=heat.querySelector('.grid');
+  if(!root){
+    var oldCard=heat.querySelector('.card');
+    root=document.createElement('div');root.className='grid';
+    if(oldCard){oldCard.classList.add('span12');root.appendChild(oldCard)}
+    heat.appendChild(root);
+  }
+
+  var weekCard=q('heatWrap')&&q('heatWrap').closest('.card');
+  if(weekCard&&!q('weekHeatControls')){
+    var title=weekCard.querySelector('h2');if(title)title.textContent='Heatmap - Wochentag / Uhrzeit';
+    var r=getRange(),controls=document.createElement('div');controls.id='weekHeatControls';controls.className='heatControls';
+    controls.innerHTML='<div class="heatControl"><label>Jahr</label><select id="weekHeatYear"><option value="'+initialWeek.year+'">'+initialWeek.year+'</option></select></div>'+
+      '<div class="heatControl"><label>Kalenderwoche</label><select id="weekHeatWeek"></select></div>'+
+      '<div class="heatControl"><label>Startstunde</label><input id="weekHeatStart" type="number" min="0" max="23" step="1" value="'+r.s+'"></div>'+
+      '<div class="heatControl"><label>Endstunde</label><input id="weekHeatEnd" type="number" min="0" max="23" step="1" value="'+r.e+'"></div>'+
+      '<div class="small" id="weekHeatState" style="padding-bottom:8px">Standard: aktuelle Woche, 05 bis 18 Uhr.</div>';
+    var wrap=q('heatWrap');weekCard.insertBefore(controls,wrap);
+    var ws=q('weekHeatWeek'),opts='';for(var w=1;w<=53;w++)opts+='<option value="'+w+'">KW '+w+'</option>';ws.innerHTML=opts;ws.value=initialWeek.week;
+    q('weekHeatYear').value=initialWeek.year;
+    q('weekHeatYear').addEventListener('change',function(){refreshHeatmaps()});
+    q('weekHeatWeek').addEventListener('change',function(){refreshHeatmaps()});
+    q('weekHeatStart').addEventListener('change',applyRangeFromHeatmap);
+    q('weekHeatEnd').addEventListener('change',applyRangeFromHeatmap);
+  }
+
+  if(!q('monthWeekHeatWrap')){
     var c1=document.createElement('div');c1.className='card span12';
     c1.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><h2 style="margin-bottom:0">Heatmap - Monat / Kalenderwoche</h2><label class="small">Jahr <select id="monthWeekYear" style="margin-left:6px"></select></label></div><div id="monthWeekHeatWrap" class="heatwrap" style="margin-top:12px"><span class="muted">Lade Daten...</span></div>';
     var c2=document.createElement('div');c2.className='card span12';
@@ -84,17 +115,13 @@ function buildUi(){
     root.appendChild(c1);root.appendChild(c2);
   }
 
-  var r=getRange();
-  if(q('heatStartHour'))q('heatStartHour').value=r.s;
-  if(q('heatEndHour'))q('heatEndHour').value=r.e;
-  if(q('heatRangeSaveBtn')&&!q('heatRangeSaveBtn').dataset.bound){
-    q('heatRangeSaveBtn').dataset.bound='1';q('heatRangeSaveBtn').addEventListener('click',saveRange);
-  }
   if(q('monthWeekYear')&&!q('monthWeekYear').dataset.bound){
     q('monthWeekYear').dataset.bound='1';
     q('monthWeekYear').addEventListener('change',function(){refreshHeatmaps(parseInt(this.value,10))});
   }
 }
+
+function buildUi(){installUiPolish();buildSettings();buildDeviceExtension();buildHeatmapUi()}
 
 function switchExtView(btn,id){
   document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});
@@ -102,11 +129,13 @@ function switchExtView(btn,id){
   btn.classList.add('active');var v=q(id);if(v)v.classList.add('active');
 }
 
-function saveRange(){
-  var s=parseInt(q('heatStartHour').value,10),e=parseInt(q('heatEndHour').value,10),out=q('heatRangeState');
-  if(!Number.isInteger(s)||!Number.isInteger(e)||s<0||s>23||e<0||e>23||s>=e){out.style.color='var(--danger)';out.textContent='Ungueltiger Bereich: 0 bis 23 Uhr, Start muss kleiner als Ende sein.';return}
+function applyRangeFromHeatmap(){
+  var s=parseInt(q('weekHeatStart').value,10),e=parseInt(q('weekHeatEnd').value,10),out=q('weekHeatState');
+  if(!Number.isInteger(s)||!Number.isInteger(e)||s<0||s>23||e<0||e>23||s>=e){
+    out.style.color='var(--danger)';out.textContent='Ungueltiger Bereich: 0 bis 23 Uhr, Start muss kleiner als Ende sein.';return;
+  }
   localStorage.setItem('uic-heat-start',String(s));localStorage.setItem('uic-heat-end',String(e));
-  out.style.color='var(--ok)';out.textContent='Gespeichert: '+pad(s)+':00 bis '+pad(e)+':00 Uhr';
+  out.style.color='var(--muted)';out.textContent='Anzeige '+pad(s)+':00 bis '+pad(e)+':00 Uhr.';
   if(lastAggregate)renderWeek(lastAggregate);
 }
 
@@ -124,33 +153,48 @@ function renderLongTermStatus(data){
 function renderWeek(data){
   var wrap=q('heatWrap');if(!wrap)return;
   var r=getRange(),names=['So','Mo','Di','Mi','Do','Fr','Sa'],a=data.weekdayHour||[],max=1;
+  if(q('weekHeatStart'))q('weekHeatStart').value=r.s;if(q('weekHeatEnd'))q('weekHeatEnd').value=r.e;
   [1,2,3,4,5,6,0].forEach(function(day){for(var h=r.s;h<=r.e;h++){var v=(a[day]&&a[day][h])||0;if(v>max)max=v}});
   var html='<table class="heat"><thead><tr><th></th>';for(var h=r.s;h<=r.e;h++)html+='<th>'+pad(h)+'</th>';html+='</tr></thead><tbody>';
   [1,2,3,4,5,6,0].forEach(function(day){html+='<tr><th>'+names[day]+'</th>';for(var hour=r.s;hour<=r.e;hour++){var v=(a[day]&&a[day][hour])||0,alpha=v?0.15+0.75*(v/max):0;html+='<td style="background:rgba(33,102,209,'+alpha.toFixed(2)+')">'+(v||'')+'</td>'}html+='</tr>'});
   wrap.innerHTML=html+'</tbody></table>';
+  if(q('weekHeatState'))q('weekHeatState').textContent='KW '+data.selectedWeek+' / '+data.selectedWeekYear+' - '+pad(r.s)+':00 bis '+pad(r.e)+':00 Uhr';
 }
 
-function updateYearSelect(data){
+function normalizedYears(data){
+  var years=(data.years||[]).slice();
+  [data.baseYear,data.currentWeekYear,initialWeek.year].forEach(function(y){if(Number.isInteger(y)&&years.indexOf(y)<0)years.push(y)});
+  return years.filter(function(v,i,a){return Number.isInteger(v)&&a.indexOf(v)===i}).sort(function(a,b){return b-a});
+}
+
+function updateMonthYearSelect(data){
   var sel=q('monthWeekYear');if(!sel)return;
-  var old=parseInt(sel.value,10),years=(data.years||[]).slice();
-  if(years.indexOf(data.baseYear)<0)years.unshift(data.baseYear);
-  years=years.filter(function(v,i,a){return a.indexOf(v)===i}).sort(function(a,b){return b-a});
+  var old=parseInt(sel.value,10),years=normalizedYears(data);
   sel.innerHTML=years.map(function(y){return '<option value="'+y+'">'+y+'</option>'}).join('');
   if(years.indexOf(data.selectedYear)>=0)sel.value=data.selectedYear;
   else if(years.indexOf(old)>=0)sel.value=old;
   else sel.value=data.baseYear;
 }
 
+function updateWeekYearSelect(data){
+  var sel=q('weekHeatYear');if(!sel)return;
+  var old=parseInt(sel.value,10),years=normalizedYears(data);
+  sel.innerHTML=years.map(function(y){return '<option value="'+y+'">'+y+'</option>'}).join('');
+  if(years.indexOf(data.selectedWeekYear)>=0)sel.value=data.selectedWeekYear;
+  else if(years.indexOf(old)>=0)sel.value=old;
+  else sel.value=initialWeek.year;
+  if(q('weekHeatWeek'))q('weekHeatWeek').value=data.selectedWeek||initialWeek.week;
+}
+
 function renderMonthWeek(data){
   var wrap=q('monthWeekHeatWrap');if(!wrap)return;
-  updateYearSelect(data);
+  updateMonthYearSelect(data);
   var rows=data.monthWeek||[],max=maxIn2d(rows),months=['Jan','Feb','Maer','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
-  var html='<table class="heat" style="min-width:2250px"><thead><tr><th style="position:sticky;left:0;z-index:3;background:var(--card);min-width:64px">Monat</th>';
-  for(var w=1;w<=52;w++)html+='<th style="min-width:38px">KW '+w+'</th>';html+='</tr></thead><tbody>';
+  var html='<table class="heat" style="min-width:2290px"><thead><tr><th style="position:sticky;left:0;z-index:3;background:var(--card);min-width:64px">Monat</th>';
+  for(var w=1;w<=53;w++)html+='<th style="min-width:38px">KW '+w+'</th>';html+='</tr></thead><tbody>';
   for(var m=0;m<12;m++){
     html+='<tr><th style="position:sticky;left:0;z-index:2;background:var(--card);min-width:64px">'+months[m]+'</th>';
-    for(var w=0;w<52;w++){var v=(rows[m]&&rows[m][w])||0,alpha=v?0.15+0.75*(v/max):0;html+='<td title="'+months[m]+' '+data.selectedYear+' / KW '+(w+1)+': '+v+'" style="min-width:38px;background:rgba(33,102,209,'+alpha.toFixed(2)+')">'+(v||'')+'</td>'}
-    html+='</tr>';
+    for(var w=0;w<53;w++){var v=(rows[m]&&rows[m][w])||0,alpha=v?0.15+0.75*(v/max):0;html+='<td title="'+months[m]+' '+data.selectedYear+' / KW '+(w+1)+': '+v+'" style="min-width:38px;background:rgba(33,102,209,'+alpha.toFixed(2)+')">'+(v||'')+'</td>'}html+='</tr>';
   }
   wrap.innerHTML=html+'</tbody></table>';
 }
@@ -161,19 +205,24 @@ function renderYearMonth(data){
   var html='<table class="heat"><thead><tr><th></th>';months.forEach(function(m){html+='<th>'+m+'</th>'});html+='</tr></thead><tbody>';
   for(var y=0;y<5;y++){
     var year=data.baseYear-y;html+='<tr><th>'+year+'</th>';
-    for(var m=0;m<12;m++){var v=(rows[y]&&rows[y][m])||0,alpha=v?0.15+0.75*(v/max):0;html+='<td title="'+months[m]+' '+year+': '+v+'" style="background:rgba(33,102,209,'+alpha.toFixed(2)+')">'+(v||'')+'</td>'}
-    html+='</tr>';
+    for(var m=0;m<12;m++){var v=(rows[y]&&rows[y][m])||0,alpha=v?0.15+0.75*(v/max):0;html+='<td title="'+months[m]+' '+year+': '+v+'" style="background:rgba(33,102,209,'+alpha.toFixed(2)+')">'+(v||'')+'</td>'}html+='</tr>';
   }
   wrap.innerHTML=html+'</tbody></table>';
 }
 
-async function refreshHeatmaps(year){
+async function refreshHeatmaps(monthYear){
   try{
-    var selected=Number.isInteger(year)?year:(q('monthWeekYear')&&parseInt(q('monthWeekYear').value,10));
-    var url='/api/aggregate?x='+Date.now();if(Number.isInteger(selected))url+='&year='+selected;
+    buildHeatmapUi();
+    var selectedMonth=Number.isInteger(monthYear)?monthYear:(q('monthWeekYear')&&parseInt(q('monthWeekYear').value,10));
+    var weekYear=q('weekHeatYear')?parseInt(q('weekHeatYear').value,10):initialWeek.year;
+    var week=q('weekHeatWeek')?parseInt(q('weekHeatWeek').value,10):initialWeek.week;
+    var url='/api/aggregate?x='+Date.now();
+    if(Number.isInteger(selectedMonth))url+='&year='+selectedMonth;
+    if(Number.isInteger(weekYear))url+='&weekYear='+weekYear;
+    if(Number.isInteger(week))url+='&week='+week;
     var r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
     var data=await r.json();if(!data.ok)throw new Error('Aggregat nicht verfuegbar');
-    lastAggregate=data;renderLongTermStatus(data);renderWeek(data);renderMonthWeek(data);renderYearMonth(data);
+    lastAggregate=data;updateWeekYearSelect(data);renderLongTermStatus(data);renderWeek(data);renderMonthWeek(data);renderYearMonth(data);
   }catch(err){
     var text='<span class="muted">Fehler beim Laden: '+err.message+'</span>';
     if(q('heatWrap'))q('heatWrap').innerHTML=text;if(q('monthWeekHeatWrap'))q('monthWeekHeatWrap').innerHTML=text;if(q('yearMonthHeatWrap'))q('yearMonthHeatWrap').innerHTML=text;
@@ -214,7 +263,7 @@ static void serveUiFavicon() {
 
 static void serveHeatmapExtendedIndex() {
   String page = FPSTR(INDEX_HTML);
-  const char* includeScript = "<script src=\"/heatmap-extension.js?v=17\"></script></body>";
+  const char* includeScript = "<script src=\"/heatmap-extension.js?v=20\"></script></body>";
   page.replace("</body>", includeScript);
   server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate");
   server.send(200, "text/html; charset=utf-8", page);
