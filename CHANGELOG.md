@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-08-29-14
+
+- Ursache aus den Screenshots behoben: grosse Heatmap-Erweiterung wurde nicht mehr als komplette HTML-Seite im RAM des ESP32 aufgebaut
+- Heatmap-Erweiterung wird jetzt als separates Skript unter `/heatmap-extension.js` ausgeliefert
+- Hauptseite erhaelt nur noch einen kleinen Script-Verweis, dadurch deutlich weniger Heap-Bedarf beim Seitenaufruf
+- Einstellungen-Reiter wird browserseitig erzeugt und enthaelt Sprache, Darstellung sowie Heatmap-Start- und Endstunde
+- vorhandene Sprache-/Theme-Bedienung wird weiterverwendet, keine doppelte Einstellungslogik auf dem ESP32
+- Wochentag/Uhrzeit-Heatmap wird browserseitig mit dem gespeicherten Bereich neu aufgebaut
+- Monat/Woche und Jahr/Monat laden direkt aus `/api/events`
+- sichtbare Fehlermeldung bleibt erhalten, falls die Events-API nicht gelesen werden kann
+- Versionsverwaltung bereinigt: `SerialDiagnostics.ino` und `HeatmapExtension.ino` ueberschreiben die Firmware-Version nicht mehr
+- zentrale Runtime-Version `2026-08-29-14` in `Version.ino`
+- Serial-Diagnose zeigt den Fallback-AP weiterhin mit SSID, IP und URL
+
 ## 2026-08-29-13
 
 - Einstellungen-Reiter erneut vereinfacht und selbststaendig aufgebaut
