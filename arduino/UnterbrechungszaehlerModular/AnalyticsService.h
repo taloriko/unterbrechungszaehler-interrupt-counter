@@ -30,6 +30,10 @@ private:
   bool addEpochToBase(uint32_t epoch);
   bool addEpochToSelectedWeek(uint32_t epoch, int selectedYear, int selectedWeek);
 
+  bool loadBaseCache();
+  bool saveBaseCache(uint32_t lastEpoch);
+  bool updateBaseCacheAppend(uint32_t epoch, uint32_t previousCount, uint32_t newCount);
+
   StorageService* storage_ = nullptr;
   uint32_t cachedRevision_ = 0xFFFFFFFFUL;
   uint32_t cachedArchiveCount_ = 0;
