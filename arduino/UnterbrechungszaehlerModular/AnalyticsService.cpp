@@ -4,6 +4,10 @@
 
 #include "StorageService.h"
 
+namespace {
+static constexpr uint32_t ANALYTICS_CHUNK = 256;
+}
+
 void AnalyticsService::begin(StorageService* storage) {
   storage_ = storage;
 }
@@ -15,27 +19,34 @@ bool AnalyticsService::ensureBaseAggregates() {
   clearBase();
   baseYear_ = determineBaseYear();
 
-  for (uint32_t i = 0; i < storage_->archiveCount(); i++) {
-    uint32_t epoch = 0;
-    if (!storage_->readArchive(i, epoch) || epoch <= UicConfig::VALID_TIME_MIN) continue;
+  uint32_t buffer[ANALYTICS_CHUNK];
+  for (uint32_t start = 0; start < storage_->archiveCount(); start += ANALYTICS_CHUNK) {
+    uint32_t readCount = 0;
+    if (!storage_->readArchiveChunk(start, ANALYTICS_CHUNK, buffer, readCount)) return false;
 
-    time_t raw = static_cast<time_t>(epoch);
-    struct tm value = {};
-    localtime_r(&raw, &value);
+    for (uint32_t i = 0; i < readCount; i++) {
+      const uint32_t epoch = buffer[i];
+      if (epoch <= UicConfig::VALID_TIME_MIN) continue;
 
-    const int year = value.tm_year + 1900;
-    const int offset = baseYear_ - year;
-    if (offset < 0 || offset >= UicConfig::LONGTERM_CACHE_YEARS) continue;
+      time_t raw = static_cast<time_t>(epoch);
+      struct tm value = {};
+      localtime_r(&raw, &value);
 
-    yearUsed_[offset] = true;
-    if (value.tm_mon >= 0 && value.tm_mon < 12) {
-      increment(yearMonth_[offset][value.tm_mon]);
-      const int week = isoWeek(value);
-      if (week >= 1 && week <= 53) increment(monthWeek_[offset][value.tm_mon][week - 1]);
+      const int year = value.tm_year + 1900;
+      const int offset = baseYear_ - year;
+      if (offset < 0 || offset >= UicConfig::LONGTERM_CACHE_YEARS) continue;
+
+      yearUsed_[offset] = true;
+      if (value.tm_mon >= 0 && value.tm_mon < 12) {
+        increment(yearMonth_[offset][value.tm_mon]);
+        const int week = isoWeek(value);
+        if (week >= 1 && week <= 53) increment(monthWeek_[offset][value.tm_mon][week - 1]);
+      }
+      if (value.tm_wday >= 0 && value.tm_wday < 7 && value.tm_hour >= 0 && value.tm_hour < 24) {
+        increment(weekdayHour_[value.tm_wday][value.tm_hour]);
+      }
     }
-    if (value.tm_wday >= 0 && value.tm_wday < 7 && value.tm_hour >= 0 && value.tm_hour < 24) {
-      increment(weekdayHour_[value.tm_wday][value.tm_hour]);
-    }
+    delay(0);
   }
 
   cachedRevision_ = storage_->revision();
@@ -47,17 +58,25 @@ bool AnalyticsService::ensureSelectedWeek(int selectedYear, int selectedWeek) {
   if (selectedRevision_ == storage_->revision() && selectedYear_ == selectedYear && selectedWeek_ == selectedWeek) return true;
 
   memset(selectedWeekdayHour_, 0, sizeof(selectedWeekdayHour_));
-  for (uint32_t i = 0; i < storage_->archiveCount(); i++) {
-    uint32_t epoch = 0;
-    if (!storage_->readArchive(i, epoch) || epoch <= UicConfig::VALID_TIME_MIN) continue;
 
-    time_t raw = static_cast<time_t>(epoch);
-    struct tm value = {};
-    localtime_r(&raw, &value);
-    if (isoYear(value) != selectedYear || isoWeek(value) != selectedWeek) continue;
-    if (value.tm_wday >= 0 && value.tm_wday < 7 && value.tm_hour >= 0 && value.tm_hour < 24) {
-      increment(selectedWeekdayHour_[value.tm_wday][value.tm_hour]);
+  uint32_t buffer[ANALYTICS_CHUNK];
+  for (uint32_t start = 0; start < storage_->archiveCount(); start += ANALYTICS_CHUNK) {
+    uint32_t readCount = 0;
+    if (!storage_->readArchiveChunk(start, ANALYTICS_CHUNK, buffer, readCount)) return false;
+
+    for (uint32_t i = 0; i < readCount; i++) {
+      const uint32_t epoch = buffer[i];
+      if (epoch <= UicConfig::VALID_TIME_MIN) continue;
+
+      time_t raw = static_cast<time_t>(epoch);
+      struct tm value = {};
+      localtime_r(&raw, &value);
+      if (isoYear(value) != selectedYear || isoWeek(value) != selectedWeek) continue;
+      if (value.tm_wday >= 0 && value.tm_wday < 7 && value.tm_hour >= 0 && value.tm_hour < 24) {
+        increment(selectedWeekdayHour_[value.tm_wday][value.tm_hour]);
+      }
     }
+    delay(0);
   }
 
   selectedRevision_ = storage_->revision();
