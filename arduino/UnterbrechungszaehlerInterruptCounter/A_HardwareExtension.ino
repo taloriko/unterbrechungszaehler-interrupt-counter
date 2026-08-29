@@ -549,7 +549,7 @@ static void hwServeExtensionJs() {
 
 static void hwServeExtendedIndex() {
   String page = FPSTR(INDEX_HTML);
-  const char* scripts = "<script src=\"/heatmap-extension.js?v=18\"></script><script src=\"/hardware-extension.js?v=18\"></script></body>";
+  const char* scripts = "<script src=\"/heatmap-extension.js?v=19\"></script><script src=\"/hardware-extension.js?v=19\"></script><script src=\"/time-management.js?v=19\"></script></body>";
   page.replace("</body>", scripts);
   server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate");
   server.send(200, "text/html; charset=utf-8", page);
@@ -577,16 +577,11 @@ static void hwServeDisplayTest() {
 class HardwareExtensionRegistrar {
 public:
   HardwareExtensionRegistrar() {
-    // The first registered root handler wins in ESP32 WebServer. This file is
-    // alphabetically before HeatmapExtension.ino, so both extensions are loaded.
     server.on("/", HTTP_GET, hwServeExtendedIndex);
     server.on("/hardware-extension.js", HTTP_GET, hwServeExtensionJs);
     server.on("/api/hardware", HTTP_GET, hwServeStatus);
     server.on("/api/hardware/rtc-sync", HTTP_POST, hwServeRtcSync);
     server.on("/api/hardware/display-test", HTTP_POST, hwServeDisplayTest);
-
-    // In standalone boot the first loop enters light sleep before serialEventRun.
-    // A one-time timer wake lets the hardware extension initialize after setup.
     esp_sleep_enable_timer_wakeup(750000ULL);
   }
 };
