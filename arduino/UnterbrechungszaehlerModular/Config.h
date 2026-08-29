@@ -4,7 +4,7 @@
 
 namespace UicConfig {
 
-static constexpr char APP_VERSION[] = "2026-08-29-reboot-1";
+static constexpr char APP_VERSION[] = "2026-08-29-reboot-2";
 static constexpr char HOSTNAME[] = "unterbrechungen";
 static constexpr char FALLBACK_AP_SSID[] = "Unterbrechungszaehler";
 static constexpr char TZ_INFO[] = "CET-1CEST,M3.5.0,M10.5.0/3";
@@ -25,6 +25,11 @@ static constexpr uint32_t LONG_PRESS_MS = 3000;
 static constexpr uint32_t WIFI_RETRY_MS = 10000;
 static constexpr uint32_t DISPLAY_BOOT_MS = 15000;
 static constexpr uint32_t DIAGNOSTIC_INTERVAL_MS = 60000;
+
+// Die Weboberflaeche arbeitet bewusst nur mit einem begrenzten Rohdatenfenster.
+// Export und Langzeit-Heatmaps bleiben davon unberuehrt.
+static constexpr uint16_t HISTORY_DAYS = 30;
+static constexpr uint16_t WEB_EVENT_LIMIT = 5000;
 
 static constexpr uint32_t VALID_TIME_MIN = 1700000000UL;
 static constexpr uint32_t VALID_TIME_MAX = 4102444800UL;
