@@ -16,6 +16,7 @@
 #include "WebUi.h"
 #include "WebUiPatch.h"
 #include "WebUiFixes.h"
+#include "WebUiNetwork.h"
 
 namespace {
 String exportDownloadName(const char* baseName, TimeService* timeService) {
@@ -104,6 +105,7 @@ void WebService::registerRoutes() {
     server_.sendContent_P(WEB_UI);
     server_.sendContent_P(WEB_UI_PATCH);
     server_.sendContent_P(WEB_UI_FIXES);
+    server_.sendContent_P(WEB_UI_NETWORK);
     server_.sendContent("");
   });
 
@@ -213,7 +215,7 @@ void WebService::sendStatus() {
   const size_t fsUsed = storage_ ? storage_->fsUsedBytes() : 0;
 
   String json;
-  json.reserve(1700);
+  json.reserve(1750);
   json = "{\"ok\":true";
   json += ",\"version\":\"" + String(UicConfig::APP_VERSION) + "\"";
   json += ",\"deviceDate\":\"" + (time_ ? time_->localDate() : String("-")) + "\"";
@@ -234,6 +236,7 @@ void WebService::sendStatus() {
   json += ",\"fsTotal\":" + String(static_cast<uint32_t>(fsTotal));
   json += ",\"fsUsed\":" + String(static_cast<uint32_t>(fsUsed));
   json += ",\"wifi\":" + String(network_ && network_->connected() ? "true" : "false");
+  json += ",\"rssi\":" + String(network_ ? network_->rssi() : 0);
   json += ",\"ip\":\"" + (network_ ? network_->ip() : String("-")) + "\"";
   json += ",\"heapFree\":" + String(ESP.getFreeHeap());
   json += ",\"heapTotal\":" + String(ESP.getHeapSize());
