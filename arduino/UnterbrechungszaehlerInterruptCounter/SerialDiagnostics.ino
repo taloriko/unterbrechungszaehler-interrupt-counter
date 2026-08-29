@@ -4,7 +4,7 @@
 
 #include <esp_system.h>
 
-static const char* SERIAL_DIAG_VERSION = "2026-08-29-10";
+static const char* SERIAL_DIAG_VERSION = "2026-08-29-11";
 
 class RuntimeVersionInitializer {
 public:
