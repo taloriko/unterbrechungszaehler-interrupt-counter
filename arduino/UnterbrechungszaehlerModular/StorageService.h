@@ -67,13 +67,47 @@ public:
   bool readRecent(uint32_t chronologicalIndex, uint32_t& epoch);
   bool readArchive(uint32_t chronologicalIndex, uint32_t& epoch);
 
-  // Liest mehrere chronologische Langzeitwerte mit nur einem Datei-Zugriff.
-  // Diese Methode ist fuer Heatmaps und Statistiken gedacht und vermeidet
-  // das sehr langsame Oeffnen/Schliessen der Datei fuer jeden Einzelwert.
+  // Schneller Blockzugriff fuer Heatmaps/Statistiken. Die Datei wird nur
+  // einmal pro Block geoeffnet. Ein Block darf den Ring-Uebergang enthalten.
   bool readArchiveChunk(uint32_t chronologicalStart,
                         uint32_t maxItems,
                         uint32_t* epochs,
-                        uint32_t& readCount);
+                        uint32_t& readCount) {
+    readCount = 0;
+    if (!archive_.ready || !epochs || maxItems == 0 || chronologicalStart >= archive_.header.count) return false;
+
+    const uint32_t remaining = archive_.header.count - chronologicalStart;
+    const uint32_t wanted = remaining < maxItems ? remaining : maxItems;
+    const uint32_t oldest = (archive_.header.writeIndex + archive_.header.capacity - archive_.header.count) % archive_.header.capacity;
+    uint32_t physical = (oldest + chronologicalStart) % archive_.header.capacity;
+
+    File file = LittleFS.open(archive_.path, FILE_READ);
+    if (!file) return false;
+
+    uint32_t left = wanted;
+    while (left > 0) {
+      const uint32_t contiguous = (physical + left <= archive_.header.capacity)
+                                    ? left
+                                    : (archive_.header.capacity - physical);
+      if (!file.seek(timestampOffset(physical), SeekSet)) {
+        file.close();
+        return false;
+      }
+      const size_t bytesWanted = static_cast<size_t>(contiguous) * sizeof(uint32_t);
+      const size_t bytesRead = file.read(reinterpret_cast<uint8_t*>(epochs + readCount), bytesWanted);
+      const uint32_t itemsRead = static_cast<uint32_t>(bytesRead / sizeof(uint32_t));
+      readCount += itemsRead;
+      left -= itemsRead;
+      if (itemsRead != contiguous) {
+        file.close();
+        return false;
+      }
+      physical = 0;
+    }
+
+    file.close();
+    return readCount == wanted;
+  }
 
   uint32_t lastEvent();
 
@@ -101,11 +135,6 @@ private:
   bool writeTimestampHeader(File& file, const RingDescriptor& ring);
   bool appendTimestamp(RingDescriptor& ring, uint32_t epoch);
   bool readTimestamp(RingDescriptor& ring, uint32_t chronologicalIndex, uint32_t& epoch);
-  bool readTimestampChunk(RingDescriptor& ring,
-                          uint32_t chronologicalStart,
-                          uint32_t maxItems,
-                          uint32_t* epochs,
-                          uint32_t& readCount);
   bool popTimestamp(RingDescriptor& ring);
   uint32_t lastTimestamp(RingDescriptor& ring);
   size_t timestampOffset(uint32_t index) const;
