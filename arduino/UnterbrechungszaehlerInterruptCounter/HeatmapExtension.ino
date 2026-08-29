@@ -8,6 +8,8 @@ static const char HEATMAP_EXTENSION_JS[] PROGMEM = R"JS(
 (function(){
 'use strict';
 
+var lastHeatEvents=[];
+
 function q(id){return document.getElementById(id)}
 function pad(n){return String(n).padStart(2,'0')}
 function getRange(){
@@ -15,6 +17,13 @@ function getRange(){
   var e=parseInt(localStorage.getItem('uic-heat-end'),10);
   if(!Number.isInteger(s)||!Number.isInteger(e)||s<0||s>23||e<0||e>23||s>=e){s=5;e=18}
   return{s:s,e:e};
+}
+function isoWeek(d){
+  var x=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  var day=x.getUTCDay()||7;
+  x.setUTCDate(x.getUTCDate()+4-day);
+  var yearStart=new Date(Date.UTC(x.getUTCFullYear(),0,1));
+  return Math.ceil((((x-yearStart)/86400000)+1)/7);
 }
 
 function buildUi(){
@@ -55,7 +64,7 @@ function buildUi(){
       heat.appendChild(root);
     }
     var c1=document.createElement('div');c1.className='card span12';
-    c1.innerHTML='<h2>Heatmap - Monat / Woche</h2><div id="monthWeekHeatWrap" class="heatwrap"><span class="muted">Lade Daten...</span></div>';
+    c1.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><h2 style="margin-bottom:0">Heatmap - Monat / Kalenderwoche</h2><label class="small">Jahr <select id="monthWeekYear" style="margin-left:6px"></select></label></div><div id="monthWeekHeatWrap" class="heatwrap" style="margin-top:12px"><span class="muted">Lade Daten...</span></div>';
     var c2=document.createElement('div');c2.className='card span12';
     c2.innerHTML='<h2>Heatmap - Jahr / Monat</h2><div id="yearMonthHeatWrap" class="heatwrap"><span class="muted">Lade Daten...</span></div>';
     root.appendChild(c1);root.appendChild(c2);
@@ -67,6 +76,10 @@ function buildUi(){
   if(q('heatRangeSaveBtn')&&!q('heatRangeSaveBtn').dataset.bound){
     q('heatRangeSaveBtn').dataset.bound='1';
     q('heatRangeSaveBtn').addEventListener('click',saveRange);
+  }
+  if(q('monthWeekYear')&&!q('monthWeekYear').dataset.bound){
+    q('monthWeekYear').dataset.bound='1';
+    q('monthWeekYear').addEventListener('change',function(){renderMonthWeek(lastHeatEvents)});
   }
 }
 
@@ -105,26 +118,62 @@ function renderWeek(ev){
   wrap.innerHTML=html+'</tbody></table>';
 }
 
+function availableYears(ev){
+  var current=new Date().getFullYear(),set={};set[current]=true;
+  ev.forEach(function(ts){set[new Date(ts*1000).getFullYear()]=true});
+  return Object.keys(set).map(Number).sort(function(a,b){return b-a});
+}
+
+function updateYearSelect(ev){
+  var sel=q('monthWeekYear');if(!sel)return;
+  var current=new Date().getFullYear();
+  var selected=parseInt(sel.value,10);
+  var years=availableYears(ev);
+  sel.innerHTML=years.map(function(y){return '<option value="'+y+'">'+y+'</option>'}).join('');
+  if(years.indexOf(selected)>=0)sel.value=selected;
+  else if(years.indexOf(current)>=0)sel.value=current;
+  else sel.value=years[0];
+}
+
 function renderMonthWeek(ev){
   var wrap=q('monthWeekHeatWrap');if(!wrap)return;
-  var rows={},max=1;
-  ev.forEach(function(ts){var d=new Date(ts*1000),key=d.getFullYear()+'-'+pad(d.getMonth()+1),w=Math.floor((d.getDate()-1)/7);if(!rows[key])rows[key]=new Array(5).fill(0);rows[key][w]++;max=Math.max(max,rows[key][w])});
-  var keys=Object.keys(rows).sort().reverse();
-  if(!keys.length){wrap.innerHTML='<span class="muted">Noch keine Daten.</span>';return}
-  var html='<table class="heat" style="min-width:430px"><thead><tr><th></th><th>1-7</th><th>8-14</th><th>15-21</th><th>22-28</th><th>29-Ende</th></tr></thead><tbody>';
-  keys.forEach(function(k){var p=k.split('-'),label=p[1]+'.'+p[0];html+='<tr><th>'+label+'</th>';for(var w=0;w<5;w++){var v=rows[k][w],alpha=v?0.15+0.75*(v/max):0;html+='<td style="background:rgba(33,102,209,'+alpha.toFixed(2)+')">'+(v||'')+'</td>'}html+='</tr>'});
+  updateYearSelect(ev);
+  var sel=q('monthWeekYear');
+  var year=sel?parseInt(sel.value,10):new Date().getFullYear();
+  var rows=[];for(var m=0;m<12;m++)rows[m]=new Array(52).fill(0);
+  var max=1;
+  ev.forEach(function(ts){
+    var d=new Date(ts*1000);if(d.getFullYear()!==year)return;
+    var w=isoWeek(d);if(w<1)return;if(w>52)w=52;
+    rows[d.getMonth()][w-1]++;max=Math.max(max,rows[d.getMonth()][w-1]);
+  });
+  var months=['Jan','Feb','Maer','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  var html='<table class="heat" style="min-width:2250px"><thead><tr><th style="position:sticky;left:0;z-index:3;background:var(--card);min-width:64px">Monat</th>';
+  for(var w=1;w<=52;w++)html+='<th style="min-width:38px">KW '+w+'</th>';
+  html+='</tr></thead><tbody>';
+  for(var m=0;m<12;m++){
+    html+='<tr><th style="position:sticky;left:0;z-index:2;background:var(--card);min-width:64px">'+months[m]+'</th>';
+    for(var w=0;w<52;w++){
+      var v=rows[m][w],alpha=v?0.15+0.75*(v/max):0;
+      html+='<td title="'+months[m]+' '+year+' / KW '+(w+1)+': '+v+'" style="min-width:38px;background:rgba(33,102,209,'+alpha.toFixed(2)+')">'+(v||'')+'</td>';
+    }
+    html+='</tr>';
+  }
   wrap.innerHTML=html+'</tbody></table>';
 }
 
 function renderYearMonth(ev){
   var wrap=q('yearMonthHeatWrap');if(!wrap)return;
-  var years={},max=1;
-  ev.forEach(function(ts){var d=new Date(ts*1000),y=d.getFullYear(),m=d.getMonth();if(!years[y])years[y]=new Array(12).fill(0);years[y][m]++;max=Math.max(max,years[y][m])});
-  var ys=Object.keys(years).map(Number).sort(function(a,b){return b-a});
-  if(!ys.length){wrap.innerHTML='<span class="muted">Noch keine Daten.</span>';return}
+  var currentYear=new Date().getFullYear(),years={},max=1;
+  for(var y=currentYear;y>=currentYear-4;y--)years[y]=new Array(12).fill(0);
+  ev.forEach(function(ts){var d=new Date(ts*1000),y=d.getFullYear(),m=d.getMonth();if(!years[y])return;years[y][m]++;max=Math.max(max,years[y][m])});
   var months=['Jan','Feb','Maer','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
   var html='<table class="heat"><thead><tr><th></th>';months.forEach(function(m){html+='<th>'+m+'</th>'});html+='</tr></thead><tbody>';
-  ys.forEach(function(y){html+='<tr><th>'+y+'</th>';for(var m=0;m<12;m++){var v=years[y][m],alpha=v?0.15+0.75*(v/max):0;html+='<td style="background:rgba(33,102,209,'+alpha.toFixed(2)+')">'+(v||'')+'</td>'}html+='</tr>'});
+  for(var y=currentYear;y>=currentYear-4;y--){
+    html+='<tr><th>'+y+'</th>';
+    for(var m=0;m<12;m++){var v=years[y][m],alpha=v?0.15+0.75*(v/max):0;html+='<td title="'+months[m]+' '+y+': '+v+'" style="background:rgba(33,102,209,'+alpha.toFixed(2)+')">'+(v||'')+'</td>'}
+    html+='</tr>';
+  }
   wrap.innerHTML=html+'</tbody></table>';
 }
 
@@ -133,6 +182,7 @@ async function refreshHeatmaps(){
     var r=await fetch('/api/events?heat='+Date.now(),{cache:'no-store'});
     if(!r.ok)throw new Error('HTTP '+r.status);
     var d=await r.json(),ev=(d.events||[]).sort(function(a,b){return a-b});
+    lastHeatEvents=ev;
     renderWeek(ev);renderMonthWeek(ev);renderYearMonth(ev);
   }catch(err){
     var text='<span class="muted">Fehler beim Laden: '+err.message+'</span>';
@@ -161,7 +211,7 @@ static void serveHeatmapExtensionJs() {
 
 static void serveHeatmapExtendedIndex() {
   String page = FPSTR(INDEX_HTML);
-  const char* includeScript = "<script src=\"/heatmap-extension.js?v=14\"></script></body>";
+  const char* includeScript = "<script src=\"/heatmap-extension.js?v=15\"></script></body>";
   page.replace("</body>", includeScript);
   server.sendHeader("Cache-Control", "no-store, no-cache, must-revalidate");
   server.send(200, "text/html; charset=utf-8", page);
