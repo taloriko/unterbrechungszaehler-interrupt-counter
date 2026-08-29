@@ -47,6 +47,7 @@ void InputService::processButton() {
   if (duration >= UicConfig::LONG_PRESS_MS) {
     if (autark_->active()) autark_->deleteLastEvent();
     else counter_->deleteNormalEvent();
+    if (display_) display_->notifyActivity(autark_->active());
     return;
   }
 
@@ -54,7 +55,7 @@ void InputService::processButton() {
   if (autark_->active()) stored = autark_->addEvent();
   else stored = counter_->addNormalEvent(true);
 
-  if (stored && display_) display_->notifyActivity(autark_->active());
+  if (stored && display_) display_->notifyEvent(autark_->active());
 }
 
 void InputService::processAutarkSwitch() {
