@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-// Header-, WLAN- und Heatmap-Feinschliff fuer die klassische Oberflaeche.
+// Header-, WLAN-, Mobile- und Heatmap-Feinschliff fuer die klassische Oberflaeche.
 static const char WEB_UI_NETWORK[] PROGMEM = R"HTML(
 <style>
 /* Uhrzeit und KW in einer Zeile, Datum sauber darunter. Der Trenner bekommt
@@ -49,11 +49,46 @@ header .hwIcon{background:var(--bg)}
 .heat tr.heatTodayRow th:first-child{color:var(--accent)!important;font-weight:700;box-shadow:inset 0 0 0 2px var(--accent);border-radius:6px}
 .heat .heatCurrentAxis{color:var(--accent)!important;font-weight:700!important}
 
+/* Smartphone: Titel als eigene Zeile, darunter Zeit links und Statusmodule rechts. */
 @media(max-width:720px){
-  .headerWifiText{display:none}
-  .headWifi{gap:3px}
-  .headWifi .headModules{gap:3px}
-  header{padding:8px 9px}
+  header{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    grid-template-areas:"title title" "time wifi";
+    gap:8px 12px!important;
+    padding:10px 12px!important;
+    min-height:0!important
+  }
+  .headTitle{
+    grid-area:title;
+    width:100%;
+    justify-content:center!important;
+    padding-bottom:8px;
+    border-bottom:1px solid var(--line)
+  }
+  .headTitle h1{font-size:1.08rem!important}
+  .titleIcon{display:inline-flex!important;width:26px;height:26px}
+  .headTime{grid-area:time;justify-self:start;align-self:center;min-width:0}
+  .headWifi{grid-area:wifi;justify-self:end;align-self:center;gap:4px!important}
+  .headWifi .headModules{gap:4px!important}
+  .headerWifiText{display:none!important}
+
+  /* Footer nicht mehr mitten in Git-Link oder Versionsnummer umbrechen. */
+  .footerWrap{grid-template-columns:1fr!important;gap:8px!important;text-align:center!important;margin-top:18px!important}
+  .footerWrap>div:first-child,.footerRight{text-align:center!important;white-space:nowrap}
+  .footerCenter{font-size:0;text-align:center!important}
+  .footerCenter>span{display:block;font-size:.82rem;line-height:1.35}
+  .footerCenter>#footerVersion{display:block;font-size:.82rem;line-height:1.35;margin-top:3px;white-space:nowrap;word-break:keep-all;overflow-wrap:normal}
+  .footerCenter>#footerVersion::before{content:'Version ';font-weight:400;color:var(--muted)}
+}
+
+@media(max-width:390px){
+  header{gap:7px 8px!important;padding:9px 10px!important}
+  .headTitle h1{font-size:1rem!important}
+  .headTime #deviceClock{font-size:.82rem}
+  .headTime .headWeek{font-size:.76rem}
+  .headTime .headWeek::before{margin:0 5px}
+  .headWifi .hwIcon{width:25px;height:25px}
 }
 </style>
 <script>
