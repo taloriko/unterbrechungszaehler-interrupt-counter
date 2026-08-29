@@ -12,6 +12,8 @@ In normal operation the ESP32 runs with Wi-Fi, NTP, mDNS and the local web inter
 
 ## LED feedback
 
+Feedback is provided by the LED on **GPIO2**. On some ESP32 boards this pin may be labeled **D2** or connected to the onboard LED.
+
 - 1x short: event stored
 - 3x fast: latest event deleted
 - 2x fast + 2x slow: warning, for example missing time, connection or storage problem
@@ -24,7 +26,15 @@ After connecting to Wi-Fi, the interface is normally available at:
 http://unterbrechungen.local
 ```
 
-If mDNS is not available, use the IP address shown in the serial monitor.
+If mDNS is not available, the IP address shown in the serial monitor can be entered directly in the browser.
+
+Example:
+
+```text
+http://192.168.1.123
+```
+
+The actual IP address depends on the network in use.
 
 Current sections:
 
