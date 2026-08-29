@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-29-13
+
+- Einstellungen-Reiter erneut vereinfacht und selbststaendig aufgebaut
+- kein Verschieben der bisherigen Geraete-Einstellungen mehr noetig
+- Sprache, Darstellung und Heatmap-Zeitbereich werden direkt im Einstellungen-Reiter angezeigt
+- Heatmap-Zeitbereich bleibt lokal gespeichert, Standard `05:00` bis `18:00`
+- Heatmaps laden ihre Daten jetzt eigenstaendig direkt aus `/api/events`
+- Wochentag/Uhrzeit, Monat/Woche und Jahr/Monat werden unabhaengig von der bisherigen Hauptseiten-Renderlogik aufgebaut
+- bei Ladefehlern wird im jeweiligen Heatmap-Bereich eine sichtbare Fehlermeldung angezeigt
+- Heatmaps werden beim Start, beim Oeffnen und alle 3 Sekunden waehrend sichtbarer Heatmap aktualisiert
+
 ## 2026-08-29-12
 
 - Einstellungen aus der Geraeteansicht in einen eigenen Reiter verschoben
