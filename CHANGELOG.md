@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-08-29-9
+
+- stabile Weboberflaeche wieder auf Basis von `2026-08-29-7` aufgebaut
+- RAM-, Flash-, Ringspeicher-, Autark- und Bedienungsansichten aus `-7` beibehalten
+- Datum wieder unter der Uhrzeit im Kopfbereich eingeblendet
+- normaler Daten-Refresh zeigt wie Autark `Aktualisiere...`, Erfolg mit Eintragsanzahl und Uhrzeit oder eine Fehlermeldung
+- Spracheinstellung als Dropdown in der Geraeteansicht
+- Sprachen: Deutsch, Schwaebisch, Englisch, Italienisch und Franzoesisch
+- vorhandene automatische Uebersetzungen direkt eingebaut; nicht-deutsche Fassungen werden als automatisch erstellt und ungeprueft gekennzeichnet
+- statische Beschriftungen und viele dynamische Rueckmeldungen ueber gemeinsame Sprachschluessel angebunden
+- Darkmode mit `System`, Sonne und Mond
+- `System` folgt automatisch der Hell-/Dunkel-Einstellung des verwendeten Endgeraets
+- manuelle Theme- und Sprachwahl werden lokal im Browser gespeichert
+- separate bearbeitbare Uebersetzungsliste unter `translations/ui-translations.csv` bleibt Grundlage fuer spaetere manuelle Korrekturen
+
 ## 2026-08-29-8 – zurueckgezogen
 
 - Sprach- und Theme-Umbau wurde nach Vergleich mit `2026-08-29-7` wieder entfernt
