@@ -5,7 +5,7 @@
 > [!WARNING]
 > **KI-Hinweis:** Dieses Projekt wurde maßgeblich mit Unterstützung von KI erstellt und anschließend praktisch getestet und weiterentwickelt. Wem die Verwendung von KI-generiertem Code grundsätzlich nicht passt, kann hier aufhören.
 
-> **Stand dieser README:** `2026-08-29-18`
+> **Stand dieser README:** `2026-08-29-20`
 
 ## Was ist das?
 
@@ -26,7 +26,8 @@ Der Eingang arbeitet mit einem potentialfreien Kontakt und kann deshalb auch fü
 - automatische Hardware-Erkennung beim Boot
 - lokale Weboberfläche auf dem ESP32
 - Tagesübersicht, Verlauf und Detailansicht
-- Heatmap Wochentag / Uhrzeit mit einstellbarem Zeitbereich
+- Heatmap Wochentag / Uhrzeit mit Auswahl von **Jahr, Kalenderwoche und Zeitbereich**
+- Standard für Wochentag/Uhrzeit: **aktuelle Kalenderwoche, 05:00 bis 18:00 Uhr**
 - Heatmap Monat / Kalenderwoche mit Jahresauswahl
 - Heatmap Jahr / Monat für aktuelles Jahr plus vier Vorjahre
 - CSV-Export
@@ -34,6 +35,19 @@ Der Eingang arbeitet mit einem potentialfreien Kontakt und kann deshalb auch fü
 - Fallback-WLAN bei nicht erreichbarem normalen WLAN
 - serielle Diagnose mit `115200 Baud`
 - Autark-Modus **BETA** für Akku-/Powerbank-Betrieb
+
+### Zeitstrategie
+
+Die Zeitquellen haben eine feste Hierarchie:
+
+1. **NTP** – verbindliche Referenz und höchste Priorität
+2. **RTC** – lokale Startzeit und Zeitquelle im Autarkbetrieb
+3. **Browserzeit** – Fallback, wenn NTP und RTC nicht verfügbar sind
+4. **keine absolute Zeit** – im Autarkbetrieb werden Ereignisse relativ zur Session gespeichert
+
+NTP-Server, RTC-Zustand, aktuelle Zeitquelle und erkannte Differenzen werden gemeinsam unter **Einstellungen → Zeitverwaltung** dargestellt.
+
+Bei einer später erkannten Zeitdifferenz werden historische Daten nicht pauschal verändert. Nur eindeutig vorläufige Daten des aktuellen Start-/Synchronisationszeitraums dürfen korrigiert werden. Bei Autark-Sessions wird bevorzugt der Zeitanker der Session korrigiert, während die relativen Ereignisabstände unverändert bleiben.
 
 ### Optionale Hardware-Erweiterungen
 
@@ -48,7 +62,7 @@ Unterstützt werden aktuell:
 - DS3231 RTC an `0x68`
 - SH1106 OLED 128 × 64 an `0x3C` oder `0x3D`
 
-Beim Boot werden beide Module einmal automatisch gesucht. In der Weboberfläche werden RTC- und Display-Symbole immer angezeigt: erkannt = aktiv, nicht erkannt = ausgegraut. Passende Einstellungen erscheinen nur, wenn das jeweilige Modul vorhanden ist.
+Beim Boot werden beide Module einmal automatisch gesucht. In der Weboberfläche werden RTC- und Display-Symbole immer angezeigt: erkannt = aktiv, nicht erkannt = ausgegraut.
 
 Im Autark-Modus übernimmt eine gültige DS3231 die Zeit auch ohne WLAN/NTP. Ein erkanntes OLED zeigt beim Start für **15 Sekunden** den Autark-/RTC-Status und schaltet danach vollständig ab.
 
@@ -90,9 +104,11 @@ Reiter:
 
 `Heute · Verlauf · Heatmap · Details · Export · Gerät · Einstellungen · Autark`
 
-Unter **Gerät** werden unter anderem WLAN, Zeitquelle, RAM, Flash, LittleFS sowie normaler und Langzeit-Ringspeicher angezeigt.
+Unter **Gerät** bleiben die technischen Geräteinformationen wie WLAN, Uptime, Firmware, RAM, Flash, LittleFS sowie normaler und Langzeit-Ringspeicher.
 
-Unter **Einstellungen** befinden sich Sprache, Darstellung und der Zeitbereich der Wochentag/Uhrzeit-Heatmap. Wenn RTC oder OLED erkannt wurden, werden dort zusätzlich die jeweiligen Hardware-Einstellungen eingeblendet.
+Unter **Einstellungen** befinden sich zuerst Sprache und Darstellung und darunter die gemeinsame **Zeitverwaltung** mit NTP, RTC, Zeitquelle und Korrekturstrategie. Die separate RTC-Zeitkarte wird dadurch vermieden.
+
+Die Filter für Jahr, Kalenderwoche und Uhrzeitbereich befinden sich direkt im Reiter **Heatmap**, weil sie unmittelbar die dargestellte Auswertung verändern.
 
 ## Screenshots
 
