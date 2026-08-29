@@ -195,7 +195,8 @@ static void diagCheckTransitions() {
 
 void serialEventRun(void) {
   // Arduino-ESP32 calls serialEventRun after loop(); use that existing hook to
-  // service the long-term archive without modifying the stable main loop.
+  // service optional extensions without modifying the stable main loop.
+  hardwareExtensionTick();
   longTermArchiveTick();
 
   if (!diagInitialized) {
