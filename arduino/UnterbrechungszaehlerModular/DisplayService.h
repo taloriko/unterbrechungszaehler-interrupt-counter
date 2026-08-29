@@ -81,6 +81,9 @@ private:
   void drawChar(int16_t x, int16_t y, char value, uint8_t scale = 1);
   void drawText(int16_t x, int16_t y, const String& value, uint8_t scale = 1);
   void drawHLine(int16_t x, int16_t y, int16_t width);
+  void drawVLine(int16_t x, int16_t y, int16_t height);
+  void drawWifiIcon(int16_t centerX, int16_t centerY, bool connected);
+  void drawRtcIcon(int16_t centerX, int16_t centerY, bool valid);
   void renderFrame(bool autarkMode, ScreenMode mode);
   void renderBoot(bool autarkMode);
   void renderTest(bool autarkMode);
@@ -93,7 +96,9 @@ private:
   uint32_t todayCount();
   String todayCountText();
   String shortDate() const;
+  String shortDateCompact() const;
   String timeText() const;
+  uint32_t minuteKey() const;
   String rtcText() const;
   String networkText() const;
 
@@ -120,11 +125,17 @@ private:
   ScreenMode screenMode_ = ScreenMode::Boot;
 
   // Tageszaehler wird nur bei Datenaenderung oder Tageswechsel neu bestimmt.
-  // Durch binaere Suche im chronologischen Ringspeicher sind dafuer selbst bei
-  // 10.000 Eintraegen nur rund 14 Lesezugriffe notwendig.
   uint32_t todayCountCache_ = 0;
   uint32_t todayCountDayStart_ = 0;
   uint32_t todayCountRevision_ = 0xFFFFFFFFUL;
+
+  // Ohne Sekunden muss das Live-Display nicht jede Sekunde neu gezeichnet werden.
+  // Es rendert nur beim Minutenwechsel, bei Statusaenderungen oder Ereignissen.
+  uint32_t lastMinuteKey_ = 0xFFFFFFFFUL;
+  bool lastWifiConnected_ = false;
+  bool lastApActive_ = false;
+  bool lastRtcPresent_ = false;
+  bool lastRtcValid_ = false;
 
   uint32_t dimAt_ = 0;
   uint32_t offAt_ = 0;
