@@ -104,8 +104,8 @@ void setup() {
   timeService.begin(&rtc);
   counter.begin(&storage, &timeService, &led);
   autark.begin(&storage, &timeService, &led);
-  input.begin(&counter, &autark, &led);
   display.begin(&rtc, &timeService);
+  input.begin(&counter, &autark, &led, &display);
   analytics.begin(&storage);
   web.begin(&storage, &timeService, &network, &counter, &autark, &rtc, &display, &analytics);
 
