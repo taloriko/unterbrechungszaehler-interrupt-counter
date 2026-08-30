@@ -4,7 +4,7 @@
 
 namespace UicConfig {
 
-static constexpr char APP_VERSION[] = "2026-08-30-reboot-14";
+static constexpr char APP_VERSION[] = "2026-08-30-reboot-15";
 static constexpr char HOSTNAME[] = "unterbrechungen";
 static constexpr char FALLBACK_AP_SSID[] = "Unterbrechungszaehler";
 static constexpr char TZ_INFO[] = "CET-1CEST,M3.5.0,M10.5.0/3";
@@ -26,8 +26,8 @@ static constexpr uint32_t WIFI_RETRY_MS = 10000;
 static constexpr uint32_t DISPLAY_BOOT_MS = 15000;
 static constexpr uint32_t DIAGNOSTIC_INTERVAL_MS = 60000;
 
-// Die Weboberflaeche arbeitet bewusst nur mit einem begrenzten Rohdatenfenster.
-// Export und Langzeit-Heatmaps bleiben davon unberuehrt.
+// Rohdatenfenster fuer die Webansicht. Export und Langzeitauswertung verwenden
+// weiterhin die vollstaendigen zugehoerigen Ringspeicher.
 static constexpr uint16_t HISTORY_DAYS = 30;
 static constexpr uint16_t WEB_EVENT_LIMIT = 5000;
 
@@ -51,9 +51,8 @@ static constexpr uint16_t LONGTERM_VERSION = 1;
 static constexpr uint32_t LONGTERM_CAPACITY = 100000;
 static constexpr uint8_t LONGTERM_CACHE_YEARS = 16;
 
-// Persistenter Statistik-Cache fuer die Heatmaps. Die Rohdaten bleiben die
-// Quelle der Wahrheit; diese Datei darf jederzeit verworfen und neu aufgebaut
-// werden. Dadurch ist der Heatmap-Start nach einem Neustart sofort moeglich.
+// Der Statistik-Cache beschleunigt Heatmaps nach einem Neustart. Die Rohdaten
+// bleiben die massgebliche Datenquelle; der Cache kann neu aufgebaut werden.
 static constexpr char ANALYTICS_CACHE_FILE[] = "/analytics.bin";
 static constexpr char ANALYTICS_CACHE_TMP_FILE[] = "/analytics.tmp";
 static constexpr uint32_t ANALYTICS_CACHE_MAGIC = 0x55494147;
