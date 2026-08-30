@@ -1,121 +1,169 @@
-# Software-Architektur – modularer Reboot
+# Software-Architektur
 
-> **Status: In Arbeit / Testzweig**
-
-Der neue Softwareaufbau liegt getrennt von der bisherigen Firmware unter:
+Die Firmware befindet sich unter:
 
 ```text
 arduino/UnterbrechungszaehlerModular/
 ```
 
-Der bestehende Programmstand bleibt waehrend der Erprobung unveraendert.
+## Zweck
 
-## Ziel
+Die Firmware erfasst Unterbrechungen über einen Taster beziehungsweise einen potentialfreien Kontakt, speichert die Ereignisse dauerhaft und stellt sie über eine lokale Weboberfläche zur Auswertung bereit.
 
-Die Firmware soll auch bei weiteren Funktionen gut lesbar, erweiterbar und wartbar bleiben. Ein Fehler in einer optionalen Funktion soll den eigentlichen Unterbrechungszaehler moeglichst nicht beeinflussen.
+Der Programmaufbau trennt Ereigniserfassung, Speicherung, Zeitverwaltung, Netzwerk, Anzeige und Auswertung voneinander. Optionale Hardware oder Komfortfunktionen dürfen die grundlegende Ereigniserfassung nicht unnötig beeinflussen.
 
-Die Hauptdatei enthaelt deshalb nur noch den Programmablauf. Fachlogik und Hardwarezugriffe sind in eigene Module getrennt.
+## Aufbau der Module
+
+Jedes Funktionsmodul besteht möglichst aus einer Header- und einer Implementierungsdatei:
+
+```text
+Modul.h      öffentliche Schnittstelle, Zustände und Datentypen
+Modul.cpp    interne Logik und Hardwarezugriffe
+```
+
+Für Services gelten einheitliche Grundprinzipien:
+
+- `begin()` initialisiert das Modul und seine Abhängigkeiten.
+- `tick()` bearbeitet wiederkehrende Aufgaben ohne lange blockierende Wartezeiten.
+- Direkte Aktionen verwenden eindeutige Verben wie `add`, `delete`, `read`, `set`, `start` oder `stop`.
+- Abhängigkeiten werden beim Initialisieren übergeben und als Zeiger gespeichert.
+- Hardwaremodule stellen ihren Zustand über Methoden wie `present()`, `available()` oder `connected()` bereit.
+- Hardwarezugriffe und Dateisystemzugriffe bleiben im zuständigen Service gekapselt.
+- Die Hauptdatei koordiniert die Services und enthält keine Fachlogik der einzelnen Funktionen.
 
 ## Module
 
 | Modul | Aufgabe |
 | --- | --- |
-| `Config` | zentrale Pins, Grenzwerte, Dateinamen und Konstanten |
-| `StorageService` | LittleFS, normaler Ringspeicher, Langzeitarchiv und Autark-Daten |
-| `TimeService` | Systemzeit, NTP, Browserzeit und Zeitquelle |
-| `RtcService` | optionale DS3231-Echtzeituhr |
-| `DisplayService` | optionales SH1106-Display |
+| `Config` | Pins, Grenzwerte, Zeitkonstanten, Dateinamen und Speicherkapazitäten |
+| `StorageService` | LittleFS, normaler Ringspeicher, Langzeit-Ringspeicher und Autark-Datensätze |
+| `TimeService` | Systemzeit, NTP, Browserzeit, Zeitzone und aktive Zeitquelle |
+| `RtcService` | Erkennung, Lesen und Schreiben der optionalen DS3231-Echtzeituhr |
+| `DisplayService` | Erkennung, Ansteuerung und Framebuffer des optionalen SH1106-OLED |
 | `NetworkService` | WLAN, Fallback-Access-Point und mDNS |
-| `CounterService` | normales Erfassen und Loeschen von Unterbrechungen |
-| `AutarkService` | Autark-Sessions und relative Ereigniszeiten |
-| `InputService` | Taster und Autark-Schalter inklusive Entprellung |
-| `LedService` | LED-Rueckmeldungen ohne blockierende Wartezeiten |
-| `AnalyticsService` | Heatmap- und Langzeitauswertungen |
-| `WebService` | HTTP-API, CSV-Export und Weboberflaeche |
-| `WebUi` | HTML, CSS, JavaScript und zentrale Sprachtexte |
+| `CounterService` | Erfassen und Löschen normaler Unterbrechungen |
+| `AutarkService` | Autark-Sessions, relative Laufzeit und Autark-Ereignisse |
+| `InputService` | Taster und Autark-Schalter inklusive Entprellung und Langdruck-Erkennung |
+| `LedService` | nicht blockierende LED-Rückmeldungen |
+| `AnalyticsService` | aggregierte Langzeitauswertungen und Heatmaps |
+| `WebService` | HTTP-API, Weboberfläche und CSV-Ausgabe |
+| `WebUi*` | HTML, CSS und JavaScript der Weboberfläche |
 
-## Grundregeln fuer Erweiterungen
+## Programmablauf
 
-1. Die Hauptdatei bleibt ein Orchestrator. Neue Fachlogik gehoert in ein eigenes Modul.
-2. Ein Modul soll nur die Abhaengigkeiten kennen, die es wirklich benoetigt.
-3. Hardware, die nicht zwingend erforderlich ist, muss optional bleiben.
-4. Der normale Ereignisspeicher hat Vorrang vor Auswertung und Komfortfunktionen.
-5. Langzeitarchiv und Heatmaps duerfen bei einem Fehler den 10.000-Ereignis-Speicher nicht blockieren.
-6. Beschaedigte Speicherdateien werden nicht ungefragt geloescht. Sie werden als `.invalid` gesichert und neu angelegt.
-7. Sichtbare Texte in der Weboberflaeche werden ueber zentrale Sprachschluessel gepflegt.
-8. Deutsch und Englisch muessen fuer jeden verwendeten Sprachschluessel vorhanden sein.
-9. Zeitkritische Schleifen sollen nicht mit langen `delay()`-Aufrufen blockiert werden.
-10. Im Autarkmodus werden WLAN und Webserver abgeschaltet, die CPU wird reduziert und im Leerlauf Light-Sleep verwendet.
+Die Hauptschleife bearbeitet die Services in kurzen Arbeitsschritten:
 
-## Sprachumschaltung
+1. Eingänge lesen und entprellen.
+2. Wechsel zwischen Normal- und Autarkbetrieb anwenden.
+3. Zeitstatus aktualisieren.
+4. Autark-Zustand aktualisieren.
+5. Display aktualisieren.
+6. LED-Muster aktualisieren.
+7. Netzwerk und Webserver im Normalbetrieb bearbeiten.
+8. Diagnosewerte in festen Intervallen ausgeben.
+9. Im inaktiven Autarkbetrieb Light-Sleep verwenden.
 
-Die Sprachtexte liegen zentral im Objekt `I18N` in `WebUi.h`.
-
-HTML-Elemente verwenden Sprachschluessel wie:
-
-```html
-<span data-i18n="device.storage"></span>
-```
-
-Im JavaScript wird der Text ausschliesslich ueber `tr("device.storage")` aufgeloest.
-
-Wenn eine neue Anzeige hinzukommt, muss der Schluessel sowohl in `de` als auch in `en` ergaenzt werden.
+Lange blockierende Abläufe werden vermieden. Kurze Wartezeiten werden nur dort verwendet, wo Hardwareprotokolle oder externe Antworten sie erfordern.
 
 ## Speicherstrategie
 
-Der bestehende binäre 10.000-Ereignis-Ringspeicher bleibt kompatibel. Zusaetzlich wird das Langzeitarchiv mit bis zu 100.000 Zeitstempeln weitergefuehrt.
+### Normaler Ringspeicher
 
-Beim Speichern eines normalen Ereignisses ist der kleine Ringspeicher die fuehrende Datenquelle. Schlaegt nur das Langzeitarchiv fehl, bleibt die Erfassung im normalen Ringspeicher funktionsfaehig und der Archivstatus wird als nicht synchron markiert.
+Der normale Ringspeicher enthält bis zu 10.000 Unix-Zeitstempel. Er ist die primäre Datenquelle für aktuelle Ereignisse und die Webansicht.
 
-## Zeitstrategie
+### Langzeit-Ringspeicher
 
-Prioritaet der Zeitquellen:
+Der Langzeit-Ringspeicher enthält bis zu 100.000 Unix-Zeitstempel. Er dient als Datenbasis für Langzeitauswertungen, Heatmaps und den vollständigen Archivexport.
+
+### Autark-Ringspeicher
+
+Autark-Datensätze enthalten:
+
+- Session-ID
+- Datensatztyp `Start`, `Event` oder `End`
+- vergangene Sekunden seit Session-Start
+- optionalen absoluten Zeitanker
+
+Dadurch bleiben die relativen Abstände auch dann erhalten, wenn beim Erfassen keine absolute Uhrzeit verfügbar ist.
+
+### Blockzugriffe
+
+Größere Datenmengen werden blockweise aus den Ringspeichern gelesen. Eine Datei wird dabei einmal pro Block geöffnet und zusammenhängende Datensätze werden gemeinsam gelesen. Auch ein Überlauf vom Ende zum Anfang eines Ringspeichers wird innerhalb eines Blockzugriffs berücksichtigt.
+
+Einzelzugriffe bleiben für Funktionen erhalten, die nur einen bestimmten Datensatz benötigen.
+
+## Datensicherheit
+
+Beim Speichern eines Ereignisses werden Datensatz und Ringkopf unmittelbar geschrieben. Der Ringkopf enthält Schreibposition und Anzahl der gültigen Einträge.
+
+Beschädigte oder unpassende Speicherdateien werden nicht automatisch überschrieben. Sie werden mit der Endung `.invalid` gesichert und anschließend neu angelegt.
+
+Der normale Ringspeicher hat Vorrang vor dem Langzeit-Ringspeicher. Fällt nur das Langzeitarchiv aus, bleibt die normale Erfassung funktionsfähig und der Synchronisationsstatus wird als fehlerhaft markiert.
+
+## Ressourcenverwendung
+
+Die Firmware verwendet überwiegend statisch dimensionierte Datenstrukturen, damit der Heap nicht durch große dauerhaft wechselnde Allokationen belastet wird.
+
+Wesentliche feste Speicherbereiche sind:
+
+- OLED-Framebuffer: 1.024 Byte
+- Analysewerte für Wochentag, Stunde, Kalenderwoche und Monat: ungefähr 21 KiB RAM
+- temporäre Analyseblöcke: 256 Zeitstempel beziehungsweise ungefähr 1 KiB Stack
+
+Die Weboberfläche liegt als `PROGMEM` im Flash und wird nicht dauerhaft in den RAM kopiert.
+
+Große Datenbestände werden blockweise verarbeitet. Dadurch bleibt der zusätzliche Arbeitsspeicher unabhängig von der Anzahl gespeicherter Ereignisse begrenzt.
+
+## Display
+
+Das SH1106-OLED verwendet einen 1.024 Byte großen 128×64-Framebuffer.
+
+Im Livebetrieb wird das Display nicht in jeder Hauptschleife neu aufgebaut. Ein neuer Frame wird hauptsächlich bei folgenden Änderungen erzeugt:
+
+- Minutenwechsel
+- WLAN- oder Access-Point-Status
+- RTC-Status
+- neues oder gelöschtes Ereignis
+- geänderte Displayeinstellungen
+
+Im Autarkbetrieb wird das Display nach der vorgesehenen Anzeigezeit vollständig abgeschaltet.
+
+## Zeitverwaltung
+
+Die absolute Systemzeit kann aus folgenden Quellen stammen:
 
 1. NTP
 2. RTC
 3. Browserzeit
-4. keine absolute Zeit
 
-Eine gueltige RTC kann direkt beim Start die Systemzeit setzen. Nach einer erfolgreichen NTP-Synchronisation wird die RTC auf die NTP-Zeit nachgefuehrt.
+Eine gültige RTC kann beim Start die Systemzeit setzen. Nach erfolgreicher NTP-Synchronisation wird die RTC mit der Systemzeit aktualisiert.
+
+Ohne gültige absolute Zeit werden normale Ereignisse nicht gespeichert. Der Autarkbetrieb verwendet stattdessen relative Zeiten innerhalb einer Session.
+
+## Netzwerk
+
+Im Normalbetrieb versucht der ESP32, das konfigurierte WLAN zu verwenden. Solange keine Verbindung besteht, steht ein lokaler Fallback-Access-Point zur Verfügung.
+
+Bei erfolgreicher WLAN-Verbindung wird der Fallback-Access-Point abgeschaltet und mDNS gestartet.
+
+Im Autarkbetrieb werden Webserver, mDNS, Access Point und WLAN-Funk abgeschaltet. Die gespeicherte WLAN-Konfiguration wird dabei nicht gelöscht, damit beim Rückwechsel keine unnötigen Flash-Schreibzugriffe entstehen.
 
 ## Autarkbetrieb
 
-Beim Umschalten auf Autarkbetrieb:
+Beim Aktivieren des Autarkbetriebs:
 
-- neue Session anlegen
-- WLAN und Webserver abschalten
-- CPU-Takt reduzieren
-- RTC-Zeit verwenden, wenn vorhanden
-- OLED-Startstatus 15 Sekunden anzeigen, wenn Display vorhanden
-- danach Display ausschalten
-- im Leerlauf Light-Sleep verwenden
+- wird eine neue Session angelegt,
+- wird WLAN abgeschaltet,
+- wird der CPU-Takt reduziert,
+- bleibt die Ereigniserfassung aktiv,
+- kann eine gültige RTC als Zeitquelle verwendet werden,
+- zeigt ein vorhandenes OLED den Startstatus,
+- wird anschließend im Leerlauf Light-Sleep verwendet.
 
-Beim Verlassen wird eine Ende-Markierung gespeichert. Falls zu diesem Zeitpunkt noch keine absolute Zeit vorhanden ist, wird der Zeitanker nach der naechsten gueltigen Zeitsynchronisation nachgetragen.
+Beim Verlassen der Session wird ein Ende-Datensatz gespeichert. Ist noch keine absolute Zeit verfügbar, kann der fehlende Zeitanker später nachgetragen werden.
 
-## Teststrategie vor Zusammenfuehrung
+## Fehlerverhalten optionaler Komponenten
 
-Der neue Zweig soll erst nach einem Vergleich mit der bisherigen Firmware zusammengefuehrt werden.
+RTC und OLED sind optional. Fehlt eines dieser Module, bleiben Ereigniserfassung, Speicherung und die jeweils nicht betroffenen Funktionen verfügbar.
 
-Zu pruefen sind mindestens:
-
-- Boot mit und ohne WLAN
-- Boot mit und ohne RTC
-- Boot mit und ohne OLED
-- kurzer Tastendruck
-- langer Tastendruck
-- virtueller Taster in der Weboberflaeche
-- 10.000er Ringspeicher
-- Langzeitarchiv
-- Neustart mit vorhandenen Daten
-- CSV-Export
-- NTP-Server aendern
-- Browserzeit ohne NTP und RTC
-- Umschalten Deutsch / Englisch auf jedem Reiter
-- Light-/Dark-/System-Darstellung
-- Heatmaps und Jahreswechsel
-- Autarkbetrieb mit RTC
-- Autarkbetrieb ohne RTC
-- Rueckkehr aus Autarkbetrieb
-- Verhalten bei defekter oder ungueltiger Speicherdatei
-
-Erst wenn diese Punkte bestanden sind, wird der Reboot fuer die Zusammenfuehrung mit dem Hauptzweig vorbereitet.
+Auch Netzwerk und Weboberfläche sind nicht Bestandteil des zeitkritischen Erfassungspfads. Ein fehlendes WLAN verhindert daher nicht die lokale Bedienung über den physischen Taster, sofern für den gewählten Betriebsmodus die benötigte Zeitbasis vorhanden ist.
