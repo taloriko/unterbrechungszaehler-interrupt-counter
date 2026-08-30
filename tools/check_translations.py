@@ -107,13 +107,14 @@ if reference_language:
     if missing_core:
         errors.append("UI keys missing from core translations: " + ", ".join(missing_core))
 
+combined_extensions = "\n".join(
+    path.read_text(encoding="utf-8") for path in UI_FILES if path != BASE_FILE
+)
 if extra_keys:
-    combined_extensions = "\n".join(
-        path.read_text(encoding="utf-8") for path in UI_FILES if path != BASE_FILE
-    )
     used_extra = set(re.findall(r"uiText\('([^']+)'", combined_extensions))
     used_extra.update(re.findall(r"uicTr\('([^']+)'", combined_extensions))
-    used_extra.update(re.findall(r"\btr\('([^']+)'", behavior_text))
+    used_extra.update(re.findall(r"\btr\('([^']+)'", combined_extensions))
+    used_extra.update(re.findall(r"xtr\('([^']+)'", base_text))
     reference_extra = extra_keys.get("de", next(iter(extra_keys.values())))
     missing_extra = sorted(used_extra - reference_extra)
     if missing_extra:
@@ -130,16 +131,21 @@ else:
             + ", ".join(sorted(meta_codes ^ set(extra_keys)))
         )
 
-# Sprachspezifische Sonderpfade und die fruehere Text-zu-Text-Uebersetzung
-# sind nicht erlaubt. Alle Sprachen muessen denselben Renderweg verwenden.
+# Sichtbarer Rendercode darf keinen einzelnen Sprachcode bevorzugen.
+# Alle Sprachen muessen denselben Schluessel- und Renderpfad verwenden.
 for path in UI_FILES:
     text = path.read_text(encoding="utf-8")
     if "translateDynamicText" in text:
         errors.append(f"{path.name}: text-to-text translation is not allowed")
-    if re.search(r"(?:===|!==)\s*['\"]swg['\"]|['\"]swg['\"]\s*(?:===|!==)", text):
-        errors.append(f"{path.name}: Swabian-specific rendering branch is not allowed")
     if re.search(r"applySwabian|scheduleSwabian", text, re.I):
-        errors.append(f"{path.name}: Swabian-specific render helper is not allowed")
+        errors.append(f"{path.name}: language-specific render helper is not allowed")
+    if re.search(
+        r"(?:\blang\b|document\.documentElement\.lang)\s*(?:===|!==)\s*['\"][A-Za-z][A-Za-z0-9_-]*['\"]",
+        text,
+    ):
+        errors.append(f"{path.name}: direct language comparison in render code is not allowed")
+    if re.search(r"const\s+(?:text|txt)\s*=\s*\(de\s*,\s*en\)", text):
+        errors.append(f"{path.name}: two-language text helper is not allowed")
 
 if errors:
     for error in errors:
