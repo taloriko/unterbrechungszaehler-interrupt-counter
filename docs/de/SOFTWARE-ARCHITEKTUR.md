@@ -127,15 +127,17 @@ Im Autarkbetrieb wird das Display nach der vorgesehenen Anzeigezeit vollständig
 
 ## Sprachverwaltung
 
-Sichtbare Oberflächentexte verwenden Sprachschlüssel. Sprachen werden zentral registriert und verwenden denselben Schlüsselsatz. Fehlt eine Übersetzung, wird auf Deutsch zurückgefallen.
+Deutsch und Englisch bilden den Basisschlüsselsatz in `WebUi.h`. Zusätzliche Sprachen werden zentral als Sprachpakete in `WebUiBehavior.h` registriert.
 
-Die Quelldaten liegen unter:
+Ein Sprachpaket enthält:
 
-```text
-translations/ui-translations.csv
-```
+- Sprachcode
+- Anzeigename
+- Locale für Zahlenformate
+- denselben Oberflächen-Schlüsselsatz wie die Basissprachen
+- Rückmeldetexte für Bedienaktionen
 
-Neue Sprachen werden als zusätzliche Sprachdefinition ergänzt und mit `tools/check_translations.py` auf fehlende Schlüssel geprüft.
+Neue Sprachen benötigen dadurch keine Änderungen an der Bedienlogik. `tools/check_translations.py` prüft beim Build, ob alle registrierten Sprachpakete vollständig sind.
 
 ## Fehlerverhalten optionaler Komponenten
 
