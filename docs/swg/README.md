@@ -166,6 +166,28 @@ In de meiste Büros sollt des koi größeres Problem sei.
 
 ---
 
+## Ha gug au da no
+
+![Reiter Heute](docs/images/de-heute.png)
+
+![Reiter Verlauf](docs/images/de-verlauf.png)
+
+![Reiter Heatmap](docs/images/de-heatmap.png)
+
+![Reiter Details](docs/images/de-details.png)
+
+![Reiter Export](docs/images/de-export.png)
+
+![Reiter Gerät](docs/images/de-gerät.png)
+
+![Reiter Einstellungen 1](docs/images/de-einstellungen-1.png)
+
+![Reiter Einstellungen 2](docs/images/de-einstellungen-2.png)
+
+![Reiter Autark](docs/images/de-autark.png)
+
+---
+
 ## Warum Schwäbisch?
 
 Weil technische Projekte net immer so bierernst sei müsset.
