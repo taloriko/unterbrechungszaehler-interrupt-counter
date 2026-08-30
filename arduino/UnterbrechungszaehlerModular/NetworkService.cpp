@@ -52,7 +52,7 @@ void NetworkService::stop() {
     accessPointActive_ = false;
   }
   WiFi.setAutoReconnect(false);
-  WiFi.disconnect(true, true);
+  WiFi.disconnect(true, false);
   WiFi.mode(WIFI_OFF);
   running_ = false;
 }
