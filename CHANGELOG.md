@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.1
+
+Reine Fehlerbehebungs- und Optimierungsversion ohne neue Funktionen.
+
+### Fehlerbehebungen
+
+- flackernde bzw. zuckende Texte bei Ringspeicher- und Geräteanzeigen behoben
+- wiederholtes Öffnen bzw. instabiles Verhalten der Sprachauswahl auf Smartphones behoben
+- unnötige Mehrfachaktualisierung derselben Statuswerte entfernt
+- Sprach- und UI-Nachbearbeitung wird nicht mehr bei jeder Textänderung der gesamten Seite ausgeführt
+
+### Optimierungen
+
+- dynamische Beobachtung auf die tatsächlich benötigten Bereiche beschränkt
+- DOM-Werte werden nur noch geschrieben, wenn sich ihr sichtbarer Inhalt wirklich geändert hat
+- RAM-, Flash- und LittleFS-Zusatzanzeigen werden langsamer aktualisiert
+- numerische Geräte- und Speicheranzeigen verwenden eine stabilere Zifferndarstellung
+
 ## 1.0.0
 
 Erste öffentliche Release-Version.
