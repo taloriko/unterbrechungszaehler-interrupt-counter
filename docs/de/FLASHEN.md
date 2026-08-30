@@ -1,14 +1,12 @@
 # Flashen
 
-> **Status: In Arbeit**
-
-Diese Anleitung gilt für das verwendete klassische **ESP32 Dev Module / ESP32-WROOM-32**.
+Diese Anleitung gilt für **ESP32 Dev Module / ESP32-WROOM-32**.
 
 ## Arduino IDE
 
 Arduino IDE 2.x installieren.
 
-Unter `Datei -> Voreinstellungen -> Zusätzliche Boardverwalter-URLs` eintragen:
+Unter `Datei → Voreinstellungen → Zusätzliche Boardverwalter-URLs` eintragen:
 
 ```text
 https://espressif.github.io/arduino-esp32/package_esp32_index.json
@@ -25,18 +23,27 @@ CPU Frequency:    240 MHz
 Flash Frequency:  80 MHz
 Flash Mode:       QIO
 Flash Size:       4 MB
-Partition Scheme: Default 4MB with spiffs
+Partition Scheme: Default 4 MB
 ```
 
 ## WLAN-Daten
 
-Im Sketch-Ordner `Secrets.example.h` nach `Secrets.h` kopieren und SSID/Passwort eintragen. `Secrets.h` wird durch `.gitignore` nicht ins Repository aufgenommen.
+Im Ordner `arduino/Unterbrechungszaehler/`:
 
-## Anschließen und hochladen
+1. `Secrets.example.h` nach `Secrets.h` kopieren.
+2. SSID und Passwort eintragen.
 
-ESP32 mit einem USB-Datenkabel anschließen und den passenden COM-Port in Arduino auswählen.
+`Secrets.h` ist über `.gitignore` vom Repository ausgeschlossen.
 
-`arduino/UnterbrechungszaehlerInterruptCounter/UnterbrechungszaehlerInterruptCounter.ino` öffnen und **Hochladen** wählen.
+## Hochladen
+
+Folgende Datei in der Arduino IDE öffnen:
+
+```text
+arduino/Unterbrechungszaehler/Unterbrechungszaehler.ino
+```
+
+ESP32 über ein USB-Datenkabel anschließen, den passenden Port auswählen und **Hochladen** starten.
 
 Falls der Upload bei `Connecting...` stehen bleibt:
 
@@ -46,13 +53,17 @@ Falls der Upload bei `Connecting...` stehen bleibt:
 
 ## Serieller Monitor
 
-Baudrate: **115200**.
+Baudrate:
 
-Nach dem Start sollten LittleFS, Ringspeicher, WLAN, NTP und Webserver als bereit gemeldet werden.
+```text
+115200
+```
+
+Nach dem Start werden unter anderem Speicher, Netzwerk, Zeitquelle und erkannte optionale Hardware ausgegeben.
 
 ## Weboberfläche
 
-Nach erfolgreichem Start:
+Normaler Zugriff:
 
 ```text
 http://unterbrechungen.local
@@ -60,16 +71,19 @@ http://unterbrechungen.local
 
 Falls mDNS nicht funktioniert, die im seriellen Monitor angezeigte IP-Adresse verwenden.
 
-## Fehler: `bootloader.bin` kann syntaktisch nicht verarbeitet werden
-
-Diese Meldung kann unter Windows durch problematische Sonderzeichen im vollständigen Sketch- oder Benutzerpfad entstehen.
-
-Zum Gegencheck den Sketch in einen einfachen Pfad kopieren, zum Beispiel:
+Fallback ohne normales WLAN:
 
 ```text
-C:\Arduino\InterruptCounter\UnterbrechungszaehlerInterruptCounter
+WLAN: Unterbrechungszaehler
+URL:  http://192.168.4.1
 ```
 
-Möglichst keine Klammern, `&`, Umlaute oder andere Sonderzeichen im vollständigen Pfad verwenden.
+## Windows-Fehler mit `bootloader.bin`
 
-Falls auch ein leerer ESP32-Testsketch mit diesem Fehler abbricht, liegt das Problem wahrscheinlich an der lokalen Arduino-/ESP32-Core-Installation.
+Wenn Arduino unter Windows meldet, dass `bootloader.bin` syntaktisch nicht verarbeitet werden kann, einen kurzen Pfad ohne Sonderzeichen verwenden, zum Beispiel:
+
+```text
+C:\Arduino\Unterbrechungszaehler
+```
+
+Tritt der Fehler auch mit einem leeren ESP32-Testsketch auf, sollte die lokale Arduino-/ESP32-Core-Installation geprüft werden.

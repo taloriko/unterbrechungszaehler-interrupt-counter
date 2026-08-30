@@ -1,67 +1,53 @@
 # Autarke Nutzung
 
-> **Status: In Arbeit**
-
-Der Autark-Modus **BETA** ist für einen mobilen bzw. unabhängigen Betrieb gedacht, zum Beispiel mit:
-
-- Akku
-- USB-Powerbank
-- anderer mobiler 5-V-Stromversorgung
+Der Autark-Modus ist für mobilen Betrieb mit Akku, USB-Powerbank oder einer anderen 5-V-Stromversorgung vorgesehen.
 
 ## Aktivieren
 
-GPIO33 wird über einen potentialfreien Schalter mit GND verbunden.
+GPIO33 wird über einen potentialfreien Schalter mit GND verbunden:
 
 ```text
 GPIO33 offen       = normaler WLAN-/Netzbetrieb
-GPIO33 gegen GND   = Autark-Modus BETA
+GPIO33 gegen GND   = Autark-Modus
 ```
 
 Beim Wechsel in den Autark-Modus wird eine neue Session gestartet.
 
-## Verhalten im Autark-Modus
+## Stromsparverhalten
 
-Zur Reduzierung des Energieverbrauchs werden softwareseitig:
+Im Autark-Modus werden:
 
-- WLAN deaktiviert
-- mDNS deaktiviert
-- Webserver deaktiviert
+- WLAN abgeschaltet
+- mDNS abgeschaltet
+- Webserver abgeschaltet
 - CPU-Takt auf 80 MHz reduziert
-- Light-Sleep zwischen Eingaben verwendet
+- Light-Sleep zwischen Bedienungen verwendet
 
-Die Ereignisse werden weiterhin über GPIO27 erfasst.
+Die Ereigniserfassung über GPIO27 bleibt aktiv.
 
-## RTC-Unterstützung
+## RTC
 
-Ist beim Boot eine **DS3231 RTC** an I2C-Adresse `0x68` vorhanden, wird sie automatisch erkannt.
+Eine DS3231 an `0x68` wird beim Boot automatisch erkannt.
 
-- gültige RTC-Zeit wird als Systemzeit übernommen
-- der Autark-Betrieb kann damit auch ohne WLAN/NTP absolute Zeit verwenden
-- nach erfolgreicher NTP-Synchronisation im Normalbetrieb wird die RTC aktualisiert
-- ist das OSF-Flag der RTC gesetzt oder die Zeit unplausibel, wird die RTC als erkannt, aber zeitlich ungültig angezeigt
+- gültige RTC-Zeit kann die Systemzeit beim Start setzen
+- Autark-Ereignisse können damit absolute Zeit erhalten
+- nach erfolgreicher NTP-Synchronisation wird die RTC aktualisiert
+- ungültige RTC-Zeit wird nicht als Zeitquelle übernommen
 
-## OLED-Startanzeige
+## OLED
 
-Ist ein **SH1106 OLED 128 × 64** an `0x3C` oder `0x3D` vorhanden, zeigt es beim Start im Autark-Modus kurz den Zustand an:
+Ein SH1106 OLED 128 × 64 an `0x3C` oder `0x3D` zeigt beim Start den Geräte- und Zeitstatus.
 
-- Autark-Modus
-- RTC erkannt / nicht erkannt
-- RTC-Zeit OK / ungültig
-- aktuelle Zeit
-- System bereit
+Im Autarkbetrieb wird das Display nach 15 Sekunden vollständig abgeschaltet.
 
-Nach **15 Sekunden** wird das Display vollständig abgeschaltet. Dadurch bleibt der Energieverbrauch im Autark-Betrieb gering und OLED-Einbrennen wird vermieden.
+## Speicherung ohne absolute Zeit
 
-## Speicherung ohne RTC
+Für Autark-Sessions existiert ein eigener Ringspeicher mit bis zu 10.000 Datensätzen.
 
-Für den Autark-Betrieb existiert weiterhin ein eigener Ringspeicher mit bis zu 10.000 Datensätzen.
+Ist keine gültige absolute Zeit vorhanden, werden Ereignisse als relative Laufzeit seit dem Session-Start gespeichert. Dadurch bleiben die Abstände innerhalb der Session erhalten.
 
-Ist keine gültige RTC vorhanden, können Ereignisse weiterhin über die relative Laufzeit innerhalb einer Session gespeichert werden.
+Beim Zurückschalten in den Normalbetrieb werden WLAN und normale Zeitverwaltung wieder aktiviert.
 
-Beim Zurückschalten in den normalen Betrieb werden WLAN und NTP wieder gestartet.
+## Neustart ohne RTC
 
-## Einschränkung
-
-Ohne RTC kann eine vollständige Stromunterbrechung des ESP32 während einer Autark-Session zeitlich nicht rekonstruiert werden. Mit gültiger DS3231-Zeit steht nach dem Neustart wieder eine absolute Uhrzeit zur Verfügung.
-
-Weitere Angaben zu geeigneten Akkus, Powerbanks und erreichbaren Laufzeiten folgen.
+Nach einer vollständigen Stromunterbrechung kann eine zuvor nur relativ erfasste Session ohne RTC nicht sicher einer absoluten Uhrzeit zugeordnet werden. Mit gültiger DS3231 steht nach dem Neustart wieder eine absolute Zeitbasis zur Verfügung.

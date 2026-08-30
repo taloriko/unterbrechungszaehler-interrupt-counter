@@ -1,0 +1,39 @@
+name: Firmware build
+
+on:
+  push:
+    branches:
+      - main
+      - "reboot/**"
+  pull_request:
+    paths:
+      - "arduino/Unterbrechungszaehler/**"
+      - "tools/check_translations.py"
+      - ".github/workflows/build.yml"
+
+jobs:
+  translations:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Check translations
+        run: python tools/check_translations.py
+
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+      - name: Install ESP32 core
+        run: |
+          arduino-cli config init
+          arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core install esp32:esp32 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+      - name: Create test secrets
+        run: cp arduino/Unterbrechungszaehler/Secrets.example.h arduino/Unterbrechungszaehler/Secrets.h
+      - name: Compile firmware
+        run: arduino-cli compile --fqbn esp32:esp32:esp32 arduino/Unterbrechungszaehler

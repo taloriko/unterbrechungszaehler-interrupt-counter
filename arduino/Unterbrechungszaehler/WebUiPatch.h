@@ -1,0 +1,59 @@
+#pragma once
+
+#include <Arduino.h>
+
+// Kleine additive UI-Erweiterungen. Sie werden nach der klassischen WebUi
+// ausgeliefert, damit die bewaehrte Grundoberflaeche nicht fuer jede
+// Detailkorrektur komplett dupliziert werden muss.
+static const char WEB_UI_PATCH[] PROGMEM = R"HTML(
+<style>
+/* Die obere Kante der Inhaltsflaeche bleibt gerade auf der Tab-Linie. */
+.tabpanel{border-radius:0 0 12px 12px!important}
+.beta{font-size:.63rem;font-weight:700;letter-spacing:.04em;border:1px solid #8a5a00;color:#8a5a00;border-radius:999px;padding:2px 5px;margin-left:2px}
+.headDate{display:inline-block!important}.headWeek{display:inline-block;margin-left:6px;font-size:.74rem;color:var(--muted)}
+.usageBlock{margin-top:13px}.usageRow{margin-top:10px}.usageHead{display:flex;justify-content:space-between;gap:12px;font-size:.8rem;color:var(--muted);margin-bottom:4px}.usageHead b{color:var(--text);font-weight:600}.usageBar{height:10px;background:var(--line);border-radius:6px;overflow:hidden}.usageBar>span{display:block;height:100%;width:0;background:var(--accent);transition:width .2s ease}
+.themeSwitch button.active{background:var(--accent)!important;color:#fff!important;border-color:var(--accent)!important;box-shadow:0 0 0 2px rgba(33,102,209,.18)}
+.countAction.fastFeedback{transform:scale(.91);background:var(--card);border-color:var(--accent);box-shadow:0 0 0 4px rgba(33,102,209,.18)}.countAction.delete.fastFeedback{border-color:var(--danger);box-shadow:0 0 0 4px rgba(180,35,24,.16)}
+.exportArchiveCard{grid-column:span 12}.exportArchiveMeta,.exportMeta{margin-top:10px;font-size:.8rem;color:var(--muted)}
+.ringPurpose{margin:0 0 12px;line-height:1.45}.ringPurpose strong{font-weight:700}
+/* Ruhigere OLED-Vorschau: der laufende technische Frame-Zaehler wird nicht
+   angezeigt. Ohne Hardware bleibt der Simulationsschalter klar sichtbar. */
+#oledPreviewMeta{display:none!important}
+#displayCard.moduleCard.unavailable{opacity:1!important;filter:none!important}
+#displayCard.moduleCard.unavailable>h3{opacity:.58}
+#displayCard.moduleCard.unavailable>#oledPreviewBlock,#displayCard.moduleCard.unavailable>.settingsRow,#displayCard.moduleCard.unavailable>.displayAdvanced,#displayCard.moduleCard.unavailable>.actions,#displayCard.moduleCard.unavailable>p.infoHelp{opacity:.38;filter:grayscale(1)}
+#displayCard.moduleCard.unavailable>#displaySimulationRow{opacity:1!important;filter:none!important;border-color:var(--accent)}
+@media(max-width:800px){.exportArchiveCard{grid-column:span 12}}
+</style>
+<script>
+(function(){'use strict';
+const $=id=>document.getElementById(id);
+const txt=(de,en)=>document.documentElement.lang==='en'?en:de;
+const fmt=n=>new Intl.NumberFormat(document.documentElement.lang==='en'?'en-US':'de-DE').format(Number(n||0));
+let webEventCount=null;
+function pct(a,b){return b>0?Math.max(0,Math.min(100,a/b*100)):0}
+function isoWeekFromDevice(){let el=$('deviceDateHead'),out=$('headWeek');if(!el||!out)return;let m=(el.textContent||'').match(/(\d{2})\.(\d{2})\.(\d{4})/);if(!m){out.textContent='';return}let d=new Date(Date.UTC(+m[3],+m[2]-1,+m[1])),day=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-day);let y=new Date(Date.UTC(d.getUTCFullYear(),0,1));let w=Math.ceil((((d-y)/86400000)+1)/7);out.textContent=txt('KW ','CW ')+w}
+function addWeek(){let date=$('deviceDateHead');if(!date||$('headWeek'))return;let s=document.createElement('span');s.id='headWeek';s.className='headWeek';date.insertAdjacentElement('afterend',s);isoWeekFromDevice()}
+function addBeta(){let tab=document.querySelector('.tab[data-view="autark"]');if(!tab||tab.querySelector('.beta'))return;let b=document.createElement('span');b.className='beta';b.textContent='BETA';tab.appendChild(b)}
+function updateThemeButtons(){let current=localStorage.getItem('uic-theme')||'system';document.querySelectorAll('[data-theme-choice]').forEach(b=>b.classList.toggle('active',b.dataset.themeChoice===current))}
+function hookTheme(){document.querySelectorAll('[data-theme-choice]').forEach(b=>b.addEventListener('click',()=>setTimeout(updateThemeButtons,0)));updateThemeButtons()}
+function makeMeter(parent,id,label){if(!parent||$(id))return;let row=document.createElement('div');row.className='usageRow';row.innerHTML='<div class="usageHead"><span>'+label+'</span><b id="'+id+'Text">-</b></div><div class="usageBar"><span id="'+id+'Bar"></span></div>';parent.appendChild(row)}
+function setMeter(id,used,total,labelUsed){let b=$(id+'Bar'),t=$(id+'Text');if(!b||!t)return;b.style.width=pct(used,total).toFixed(1)+'%';t.textContent=labelUsed||fmt(used)+' / '+fmt(total)}
+function addMeters(){let boxes=document.querySelectorAll('#device .infoBox');if(boxes.length<4)return;let sys=document.createElement('div');sys.className='usageBlock';boxes[0].appendChild(sys);makeMeter(sys,'meterRam',txt('RAM-Auslastung','RAM usage'));makeMeter(sys,'meterFlash',txt('Programmspeicher','Program storage'));let store=document.createElement('div');store.className='usageBlock';boxes[2].appendChild(store);makeMeter(store,'meterRecent',txt('Normal-Ringspeicher','Normal ring buffer'));makeMeter(store,'meterArchive',txt('Langzeit-Ringspeicher','Long-term ring buffer'));makeMeter(store,'meterAutark',txt('Autark-Ringspeicher','Standalone ring buffer'));let fs=document.createElement('div');fs.className='usageBlock';boxes[3].appendChild(fs);makeMeter(fs,'meterFs','LittleFS')}
+function addBaseExportMeta(){let normal=document.querySelector('#export a[href="/export.csv"]'),autark=document.querySelector('#export a[href="/autark.csv"]');if(normal&&!$('recentExportMeta'))normal.insertAdjacentHTML('afterend','<div id="recentExportMeta" class="exportMeta"></div>');if(autark&&!$('autarkExportMeta'))autark.insertAdjacentHTML('afterend','<div id="autarkExportMeta" class="exportMeta"></div>')}
+function addArchiveExport(){let grid=document.querySelector('#export .grid');if(!grid||$('archiveExportCard'))return;let c=document.createElement('div');c.id='archiveExportCard';c.className='card exportArchiveCard';c.innerHTML='<h2>💾 '+txt('Langzeit-Ringspeicher','Long-term ring buffer')+'</h2><p class="ringPurpose"></p><a class="btn primary" href="/archive.csv">'+txt('Langzeit-Ringspeicher als CSV','Download long-term ring buffer CSV')+'</a><div id="archiveExportMeta" class="exportArchiveMeta"></div>';grid.appendChild(c)}
+function setPreviousLabel(valueId,label){let value=$(valueId);if(value&&value.previousElementSibling)value.previousElementSibling.textContent=label}
+function setMeterLabel(id,label){let value=$(id+'Text'),head=value&&value.closest('.usageHead'),node=head&&head.querySelector('span');if(node)node.textContent=label}
+function configureExportCard(href,title,purpose,buttonText){let link=document.querySelector('#export a[href="'+href+'"]'),card=link&&link.closest('.card');if(!card)return;let heading=card.querySelector('h2');if(heading)heading.innerHTML='💾 '+title;let purposeNode=card.querySelector('.ringPurpose'),oldParagraph=card.querySelector('p');if(!purposeNode){purposeNode=document.createElement('p');purposeNode.className='ringPurpose';if(oldParagraph)oldParagraph.replaceWith(purposeNode);else if(heading)heading.insertAdjacentElement('afterend',purposeNode)}purposeNode.innerHTML='<strong>'+txt('Zweck:','Purpose:')+'</strong> '+purpose;link.textContent=buttonText}
+function normalizeStorageUi(){let normal=txt('Normal-Ringspeicher','Normal ring buffer'),archive=txt('Langzeit-Ringspeicher','Long-term ring buffer'),autark=txt('Autark-Ringspeicher','Standalone ring buffer');setPreviousLabel('devRecent',normal);setPreviousLabel('devArchive',archive);setPreviousLabel('devAutark',autark);setMeterLabel('meterRecent',normal);setMeterLabel('meterArchive',archive);setMeterLabel('meterAutark',autark);configureExportCard('/export.csv',normal,txt('Schneller Ringspeicher für die letzten Unterbrechungen und die Webansicht.','Fast ring buffer for recent interruptions and the web interface.'),txt('Normal-Ringspeicher als CSV','Download normal ring buffer CSV'));configureExportCard('/autark.csv',autark,txt('Speichert Autark-Sessions, Pulse, relative Zeiten und Zeitanker.','Stores standalone sessions, pulses, relative times and time anchors.'),txt('Autark-Ringspeicher als CSV','Download standalone ring buffer CSV'));configureExportCard('/archive.csv',archive,txt('Langzeitbasis für Statistik, Heatmaps und den vollständigen Archivexport.','Long-term source for statistics, heatmaps and the complete archive export.'),txt('Langzeit-Ringspeicher als CSV','Download long-term ring buffer CSV'))}
+function renameOverview(){let s=$('displayLayout');if(!s)return;let o=s.querySelector('option[value="0"]');if(o)o.textContent=txt('Tagesübersicht','Daily overview')}
+function formatStoragePair(id,a,b){let el=$(id);if(el)el.textContent=fmt(a)+' / '+fmt(b)}
+function exportMeta(id,count,capacity){let el=$(id);if(el)el.textContent=txt('Belegt: ','Stored: ')+fmt(count)+' / '+fmt(capacity)}
+function updateFromStatus(d){if(!d)return;addWeek();isoWeekFromDevice();addBaseExportMeta();normalizeStorageUi();renameOverview();let clock=$('deviceClock');if(clock&&d.deviceTime)clock.textContent=String(d.deviceTime).substring(0,5);formatStoragePair('devRecent',d.eventCount,d.ringCapacity);formatStoragePair('devArchive',d.archiveCount,d.archiveCapacity);formatStoragePair('devAutark',d.autarkCount,d.autarkCapacity);setMeter('meterRecent',d.eventCount,d.ringCapacity);setMeter('meterArchive',d.archiveCount,d.archiveCapacity);setMeter('meterAutark',d.autarkCount,d.autarkCapacity);setMeter('meterFs',d.fsUsed,d.fsTotal);let heapTotal=Number(d.heapTotal||0);setMeter('meterRam',Math.max(0,heapTotal-Number(d.heapFree||0)),heapTotal);let sketchTotal=Number(d.sketchUsed||0)+Number(d.sketchFree||0);setMeter('meterFlash',d.sketchUsed,sketchTotal);exportMeta('recentExportMeta',d.eventCount,d.ringCapacity);exportMeta('archiveExportMeta',d.archiveCount,d.archiveCapacity);exportMeta('autarkExportMeta',d.autarkCount,d.autarkCapacity)}
+function hookFetch(){const original=window.fetch.bind(window);window.fetch=async function(){let args=arguments,u=String(args[0]||''),r=await original.apply(null,args);try{if(u.indexOf('/api/events')>=0&&r.ok){r.clone().json().then(d=>{webEventCount=(d.events||[]).length}).catch(()=>{})}if(u.indexOf('/api/status')>=0&&r.ok){let d=await r.clone().json();let view=Object.assign({},d);if(view.deviceTime&&String(view.deviceTime).length>=5)view.deviceTime=String(view.deviceTime).substring(0,5);if(webEventCount!==null)view.eventCount=webEventCount;setTimeout(()=>updateFromStatus(view),0);return new Response(JSON.stringify(view),{status:r.status,statusText:r.statusText,headers:r.headers})}}catch(e){}return r}}
+function fastButton(id,delta,url){let b=$(id);if(!b)return;b.onclick=async function(){let n=$('todayCount'),old=Number((n.textContent||'0').replace(/\D/g,''))||0;if(n)n.textContent=Math.max(0,old+delta);b.classList.add('fastFeedback');setTimeout(()=>b.classList.remove('fastFeedback'),180);if(webEventCount!==null)webEventCount=Math.max(0,webEventCount+delta);try{let r=await fetch(url,{method:'POST',cache:'no-store'});if(!r.ok)throw new Error(await r.text());if(window.uicLoadDisplayPreview)window.uicLoadDisplayPreview()}catch(e){if(n)n.textContent=old;if(webEventCount!==null)webEventCount=Math.max(0,webEventCount-delta);let notice=$('notice');if(notice){notice.style.display='block';notice.textContent=e.message||String(e)}}}}
+function init(){addWeek();addBeta();addMeters();addBaseExportMeta();addArchiveExport();normalizeStorageUi();hookTheme();hookFetch();fastButton('addBtn',1,'/api/add');fastButton('undoBtn',-1,'/api/delete-last');let language=$('languageSelect');if(language)language.addEventListener('change',()=>setTimeout(()=>{normalizeStorageUi();renameOverview()},20));setTimeout(renameOverview,150);setInterval(isoWeekFromDevice,30000)}
+init();
+})();
+</script>
+)HTML";
