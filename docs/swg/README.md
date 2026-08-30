@@ -6,7 +6,7 @@
 
 > **Stand von der README:** `1.0.1`
 
-[Deutsch](../de/README.md) · [English](../en/README.md) · [Projektstart](../../README.md)
+[Deutsch](docs/de/README.md) · [English](docs/en/README.md) · [Schwäbisch](docs/swg/README.md)
 
 ---
 
