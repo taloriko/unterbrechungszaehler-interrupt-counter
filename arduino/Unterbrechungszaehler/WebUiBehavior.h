@@ -10,7 +10,6 @@ static const char WEB_UI_BEHAVIOR[] PROGMEM = R"HTML(
 .countAction svg{width:25px;height:25px;display:block;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}.countAction.add svg{width:27px;height:27px}
 button,.btn{transition:transform .08s ease,background .15s ease,border-color .15s ease,color .15s ease,box-shadow .15s ease}button:active,.btn:active{transform:translateY(1px) scale(.98)}
 
-/* Alle ausloesenden Aktionen verwenden dieselben Farben und kleinen Statussymbole. */
 #export .btn,#displaySave,#displayTest,#ntpSaveBtn,#rtcSync{display:inline-flex;align-items:center;justify-content:center;position:relative;min-height:40px;padding-right:29px!important;white-space:nowrap;background:var(--accent);border-color:var(--accent);color:#fff}
 #export .btn:hover,#displaySave:hover,#displayTest:hover,#ntpSaveBtn:hover,#rtcSync:hover{filter:brightness(1.05)}
 #export .btn.actionRunning,#displaySave.actionRunning,#displayTest.actionRunning,#ntpSaveBtn.actionRunning,#rtcSync.actionRunning,.actionRunning,.displayActionRunning{background:var(--accent)!important;border-color:var(--accent)!important;color:#fff!important;box-shadow:0 0 0 3px rgba(33,102,209,.16)!important}
@@ -22,8 +21,6 @@ button.actionRunning,button.actionSuccess,button.actionError,.btn.actionRunning,
 
 .actionUnit{display:inline-flex;flex-direction:column;align-items:flex-start;gap:5px;max-width:100%}.actionUnit.center{align-items:center}.actionMessage{display:none;max-width:360px;font-size:.78rem;line-height:1.25;color:var(--muted)}.actionMessage.show{display:block}.actionMessage.ok{color:var(--ok)}.actionMessage.bad{color:var(--danger)}.actions{align-items:flex-start!important}#displayState,#rtcSyncState{display:none!important}
 #export .actionUnit{max-width:none;width:max-content}#export .actionMessage{max-width:none;white-space:nowrap}
-
-/* Auswahlbuttons bleiben einzeilig und wachsen nur mit ihrem eigentlichen Text. */
 #settings .languageSwitch{display:flex!important;flex-wrap:nowrap!important;gap:6px;align-items:center;width:max-content;max-width:none}
 #settings .languageSwitch button{flex:0 0 auto!important;min-width:82px;white-space:nowrap!important}
 #settings .themeSwitch{display:flex!important;flex-wrap:nowrap!important;gap:5px;align-items:flex-start;width:max-content;max-width:none}
@@ -31,15 +28,12 @@ button.actionRunning,button.actionSuccess,button.actionError,.btn.actionRunning,
 #settings .themeSwitch button{flex:0 0 auto!important;white-space:nowrap!important}
 #settings .themeSwitch button[data-theme-choice="system"]{width:auto!important;min-width:112px!important;padding-left:13px!important;padding-right:24px!important}
 #settings .themeSwitch button[data-theme-choice="light"],#settings .themeSwitch button[data-theme-choice="dark"]{width:44px!important;min-width:44px!important;padding-left:0!important;padding-right:0!important}
-
 #hourBars .barrow.zeroHour .bar{width:0!important}
 .heat td.heatFocus,.heat td:focus-visible{outline:2px solid var(--ok)!important;outline-offset:1px;border-color:var(--ok)!important;box-shadow:inset 0 0 0 1px var(--ok)!important}
 </style>
 <script>
 (function(){'use strict';
 const $=id=>document.getElementById(id);
-
-/* Zusatztexte verwenden fuer jede Sprache exakt denselben Schluesselsatz. */
 const EXTRA_I18N={
  de:{
   'action.add.running':'Unterbrechung wird gespeichert …','action.add.success':'Unterbrechung gespeichert.','action.add.error':'Speichern fehlgeschlagen.','action.delete.running':'Letzte Unterbrechung wird gelöscht …','action.delete.success':'Letzte Unterbrechung gelöscht.','action.delete.error':'Löschen fehlgeschlagen.','action.ntp.running':'NTP-Server wird geprüft …','action.ntp.success':'NTP-Server geprüft und gespeichert.','action.ntp.error':'NTP-Prüfung fehlgeschlagen.','action.ntp.enter':'Bitte NTP-Server eintragen.','action.rtc.running':'RTC wird synchronisiert …','action.rtc.success':'RTC synchronisiert.','action.rtc.error':'RTC-Synchronisation fehlgeschlagen.','action.display_save.running':'Display-Einstellungen werden gespeichert …','action.display_save.success':'Display-Einstellungen gespeichert.','action.display_save.error':'Display-Einstellungen konnten nicht gespeichert werden.','action.display_test.running':'Display-Test wird gestartet …','action.display_test.success':'Display-Test gestartet.','action.display_test.error':'Display-Test konnte nicht gestartet werden.','action.download.running':'Download wird gestartet …','action.download.started':'Download gestartet.','action.theme.changed':'Darstellung geändert.',
@@ -67,13 +61,14 @@ const META={de:{label:'Deutsch',locale:'de-DE'},en:{label:'English',locale:'en-U
 function code(){const wanted=localStorage.getItem('uic-lang')||'de';return EXTRA_I18N[wanted]?wanted:'de'}
 function tr(key,vars){const map=EXTRA_I18N[code()]||EXTRA_I18N.de;let out=String(map[key]===undefined?(EXTRA_I18N.de[key]===undefined?key:EXTRA_I18N.de[key]):map[key]);if(vars)Object.keys(vars).forEach(k=>out=out.replaceAll('{'+k+'}',vars[k]));return out}
 function locale(){return (META[code()]||META.de).locale}
+function installLanguageOptions(){const select=$('languageSelect');if(!select)return;const expected=new Set();Object.entries(META).forEach(([language,meta])=>{expected.add(language);let option=select.querySelector('option[value="'+language+'"]');if(!option){option=document.createElement('option');option.value=language;select.appendChild(option)}setText(option,meta.label||language)});[...select.options].forEach(option=>{if(!expected.has(option.value))option.remove()});const current=code();if(document.activeElement!==select&&select.value!==current)select.value=current}
 window.UicI18n={t:tr,current:code,locale:locale,languages:META};window.uicTr=tr;
 
 const ACTIONS={addBtn:{running:'action.add.running',success:'action.add.success',error:'action.add.error'},undoBtn:{running:'action.delete.running',success:'action.delete.success',error:'action.delete.error'},ntpSaveBtn:{running:'action.ntp.running',success:'action.ntp.success',error:'action.ntp.error'},rtcSync:{running:'action.rtc.running',success:'action.rtc.success',error:'action.rtc.error'},displaySave:{running:'action.display_save.running',success:'action.display_save.success',error:'action.display_save.error'},displayTest:{running:'action.display_test.running',success:'action.display_test.success',error:'action.display_test.error'}};
 const ENDPOINTS=[['/api/delete-last','undoBtn'],['/api/display-settings','displaySave'],['/api/display-test','displayTest'],['/api/rtc-sync','rtcSync'],['/api/ntp','ntpSaveBtn'],['/api/add','addBtn']];
 function setText(el,value){if(el&&el.textContent!==value)el.textContent=value}
 function makeStorageNumberStable(id){const el=$(id);if(!el)return;el.classList.add('stableStorageNumber');if(!el.dataset.formatted)el.dataset.formatted=el.textContent||'-'}
-function updateStableStorage(d){if(!d)return;const nf=new Intl.NumberFormat(locale());[['devRecent',d.eventCount,d.ringCapacity],['devArchive',d.archiveCount,d.archiveCapacity],['devAutark',d.autarkCount,d.autarkCapacity]].forEach(v=>{const el=$(v[0]);if(!el)return;makeStorageNumberStable(v[0]);const next=nf.format(Number(v[1]||0))+' / '+nf.format(Number(v[2]||0));if(el.dataset.formatted!==next)el.dataset.formatted=next})}
+function updateStableStorage(d){if(!d)return;const nf=new Intl.NumberFormat(locale());[['devRecent',d.eventCount,d.ringCapacity],['devArchive',d.archiveCapacity],['devAutark',d.autarkCount,d.autarkCapacity]].forEach(v=>{const el=$(v[0]);if(!el)return;makeStorageNumberStable(v[0]);const next=nf.format(Number(v[1]||0))+' / '+nf.format(Number(v[2]||0));if(el.dataset.formatted!==next)el.dataset.formatted=next})}
 function installCounterIcons(){const add=$('addBtn'),del=$('undoBtn');if(add&&!add.querySelector('svg'))add.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11V6.5a1.5 1.5 0 0 1 3 0V10"/><path d="M12 10V5.5a1.5 1.5 0 0 1 3 0V10"/><path d="M15 10V7a1.5 1.5 0 0 1 3 0v6.5"/><path d="M9 11 7.8 9.8a1.55 1.55 0 0 0-2.2 2.2l3.7 5.2A5 5 0 0 0 13.4 19H15a5 5 0 0 0 5-5v-2"/></svg>';if(del&&!del.querySelector('svg'))del.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 10v6M14 10v6"/></svg>'}
 function actionKey(el){if(el.id)return el.id;if(el.matches('#export a[href="/export.csv"]'))return'export-normal';if(el.matches('#export a[href="/archive.csv"]'))return'export-archive';if(el.matches('#export a[href="/autark.csv"]'))return'export-autark';if(el.matches('[data-theme-choice]'))return'theme-'+el.dataset.themeChoice;return''}
 function ensureActionUnit(el){if(!el||el.classList.contains('tab'))return null;let unit=el.parentElement&&el.parentElement.classList.contains('actionUnit')?el.parentElement:null;if(unit)return unit;const key=actionKey(el);if(!key)return null;unit=document.createElement('span');unit.className='actionUnit'+(el.classList.contains('countAction')?' center':'');el.parentNode.insertBefore(unit,el);unit.appendChild(el);const message=document.createElement('span');message.className='actionMessage';message.dataset.forAction=key;unit.appendChild(message);return unit}
@@ -85,7 +80,6 @@ function begin(id){const el=$(id),def=ACTIONS[id];if(el&&def){setState(el,'actio
 function finish(id,ok){const el=$(id),def=ACTIONS[id];if(el&&def){setState(el,ok?'actionSuccess':'actionError');showMessage(el,tr(ok?def.success:def.error),ok?'ok':'bad')}}
 function endpointAction(url){for(const pair of ENDPOINTS)if(url.indexOf(pair[0])>=0)return pair[1];return''}
 
-/* Zusatzmodule werden ausschliesslich ueber feste Schluessel aktualisiert. */
 function setSelector(selector,key){setText(document.querySelector(selector),tr(key))}
 function setLabel(forId,key){setText(document.querySelector('label[for="'+forId+'"]'),tr(key))}
 function setInputLabel(id,key){const input=$(id),label=input&&input.closest('label');if(!label)return;let node=[...label.childNodes].find(n=>n.nodeType===3&&n.textContent.trim());if(!node){node=document.createTextNode('');label.appendChild(node)}const value=tr(key);if(node.textContent.trim()!==value)node.textContent=' '+value}
@@ -111,9 +105,9 @@ document.addEventListener('click',event=>{const cell=event.target.closest('.heat
 
 let lastStatus=null;
 const originalFetch=window.fetch.bind(window);window.fetch=async function(){const args=arguments,url=String(args[0]||''),id=endpointAction(url);let response;try{response=await originalFetch.apply(null,args)}catch(error){if(id)finish(id,false);throw error}try{if(url.indexOf('/api/status')>=0&&response.ok)response.clone().json().then(d=>{lastStatus=d;setTimeout(()=>{updateStableStorage(d);applyExtensionI18n(d)},20)}).catch(()=>{});else if(url.indexOf('/api/display')>=0)setTimeout(()=>applyExtensionI18n(lastStatus),30);if(id)finish(id,response.ok)}catch(e){}return response};
-let refreshQueued=false;function refresh(){if(refreshQueued)return;refreshQueued=true;setTimeout(()=>{refreshQueued=false;ensureActions();installCounterIcons();fillHourGaps();prepareHeatmapCells();applyExtensionI18n(lastStatus)},0)}
+let refreshQueued=false;function refresh(){if(refreshQueued)return;refreshQueued=true;setTimeout(()=>{refreshQueued=false;installLanguageOptions();ensureActions();installCounterIcons();fillHourGaps();prepareHeatmapCells();applyExtensionI18n(lastStatus)},0)}
 function observeDynamicArea(id,callback){const el=$(id);if(!el)return;new MutationObserver(()=>setTimeout(callback,0)).observe(el,{childList:true})}
-['devRecent','devArchive','devAutark'].forEach(makeStorageNumberStable);refresh();setTimeout(refresh,80);setTimeout(refresh,350);setTimeout(refresh,900);observeDynamicArea('hourBars',fillHourGaps);['weekHeat','monthWeekHeat','yearMonthHeat'].forEach(id=>observeDynamicArea(id,()=>{prepareHeatmapCells();applyAxes()}));const language=$('languageSelect');if(language)language.addEventListener('change',()=>{setTimeout(refresh,30);setTimeout(refresh,180);setTimeout(refresh,500)});
+['devRecent','devArchive','devAutark'].forEach(makeStorageNumberStable);installLanguageOptions();refresh();setTimeout(refresh,80);setTimeout(refresh,350);setTimeout(refresh,900);observeDynamicArea('hourBars',fillHourGaps);['weekHeat','monthWeekHeat','yearMonthHeat'].forEach(id=>observeDynamicArea(id,()=>{prepareHeatmapCells();applyAxes()}));const language=$('languageSelect');if(language)language.addEventListener('change',()=>{setTimeout(refresh,30);setTimeout(refresh,180);setTimeout(refresh,500)});
 })();
 </script>
 )HTML";
