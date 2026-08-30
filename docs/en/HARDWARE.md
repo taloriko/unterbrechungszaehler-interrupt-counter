@@ -1,53 +1,40 @@
 # Hardware
 
-> **Status: Work in progress**
+Required hardware:
 
-Currently tested hardware:
-
-- **ESP32 Dev Module / ESP32-WROOM-32D**  
-  Example: [AliExpress – ESP32 WROOM-32D Development Board](https://a.aliexpress.com/_EvOzo6A)
-- **dry-contact push button**, e.g. Eaton M22  
-  Example: [Amazon – M22 push button](https://amzn.eu/d/0dexlafu)
-- **optional dry-contact slide switch** for standalone mode  
-  Example: [Reichelt – miniature slide switch, 1x changeover](https://www.reichelt.de/de/de/shop/produkt/schiebeschalter-miniatur_loetanschluss_1x_um-19975)
+- **ESP32 Dev Module / ESP32-WROOM-32D**
+- **dry-contact push button**, e.g. Eaton M22
+- **optional dry-contact slide switch** for standalone mode
 - **optional DS3231 RTC module with AT24C32**
-  - RTC I2C address: `0x68`
-  - use **3.3 V** with the ESP32
-  - provides local time in standalone mode without Wi-Fi/NTP
-  - automatically detected once during boot
-  - check the battery/charging circuit of generic modules; a normal CR2032 must not be charged
-- **optional 1.3 inch OLED, 128 × 64, SH1106, I2C, white**
-  - recommended module: AZDelivery 1.3 inch SH1106
-  - typical I2C address `0x3C`, alternatively `0x3D`
-  - use **3.3 V** with the ESP32
-  - automatically detected once during boot
-  - in standalone mode it shows boot/RTC status for 15 seconds and then switches off
+  - I2C address `0x68`
+  - operate at **3.3 V**
+  - automatically detected during boot
+  - check the module charging circuit; a normal CR2032 must not be charged
+- **optional 1.3 inch SH1106 OLED, 128 × 64, I2C**
+  - address `0x3C` or `0x3D`
+  - operate at **3.3 V**
+  - automatically detected during boot
 - **USB data cable** for flashing
-- **5 V power supply** for normal operation
+- **5 V power supply**
   - minimum **1 A**
-  - **2 A recommended** to safely cover Wi-Fi current peaks
-- **optional battery or USB power bank** for mobile operation
-- **optional MagSafe-style adhesive magnetic ring** for magnetic enclosure mounting  
-  Example: [Amazon – MagSafe adhesive ring](https://amzn.eu/d/0dy0oqH6)
+  - **2 A recommended**
+- **optional battery or USB power bank**
+- **optional MagSafe-style adhesive magnetic ring** for enclosure mounting
 
-## Optional I2C extensions
+## I2C
 
-RTC and OLED share the same bus:
+RTC and OLED share:
 
 - `GPIO21` = SDA
 - `GPIO22` = SCL
-- both powered from `3.3 V` and `GND`
+- `3.3 V` and `GND`
 
-The firmware remains fully operational when either or both modules are missing. Missing modules are shown greyed out in the web interface.
+Missing optional modules do not prevent basic event recording.
 
-## 3D-printed enclosure
+## Enclosure
 
-A 3D-printed enclosure is planned for this project.
+The enclosure can use a MagSafe-style adhesive magnetic ring for removable magnetic mounting.
 
-The enclosure design includes the option to install a **MagSafe-style adhesive magnetic ring** on the underside, allowing the device to be attached magnetically and removed easily.
+See [3D printing / enclosure](../../hardware/3d/README.md).
 
-→ [3D printing / enclosure](../../hardware/3d/README.md)
-
-> The actual STL/3MF file will be added later.
-
-More details about terminals and mechanical assembly will follow.
+No print-ready STL/3MF file is currently included in the repository.
