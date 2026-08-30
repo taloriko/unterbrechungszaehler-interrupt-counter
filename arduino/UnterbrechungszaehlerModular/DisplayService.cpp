@@ -146,6 +146,27 @@ void DisplayService::notifyActivity(bool autarkMode) {
 }
 
 void DisplayService::notifyEvent(bool autarkMode) {
+  // Ein normaler neuer Impuls kann den bereits bekannten Tageszaehler direkt
+  // inkrementieren. Dadurch muss fuer die sichtbare Rueckmeldung nicht erst der
+  // Ringspeicher erneut gelesen werden.
+  if (!autarkMode && storage_ && time_ && time_->valid() && todayCountRevision_ != 0xFFFFFFFFUL) {
+    time_t now = static_cast<time_t>(time_->epoch());
+    struct tm local = {};
+    localtime_r(&now, &local);
+    local.tm_hour = 0;
+    local.tm_min = 0;
+    local.tm_sec = 0;
+    local.tm_isdst = -1;
+    const time_t dayStartRaw = mktime(&local);
+    const uint32_t revision = storage_->revision();
+    if (dayStartRaw > 0 &&
+        todayCountDayStart_ == static_cast<uint32_t>(dayStartRaw) &&
+        revision == todayCountRevision_ + 1) {
+      todayCountCache_++;
+      todayCountRevision_ = revision;
+    }
+  }
+
   if (wakeOnEvent_) {
     notifyActivity(autarkMode);
     return;
