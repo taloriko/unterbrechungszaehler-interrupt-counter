@@ -170,6 +170,28 @@ Das sollte in den meisten Büros kein größeres Problem darstellen.
 
 ---
 
+## Eindrücke
+
+![Reiter Heute](docs/images/de-heute.png)
+
+![Reiter Verlauf](docs/images/de-verlauf.png)
+
+![Reiter Heatmap](docs/images/de-heatmap.png)
+
+![Reiter Details](docs/images/de-details.png)
+
+![Reiter Export](docs/images/de-export.png)
+
+![Reiter Gerät](docs/images/de-gerät.png)
+
+![Reiter Einstellungen 1](docs/images/de-einstellungen-1.png)
+
+![Reiter Einstellungen 2](docs/images/de-einstellungen-2.png)
+
+![Reiter Autark](docs/images/de-autark.png)
+
+---
+
 ## Warum Schwäbisch?
 
 Weil technische Projekte nicht immer komplett ernst sein müssen.
