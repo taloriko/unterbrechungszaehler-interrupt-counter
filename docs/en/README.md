@@ -166,6 +166,28 @@ In most offices, that part should not be particularly difficult.
 
 ---
 
+## Screenshots
+
+![Reiter Heute](docs/images/de-heute.png)
+
+![Reiter Verlauf](docs/images/de-verlauf.png)
+
+![Reiter Heatmap](docs/images/de-heatmap.png)
+
+![Reiter Details](docs/images/de-details.png)
+
+![Reiter Export](docs/images/de-export.png)
+
+![Reiter Gerät](docs/images/de-gerät.png)
+
+![Reiter Einstellungen 1](docs/images/de-einstellungen-1.png)
+
+![Reiter Einstellungen 2](docs/images/de-einstellungen-2.png)
+
+![Reiter Autark](docs/images/de-autark.png)
+
+---
+
 ## Why Swabian?
 
 Because technical projects do not always have to take themselves completely seriously.
