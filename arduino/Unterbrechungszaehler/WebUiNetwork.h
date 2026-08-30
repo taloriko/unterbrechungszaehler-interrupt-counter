@@ -2,26 +2,19 @@
 
 #include <Arduino.h>
 
-// Header-, WLAN-, Mobile- und Heatmap-Feinschliff fuer die klassische Oberflaeche.
+// Darstellung von Kopfbereich, WLAN-Status und Heatmap-Markierungen.
 static const char WEB_UI_NETWORK[] PROGMEM = R"HTML(
 <style>
-/* Uhrzeit und KW in einer Zeile, Datum sauber darunter. Der Trenner bekommt
-   links und rechts exakt denselben Abstand. */
 .headTime{display:grid!important;grid-template-columns:max-content max-content;column-gap:0;row-gap:2px;align-items:baseline;text-align:left!important;line-height:1.2}
 .headTime #deviceClock{font-size:.86rem;font-weight:600;color:var(--text)}
 .headTime .headWeek{display:inline!important;margin:0!important;font-size:.8rem;color:var(--muted);white-space:nowrap}
 .headTime .headWeek::before{content:'|';display:inline-block;margin:0 7px;color:var(--muted)}
 .headTime .headDate{display:block!important;grid-column:1/-1;margin:0!important;font-size:.74rem;color:var(--muted)}
-
-/* Der Kopfbereich nutzt dieselbe Karten-Sprache wie der restliche Inhalt. */
 header{min-height:54px!important;padding:9px 13px;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
 .tabs{margin-top:10px!important}
 .headTitle h1{font-size:1.18rem!important;font-weight:650!important}
 .titleIcon{width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:8px;background:var(--bg);font-size:1rem!important}
 header .hwIcon{background:var(--bg)}
-
-/* Zusatzmodule und Verbindungsstatus gemeinsam oben rechts. Alle Status-Icons
-   haben exakt denselben Abstand. Nur der Text bekommt etwas Luft zum Icon. */
 .headWifi{display:flex!important;align-items:center;justify-content:flex-end;gap:4px;white-space:nowrap}
 .headWifi .headModules{display:inline-flex;gap:4px;margin:0}
 .headWifi .dot{display:none!important}
@@ -30,8 +23,6 @@ header .hwIcon{background:var(--bg)}
 .wifiStateIcon.unavailable{color:var(--danger)}
 .wifiStateIcon svg{width:18px;height:18px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
 .headerWifiText{font-size:.8rem;color:var(--muted);margin-left:4px;font-weight:500}
-
-/* WLAN-Signalstaerke direkt im Reiter Geraet. */
 .wifiSignalWrap{margin-top:12px}
 .wifiSignalBar{height:12px;background:var(--line);border-radius:7px;overflow:hidden;position:relative}
 .wifiSignalBar>span{display:block;height:100%;width:0;transition:width .25s ease,background .25s ease}
@@ -39,41 +30,21 @@ header .hwIcon{background:var(--bg)}
 .wifiSignalBar>span.warn{background:#d49a00}
 .wifiSignalBar>span.bad{background:var(--danger)}
 .wifiSignalBar>span.none{background:var(--line)}
-/* Vier feine Teilstriche bei 20/40/60/80 %. */
 .wifiSignalBar::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(to right,transparent 19.6%,var(--card) 19.6% 20%,transparent 20% 39.6%,var(--card) 39.6% 40%,transparent 40% 59.6%,var(--card) 59.6% 60%,transparent 60% 79.6%,var(--card) 79.6% 80%,transparent 80%)}
-
-/* Aktuelle Positionen in den Heatmaps. */
-.heat .heatCurrentLabel{color:var(--accent)!important;font-weight:700!important;box-shadow:inset 0 0 0 2px var(--accent);border-radius:6px}
-.heat td.heatCurrentCell{border-color:var(--accent)!important;box-shadow:inset 0 0 0 1px var(--accent)}
-.heat tr.heatTodayRow td{border-top-color:var(--accent)!important;border-bottom-color:var(--accent)!important}
-.heat tr.heatTodayRow th:first-child{color:var(--accent)!important;font-weight:700;box-shadow:inset 0 0 0 2px var(--accent);border-radius:6px}
-.heat .heatCurrentAxis{color:var(--accent)!important;font-weight:700!important}
-
-/* Smartphone: Titel als eigene Zeile, darunter Zeit links und Statusmodule rechts. */
+.heat .heatCurrentLabel{color:var(--ok)!important;font-weight:700!important;box-shadow:inset 0 0 0 2px var(--ok);border-radius:6px}
+.heat td.heatCurrentCell{border-color:var(--ok)!important;box-shadow:inset 0 0 0 1px var(--ok)}
+.heat tr.heatTodayRow td{border-top-color:var(--ok)!important;border-bottom-color:var(--ok)!important}
+.heat tr.heatTodayRow th:first-child{color:var(--ok)!important;font-weight:700;box-shadow:inset 0 0 0 2px var(--ok);border-radius:6px}
+.heat .heatCurrentAxis{color:var(--ok)!important;font-weight:700!important}
 @media(max-width:720px){
-  header{
-    display:grid!important;
-    grid-template-columns:minmax(0,1fr) auto!important;
-    grid-template-areas:"title title" "time wifi";
-    gap:8px 12px!important;
-    padding:10px 12px!important;
-    min-height:0!important
-  }
-  .headTitle{
-    grid-area:title;
-    width:100%;
-    justify-content:center!important;
-    padding-bottom:8px;
-    border-bottom:1px solid var(--line)
-  }
+  header{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;grid-template-areas:"title title" "time wifi";gap:8px 12px!important;padding:10px 12px!important;min-height:0!important}
+  .headTitle{grid-area:title;width:100%;justify-content:center!important;padding-bottom:8px;border-bottom:1px solid var(--line)}
   .headTitle h1{font-size:1.08rem!important}
   .titleIcon{display:inline-flex!important;width:26px;height:26px}
   .headTime{grid-area:time;justify-self:start;align-self:center;min-width:0}
   .headWifi{grid-area:wifi;justify-self:end;align-self:center;gap:4px!important}
   .headWifi .headModules{gap:4px!important}
   .headerWifiText{display:none!important}
-
-  /* Footer nicht mehr mitten in Git-Link oder Versionsnummer umbrechen. */
   .footerWrap{grid-template-columns:1fr!important;gap:8px!important;text-align:center!important;margin-top:18px!important}
   .footerWrap>div:first-child,.footerRight{text-align:center!important;white-space:nowrap}
   .footerCenter{font-size:0;text-align:center!important}
@@ -81,7 +52,6 @@ header .hwIcon{background:var(--bg)}
   .footerCenter>#footerVersion{display:block;font-size:.82rem;line-height:1.35;margin-top:3px;white-space:nowrap;word-break:keep-all;overflow-wrap:normal}
   .footerCenter>#footerVersion::before{content:'Version ';font-weight:400;color:var(--muted)}
 }
-
 @media(max-width:390px){
   header{gap:7px 8px!important;padding:9px 10px!important}
   .headTitle h1{font-size:1rem!important}
