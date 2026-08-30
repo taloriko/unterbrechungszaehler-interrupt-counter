@@ -1,85 +1,79 @@
 #!/usr/bin/env python3
-"""Validate all registered web UI language packs."""
+"""Validate the complete DE/EN/SWG web UI translation tables."""
 
 from pathlib import Path
-import json
 import re
 import sys
 
 UI_DIR = Path("arduino/Unterbrechungszaehler")
 BASE_FILE = UI_DIR / "WebUi.h"
 BEHAVIOR_FILE = UI_DIR / "WebUiBehavior.h"
+LANGUAGES = ("de", "en", "swg")
 
 base_text = BASE_FILE.read_text(encoding="utf-8")
 behavior_text = BEHAVIOR_FILE.read_text(encoding="utf-8")
+key_pattern = re.compile(r"['\"]([^'\"]+)['\"]\s*:")
 
 
-def extract_json_assignment(text: str, name: str, next_name: str):
-    pattern = rf"const {re.escape(name)}=(\{{.*?\}});\s*const {re.escape(next_name)}="
+def extract_three_language_blocks(text: str, variable: str):
+    pattern = (
+        rf"const\s+{re.escape(variable)}\s*=\s*\{{\s*"
+        r"de\s*:\s*\{(.*?)\}\s*,\s*"
+        r"en\s*:\s*\{(.*?)\}\s*,\s*"
+        r"swg\s*:\s*\{(.*?)\}\s*\}\s*;"
+    )
     match = re.search(pattern, text, re.S)
     if not match:
-        raise ValueError(f"{name} could not be parsed")
-    return json.loads(match.group(1))
+        raise ValueError(f"{variable} could not be parsed")
+    return {
+        "de": set(key_pattern.findall(match.group(1))),
+        "en": set(key_pattern.findall(match.group(2))),
+        "swg": set(key_pattern.findall(match.group(3))),
+    }
 
+
+def compare_language_keys(name: str, blocks: dict[str, set[str]], errors: list[str]):
+    reference = blocks["de"]
+    for language in LANGUAGES[1:]:
+        difference = sorted(reference ^ blocks[language])
+        if difference:
+            errors.append(
+                f"{name}: German and {language} keys differ: " + ", ".join(difference)
+            )
+
+
+errors = []
+
+try:
+    base_keys = extract_three_language_blocks(base_text, "I18N")
+except ValueError as exc:
+    errors.append(str(exc))
+    base_keys = {language: set() for language in LANGUAGES}
+
+try:
+    extra_keys = extract_three_language_blocks(behavior_text, "EXTRA_I18N")
+except ValueError as exc:
+    errors.append(str(exc))
+    extra_keys = {language: set() for language in LANGUAGES}
+
+compare_language_keys("Core translations", base_keys, errors)
+compare_language_keys("Extension translations", extra_keys, errors)
 
 used = set(re.findall(r'data-i18n="([^"]+)"', base_text))
 used.update(re.findall(r"tr\('([^']+)'", base_text))
 used.update(re.findall(r'tr\("([^"]+)"', base_text))
-
-start_marker = "const I18N={de:{"
-english_marker = "},en:{"
-start = base_text.find(start_marker)
-mid = base_text.find(english_marker, start)
-end = base_text.find("}};", mid)
-if start < 0 or mid < 0 or end < 0:
-    print("Base language table could not be parsed")
-    sys.exit(1)
-
-key_pattern = re.compile(r"'([^']+)'\s*:")
-de_block = base_text[start + len(start_marker):mid]
-en_block = base_text[mid + len(english_marker):end]
-de_keys = set(key_pattern.findall(de_block))
-en_keys = set(key_pattern.findall(en_block))
-
-errors = []
-if de_keys != en_keys:
-    errors.append("German and English base keys differ: " + ", ".join(sorted(de_keys ^ en_keys)))
-
-missing_base = sorted(used - de_keys)
+missing_base = sorted(used - base_keys["de"])
 if missing_base:
-    errors.append("UI keys missing from base languages: " + ", ".join(missing_base))
+    errors.append("UI keys missing from core translations: " + ", ".join(missing_base))
 
-try:
-    extra_base = extract_json_assignment(behavior_text, "EXTRA_BASE", "LANGUAGE_PACKS")
-except (ValueError, json.JSONDecodeError) as exc:
-    errors.append(str(exc))
-    extra_base = {"de": {}, "en": {}}
-
-try:
-    packs = extract_json_assignment(behavior_text, "LANGUAGE_PACKS", "META")
-except (ValueError, json.JSONDecodeError) as exc:
-    errors.append(str(exc))
-    packs = {}
-
-extra_de = set(extra_base.get("de", {}))
-extra_en = set(extra_base.get("en", {}))
-if extra_de != extra_en:
-    errors.append("German and English dynamic keys differ: " + ", ".join(sorted(extra_de ^ extra_en)))
-
-required_keys = de_keys | extra_de
-
-for code, pack in sorted(packs.items()):
-    strings = pack.get("strings", {})
-    missing = sorted(required_keys - set(strings))
-    extra = sorted(set(strings) - required_keys)
-    if missing:
-        errors.append(f"Language {code} is incomplete: " + ", ".join(missing))
-    if extra:
-        errors.append(f"Language {code} has unknown keys: " + ", ".join(extra))
-    if not pack.get("label"):
-        errors.append(f"Language {code} has no label")
-    if not pack.get("locale"):
-        errors.append(f"Language {code} has no locale")
+meta_match = re.search(r"const\s+META\s*=\s*\{(.*?)\};", behavior_text, re.S)
+if not meta_match:
+    errors.append("META could not be parsed")
+else:
+    meta = meta_match.group(1)
+    for language in LANGUAGES:
+        if not re.search(rf"\b{language}\s*:\s*\{{", meta):
+            errors.append(f"Language {language} has no metadata")
 
 if errors:
     for error in errors:
@@ -87,6 +81,7 @@ if errors:
     sys.exit(1)
 
 print(
-    f"OK: {len(de_keys)} static keys, {len(extra_de)} dynamic keys, "
-    f"{2 + len(packs)} languages complete."
+    f"OK: {len(base_keys['de'])} core keys, "
+    f"{len(extra_keys['de'])} extension keys, "
+    f"{len(LANGUAGES)} languages complete and structurally identical."
 )
