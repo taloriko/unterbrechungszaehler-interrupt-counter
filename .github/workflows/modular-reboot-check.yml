@@ -8,9 +8,8 @@ on:
   pull_request:
     paths:
       - "arduino/Unterbrechungszaehler/**"
-      - "translations/**"
       - "tools/check_translations.py"
-      - ".github/workflows/modular-reboot-check.yml"
+      - ".github/workflows/build.yml"
 
 jobs:
   translations:
