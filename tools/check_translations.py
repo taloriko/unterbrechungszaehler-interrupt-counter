@@ -13,6 +13,15 @@ BEHAVIOR_FILE = UI_DIR / "WebUiBehavior.h"
 base_text = BASE_FILE.read_text(encoding="utf-8")
 behavior_text = BEHAVIOR_FILE.read_text(encoding="utf-8")
 
+
+def extract_json_assignment(text: str, name: str, next_name: str):
+    pattern = rf"const {re.escape(name)}=(\{{.*?\}});\s*const {re.escape(next_name)}="
+    match = re.search(pattern, text, re.S)
+    if not match:
+        raise ValueError(f"{name} could not be parsed")
+    return json.loads(match.group(1))
+
+
 used = set(re.findall(r'data-i18n="([^"]+)"', base_text))
 used.update(re.findall(r"tr\('([^']+)'", base_text))
 used.update(re.findall(r'tr\("([^"]+)"', base_text))
@@ -40,25 +49,33 @@ missing_base = sorted(used - de_keys)
 if missing_base:
     errors.append("UI keys missing from base languages: " + ", ".join(missing_base))
 
-match = re.search(r"const LANGUAGE_PACKS=(\{.*?\});\s*const EXACT=", behavior_text, re.S)
-if not match:
-    errors.append("LANGUAGE_PACKS could not be parsed")
-    packs = {}
-else:
-    try:
-        packs = json.loads(match.group(1))
-    except json.JSONDecodeError as exc:
-        errors.append(f"LANGUAGE_PACKS is not valid JSON: {exc}")
-        packs = {}
+try:
+    extra_base = extract_json_assignment(behavior_text, "EXTRA_BASE", "LANGUAGE_PACKS")
+except (ValueError, json.JSONDecodeError) as exc:
+    errors.append(str(exc))
+    extra_base = {"de": {}, "en": {}}
 
-action_keys = set(re.findall(r"'(action\.[^']+)'\s*:", behavior_text))
-required_keys = de_keys | action_keys
+try:
+    packs = extract_json_assignment(behavior_text, "LANGUAGE_PACKS", "META")
+except (ValueError, json.JSONDecodeError) as exc:
+    errors.append(str(exc))
+    packs = {}
+
+extra_de = set(extra_base.get("de", {}))
+extra_en = set(extra_base.get("en", {}))
+if extra_de != extra_en:
+    errors.append("German and English dynamic keys differ: " + ", ".join(sorted(extra_de ^ extra_en)))
+
+required_keys = de_keys | extra_de
 
 for code, pack in sorted(packs.items()):
     strings = pack.get("strings", {})
     missing = sorted(required_keys - set(strings))
+    extra = sorted(set(strings) - required_keys)
     if missing:
         errors.append(f"Language {code} is incomplete: " + ", ".join(missing))
+    if extra:
+        errors.append(f"Language {code} has unknown keys: " + ", ".join(extra))
     if not pack.get("label"):
         errors.append(f"Language {code} has no label")
     if not pack.get("locale"):
@@ -70,6 +87,6 @@ if errors:
     sys.exit(1)
 
 print(
-    f"OK: {len(de_keys)} base keys, {len(action_keys)} action keys, "
+    f"OK: {len(de_keys)} static keys, {len(extra_de)} dynamic keys, "
     f"{2 + len(packs)} languages complete."
 )
