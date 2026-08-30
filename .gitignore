@@ -1,5 +1,5 @@
-# WLAN-Zugangsdaten niemals committen
-arduino/UnterbrechungszaehlerInterruptCounter/Secrets.h
+# Lokale WLAN-Zugangsdaten
+arduino/Unterbrechungszaehler/Secrets.h
 
 # Arduino / IDE
 *.bin
