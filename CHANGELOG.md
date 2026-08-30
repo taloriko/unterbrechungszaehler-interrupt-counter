@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.0.1
+
+Reine Fehlerbehebungs- und Optimierungsversion ohne neue Funktionen.
+
+### Fehlerbehebungen
+
+- flackernde bzw. zuckende Texte bei Ringspeicher- und Geräteanzeigen behoben
+- problematischer nativer Sprachdialog auf Smartphones durch eine stabile Button-Auswahl ersetzt
+- Absturz bei aktivem Schwäbisch durch Entfernen der rekursiven Live-Übersetzung behoben
+- Deutsch, Englisch und Schwäbisch verwenden denselben Sprach- und Renderpfad
+- Schwäbisch liegt wie Deutsch und Englisch direkt im zentralen I18N-Sprachsatz
+- UTF-8-Sonderzeichen werden ohne sprachspezifische Sonderlogik verarbeitet
+- springende Symbole und verschobene Buttons bei der Darstellungswahl behoben
+- alte Darstellungs-Rückmeldungen werden beim nächsten Klick entfernt
+- unnötige Mehrfachaktualisierung derselben Statuswerte entfernt
+- Sprach- und UI-Nachbearbeitung wird nicht mehr bei jeder Textänderung der gesamten Seite ausgeführt
+
+### Optimierungen
+
+- alle drei Sprachen besitzen denselben geprüften Schlüsselsatz
+- Sprachwechsel verwendet für Deutsch, Englisch und Schwäbisch dieselbe `tr()`-Funktion und dieselben Renderfunktionen
+- DOM-Werte werden nur noch geschrieben, wenn sich ihr sichtbarer Inhalt wirklich geändert hat
+- RAM-, Flash- und LittleFS-Zusatzanzeigen werden langsamer aktualisiert
+- numerische Geräte- und Speicheranzeigen verwenden eine stabilere Zifferndarstellung
+- der interne Select wird nur noch programmintern genutzt; sichtbar sind stabile Sprachbuttons
+
 ## 1.0.0
 
 Erste öffentliche Release-Version.
