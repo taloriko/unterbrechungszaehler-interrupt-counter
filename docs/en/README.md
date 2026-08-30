@@ -2,125 +2,106 @@
 
 [🇩🇪 Deutsche Dokumentation](../../README.md)
 
-> [!WARNING]
-> **AI notice:** This project was created to a significant extent with the help of AI and then practically tested and further developed. If you fundamentally do not want to use AI-generated code, you can stop here.
+## Function
 
-## What is it?
+The Interrupt Counter is an ESP32-based module for recording, storing and analyzing events.
 
-The Interrupt Counter is an ESP32-based module for **simple event recording and analysis**.
+**Trigger a push button or dry contact → store the event → analyze it locally.**
 
-It was originally built to make interruptions during the workday measurable:
+The input can also be connected to relay, door, fault, operating feedback or machine contacts.
 
-**Press the button → store the event → analyze it later.**
+## Features
 
-Date and time are recorded automatically and evaluated in a local web interface.
+- event recording by physical or virtual button
+- automatic date and time via NTP
+- optional **DS3231 RTC** as a local time source
+- optional **1.3 inch SH1106 OLED 128 × 64**
+- automatic hardware detection at startup
+- local web interface hosted on the ESP32
+- daily overview, history and detailed event view
+- weekday/hour heatmap with year, ISO week and time-range selection
+- month/week heatmap with year selection
+- year/month heatmap
+- CSV export
+- light/dark mode and German/English UI
+- fallback Wi-Fi access point when the configured network is unavailable
+- serial diagnostics at `115200 baud`
+- standalone mode for battery or power-bank operation
 
-## Why I built it
+## Time sources
 
-A button, because apparently **“I keep getting interrupted” is not a KPI yet.**
+The device uses time sources in this order:
 
-The project grew out of workdays where it became difficult to finish a single train of thought. Statements such as “I get interrupted very often” are hard to quantify, while counts, daily trends and heatmaps make the problem much easier to see.
+1. **NTP** – reference time when a network connection is available
+2. **RTC** – local startup time and time source without NTP
+3. **browser time** – fallback while the device has no valid time
+4. **relative time** – standalone sessions without an absolute time source
 
-The main requirement was simple:
+A valid RTC can initialize system time during startup. After a successful NTP synchronization, the RTC is updated from system time.
 
-**Recording an interruption must be easy enough to use even on a chaotic day.**
+## Optional hardware
 
-No form. No smartphone. No reason selection. One button press is enough.
+RTC and OLED share the I2C bus:
 
-## More than an interruption counter
+- `GPIO21` = SDA
+- `GPIO22` = SCL
+- `3.3 V` supply
 
-The push button is only one possible use case.
+Supported devices:
 
-The ESP32 input reacts to a dry contact, so the module can also record events from:
+- DS3231 RTC at `0x68`
+- SH1106 OLED 128 × 64 at `0x3C` or `0x3D`
 
-- push buttons
-- switches
-- relay contacts
-- door contacts
-- fault contacts
-- operating feedback contacts
-- machine contacts
+Both modules are detected at startup. Missing optional hardware does not disable the basic event-recording function.
 
-This means the project can also be used as a general **event or contact counter**.
+In standalone mode the DS3231 can provide time without Wi-Fi. A detected OLED shows startup status for 15 seconds and is then switched off.
 
----
+## Storage
 
-# Build guide
+- normal ring buffer: **10,000 events**
+- long-term ring buffer: **100,000 events**
+- standalone ring buffer: **10,000 records**
+- persistent statistics cache for heatmaps
+- block-based reads for larger data sets to reduce filesystem operations and RAM peaks
 
-## 1. Get the hardware
+The normal ring buffer remains the primary event store. A long-term storage failure does not prevent writing to the normal ring buffer.
 
-→ [Hardware](HARDWARE.md)
+## Access
 
-## 2. Assemble the hardware
+On the configured Wi-Fi network:
 
-→ [Assembly](ASSEMBLY.md)
+`http://unterbrechungen.local`
 
-## 3. Software
+The ESP32 IP address can also be used directly, for example:
 
-→ [Software](SOFTWARE.md)
+`http://192.168.178.50`
 
-## 4. Flash the ESP32
+If the configured Wi-Fi network is unavailable, the ESP32 starts a local fallback access point:
 
-→ [Flashing](FLASHING.md)
+- SSID: `Unterbrechungszaehler`
+- address: `http://192.168.4.1`
 
-## 5. Normal operation
+## Build guide
 
-→ [Normal operation](NORMAL-OPERATION.md)
+1. [Hardware](HARDWARE.md)
+2. [Assembly](ASSEMBLY.md)
+3. [Software](SOFTWARE.md)
+4. [Flashing](FLASHING.md)
+5. [Normal operation](NORMAL-OPERATION.md)
+6. [Standalone operation](STANDALONE-OPERATION.md)
 
-## 6. Standalone operation
+## Web interface
 
-For mobile operation using a battery, USB power bank or other mobile 5 V supply.
+Tabs:
 
-→ [Standalone operation](STANDALONE-OPERATION.md)
+`Today · History · Heatmap · Details · Export · Device · Settings · Standalone`
 
----
+The **Device** tab shows technical state and resource information including Wi-Fi, uptime, firmware, RAM, flash, LittleFS and ring-buffer usage.
 
-# Features
+The **Settings** tab contains general display and time settings.
 
-- **Event recording**
-  - physical button or dry contact
-  - virtual button in the web interface
-  - short press stores an event
-  - long press deletes the latest event
-  - LED feedback
+Heatmap filters are located directly next to the corresponding analysis.
 
-- **Analysis**
-  - current day
-  - history
-  - weekday/hour heatmap
-  - detailed event list
-  - time gaps between events
+## License
 
-- **Web interface**
-  - hosted locally on the ESP32
-  - responsive layout
-  - automatic light/dark mode
-  - available via `unterbrechungen.local`
-
-- **Export**
-  - CSV export
-  - date and time included in the export filename
-
-- **Time**
-  - automatic NTP synchronization
-  - automatic CET/CEST handling
-  - configurable primary NTP server
-  - fallback NTP servers
-
-- **Storage**
-  - binary ring buffer
-  - up to 10,000 normal events
-  - oldest event is overwritten when full
-
-- **Device information**
-  - ESP32, Wi-Fi, RAM, Flash and LittleFS information
-  - graphical storage usage
-  - software version
-
-- **Standalone mode – BETA**
-  - operation from battery or power bank
-  - separate storage for up to 10,000 records
-  - event recording without valid NTP time
-  - Wi-Fi, mDNS and web server disabled
-  - CPU reduced to 80 MHz
-  - Light Sleep between inputs
+MIT
