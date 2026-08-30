@@ -1,13 +1,16 @@
-name: Modular reboot check
+name: Firmware build
 
 on:
   push:
     branches:
+      - main
       - "reboot/**"
   pull_request:
     paths:
-      - "arduino/UnterbrechungszaehlerModular/**"
+      - "arduino/Unterbrechungszaehler/**"
+      - "translations/**"
       - "tools/check_translations.py"
+      - ".github/workflows/modular-reboot-check.yml"
 
 jobs:
   translations:
@@ -17,21 +20,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - name: Sprachschluessel pruefen
+      - name: Check translations
         run: python tools/check_translations.py
 
   compile:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Arduino CLI installieren
+      - name: Install Arduino CLI
         uses: arduino/setup-arduino-cli@v2
-      - name: ESP32 Core installieren
+      - name: Install ESP32 core
         run: |
           arduino-cli config init
           arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
           arduino-cli core install esp32:esp32 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
-      - name: Test-Secrets anlegen
-        run: cp arduino/UnterbrechungszaehlerModular/Secrets.example.h arduino/UnterbrechungszaehlerModular/Secrets.h
-      - name: Firmware kompilieren
-        run: arduino-cli compile --fqbn esp32:esp32:esp32 arduino/UnterbrechungszaehlerModular
+      - name: Create test secrets
+        run: cp arduino/Unterbrechungszaehler/Secrets.example.h arduino/Unterbrechungszaehler/Secrets.h
+      - name: Compile firmware
+        run: arduino-cli compile --fqbn esp32:esp32:esp32 arduino/Unterbrechungszaehler
