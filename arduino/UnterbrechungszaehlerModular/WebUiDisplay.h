@@ -331,8 +331,15 @@ async function loadPreview(force){
   if(!displayAvailable)return;
   const settings=$('settings');
   if(!force&&(!settings||!settings.classList.contains('active')))return;
-  try{const r=await fetch('/api/display-preview',{cache:'no-store'});if(r.ok)drawPreview(await r.json())}catch(e){}
+  try{
+    const r=await fetch('/api/display-preview',{cache:'no-store'});
+    if(!r.ok)return;
+    const data=await r.json();
+    if(!force&&Number(data.revision||0)===lastPreviewRevision)return;
+    drawPreview(data);
+  }catch(e){}
 }
+window.uicLoadDisplayPreview=()=>loadPreview(true);
 
 function hookStatus(){
   const original=window.fetch.bind(window);
