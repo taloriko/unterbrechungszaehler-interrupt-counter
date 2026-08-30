@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the complete DE/EN/SWG web UI translation tables."""
+"""Validate all registered web UI languages and language-independent rendering."""
 
 from pathlib import Path
 import re
@@ -8,80 +8,148 @@ import sys
 UI_DIR = Path("arduino/Unterbrechungszaehler")
 BASE_FILE = UI_DIR / "WebUi.h"
 BEHAVIOR_FILE = UI_DIR / "WebUiBehavior.h"
-LANGUAGES = ("de", "en", "swg")
+UI_FILES = sorted(UI_DIR.glob("WebUi*.h"))
 
 base_text = BASE_FILE.read_text(encoding="utf-8")
 behavior_text = BEHAVIOR_FILE.read_text(encoding="utf-8")
 key_pattern = re.compile(r"['\"]([^'\"]+)['\"]\s*:")
 
 
-def extract_three_language_blocks(text: str, variable: str):
-    pattern = (
-        rf"const\s+{re.escape(variable)}\s*=\s*\{{\s*"
-        r"de\s*:\s*\{(.*?)\}\s*,\s*"
-        r"en\s*:\s*\{(.*?)\}\s*,\s*"
-        r"swg\s*:\s*\{(.*?)\}\s*\}\s*;"
-    )
-    match = re.search(pattern, text, re.S)
-    if not match:
+def matching_brace(text: str, opening: int) -> int:
+    depth = 0
+    quote = None
+    escaped = False
+    for index in range(opening, len(text)):
+        char = text[index]
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in ("'", '"'):
+            quote = char
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return index
+    raise ValueError("unclosed object")
+
+
+def extract_language_blocks(text: str, variable: str) -> dict[str, set[str]]:
+    marker = re.search(rf"const\s+{re.escape(variable)}\s*=\s*\{{", text)
+    if not marker:
         raise ValueError(f"{variable} could not be parsed")
-    return {
-        "de": set(key_pattern.findall(match.group(1))),
-        "en": set(key_pattern.findall(match.group(2))),
-        "swg": set(key_pattern.findall(match.group(3))),
-    }
+    outer_open = text.find("{", marker.start())
+    outer_close = matching_brace(text, outer_open)
+    body = text[outer_open + 1 : outer_close]
+
+    starts = list(re.finditer(r"(?:^|,)\s*([A-Za-z][A-Za-z0-9_-]*)\s*:\s*\{", body))
+    if not starts:
+        raise ValueError(f"{variable} has no languages")
+
+    blocks: dict[str, set[str]] = {}
+    for match in starts:
+        code = match.group(1)
+        opening = body.find("{", match.start())
+        closing = matching_brace(body, opening)
+        blocks[code] = set(key_pattern.findall(body[opening + 1 : closing]))
+    return blocks
 
 
 def compare_language_keys(name: str, blocks: dict[str, set[str]], errors: list[str]):
-    reference = blocks["de"]
-    for language in LANGUAGES[1:]:
-        difference = sorted(reference ^ blocks[language])
+    if not blocks:
+        return
+    reference_code = "de" if "de" in blocks else next(iter(blocks))
+    reference = blocks[reference_code]
+    for language, keys in sorted(blocks.items()):
+        difference = sorted(reference ^ keys)
         if difference:
             errors.append(
-                f"{name}: German and {language} keys differ: " + ", ".join(difference)
+                f"{name}: {reference_code} and {language} keys differ: "
+                + ", ".join(difference)
             )
 
 
-errors = []
+errors: list[str] = []
 
 try:
-    base_keys = extract_three_language_blocks(base_text, "I18N")
+    base_keys = extract_language_blocks(base_text, "I18N")
 except ValueError as exc:
     errors.append(str(exc))
-    base_keys = {language: set() for language in LANGUAGES}
+    base_keys = {}
 
 try:
-    extra_keys = extract_three_language_blocks(behavior_text, "EXTRA_I18N")
+    extra_keys = extract_language_blocks(behavior_text, "EXTRA_I18N")
 except ValueError as exc:
     errors.append(str(exc))
-    extra_keys = {language: set() for language in LANGUAGES}
+    extra_keys = {}
+
+if set(base_keys) != set(extra_keys):
+    errors.append(
+        "Core and extension language sets differ: "
+        + ", ".join(sorted(set(base_keys) ^ set(extra_keys)))
+    )
 
 compare_language_keys("Core translations", base_keys, errors)
 compare_language_keys("Extension translations", extra_keys, errors)
 
-used = set(re.findall(r'data-i18n="([^"]+)"', base_text))
-used.update(re.findall(r"tr\('([^']+)'", base_text))
-used.update(re.findall(r'tr\("([^"]+)"', base_text))
-missing_base = sorted(used - base_keys["de"])
-if missing_base:
-    errors.append("UI keys missing from core translations: " + ", ".join(missing_base))
+reference_language = "de" if "de" in base_keys else next(iter(base_keys), "")
+if reference_language:
+    used_core = set(re.findall(r'data-i18n="([^"]+)"', base_text))
+    used_core.update(re.findall(r"tr\('([^']+)'", base_text))
+    used_core.update(re.findall(r'tr\("([^"]+)"', base_text))
+    missing_core = sorted(used_core - base_keys[reference_language])
+    if missing_core:
+        errors.append("UI keys missing from core translations: " + ", ".join(missing_core))
+
+if extra_keys:
+    combined_extensions = "\n".join(
+        path.read_text(encoding="utf-8") for path in UI_FILES if path != BASE_FILE
+    )
+    used_extra = set(re.findall(r"uiText\('([^']+)'", combined_extensions))
+    used_extra.update(re.findall(r"uicTr\('([^']+)'", combined_extensions))
+    used_extra.update(re.findall(r"\btr\('([^']+)'", behavior_text))
+    reference_extra = extra_keys.get("de", next(iter(extra_keys.values())))
+    missing_extra = sorted(used_extra - reference_extra)
+    if missing_extra:
+        errors.append("UI keys missing from extension translations: " + ", ".join(missing_extra))
 
 meta_match = re.search(r"const\s+META\s*=\s*\{(.*?)\};", behavior_text, re.S)
 if not meta_match:
     errors.append("META could not be parsed")
 else:
-    meta = meta_match.group(1)
-    for language in LANGUAGES:
-        if not re.search(rf"\b{language}\s*:\s*\{{", meta):
-            errors.append(f"Language {language} has no metadata")
+    meta_codes = set(re.findall(r"(?:^|,)\s*([A-Za-z][A-Za-z0-9_-]*)\s*:\s*\{", meta_match.group(1)))
+    if meta_codes != set(extra_keys):
+        errors.append(
+            "Language metadata differs from translation languages: "
+            + ", ".join(sorted(meta_codes ^ set(extra_keys)))
+        )
+
+# Sprachspezifische Sonderpfade und die fruehere Text-zu-Text-Uebersetzung
+# sind nicht erlaubt. Alle Sprachen muessen denselben Renderweg verwenden.
+for path in UI_FILES:
+    text = path.read_text(encoding="utf-8")
+    if "translateDynamicText" in text:
+        errors.append(f"{path.name}: text-to-text translation is not allowed")
+    if re.search(r"(?:===|!==)\s*['\"]swg['\"]|['\"]swg['\"]\s*(?:===|!==)", text):
+        errors.append(f"{path.name}: Swabian-specific rendering branch is not allowed")
+    if re.search(r"applySwabian|scheduleSwabian", text, re.I):
+        errors.append(f"{path.name}: Swabian-specific render helper is not allowed")
 
 if errors:
     for error in errors:
         print(error)
     sys.exit(1)
 
+languages = sorted(base_keys)
+reference = "de" if "de" in base_keys else languages[0]
 print(
-    f"OK: {len(base_keys['de'])} core keys, "
-    f"{len(extra_keys['de'])} extension keys, "
-    f"{len(LANGUAGES)} languages complete and structurally identical."
+    f"OK: {len(base_keys[reference])} core keys, "
+    f"{len(extra_keys[reference])} extension keys, "
+    f"{len(languages)} languages ({', '.join(languages)}) complete and structurally identical."
 )
