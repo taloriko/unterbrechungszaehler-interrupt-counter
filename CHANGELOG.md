@@ -8,6 +8,8 @@ Reine Fehlerbehebungs- und Optimierungsversion ohne neue Funktionen.
 
 - flackernde bzw. zuckende Texte bei Ringspeicher- und Geräteanzeigen behoben
 - problematischer nativer Sprachdialog auf Smartphones durch eine stabile Button-Auswahl ersetzt
+- Absturz bei aktivem Schwäbisch durch Entfernen der rekursiven Live-Übersetzung behoben
+- Schwäbisch wird als fester UTF-8-Sprachsatz behandelt; Sonderzeichen benötigen keine Sonderlogik
 - springende Symbole und verschobene Buttons bei der Darstellungswahl behoben
 - alte Darstellungs-Rückmeldungen werden beim nächsten Klick entfernt
 - unnötige Mehrfachaktualisierung derselben Statuswerte entfernt
@@ -15,7 +17,7 @@ Reine Fehlerbehebungs- und Optimierungsversion ohne neue Funktionen.
 
 ### Optimierungen
 
-- dynamische Beobachtung auf die tatsächlich benötigten Bereiche beschränkt
+- dynamische Übersetzungen werden nur noch an definierten Aktualisierungspunkten ausgeführt
 - DOM-Werte werden nur noch geschrieben, wenn sich ihr sichtbarer Inhalt wirklich geändert hat
 - RAM-, Flash- und LittleFS-Zusatzanzeigen werden langsamer aktualisiert
 - numerische Geräte- und Speicheranzeigen verwenden eine stabilere Zifferndarstellung
