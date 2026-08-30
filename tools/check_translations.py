@@ -101,8 +101,8 @@ compare_language_keys("Extension translations", extra_keys, errors)
 reference_language = "de" if "de" in base_keys else next(iter(base_keys), "")
 if reference_language:
     used_core = set(re.findall(r'data-i18n="([^"]+)"', base_text))
-    used_core.update(re.findall(r"tr\('([^']+)'", base_text))
-    used_core.update(re.findall(r'tr\("([^"]+)"', base_text))
+    used_core.update(re.findall(r"\btr\('([^']+)'", base_text))
+    used_core.update(re.findall(r'\btr\("([^"]+)"', base_text))
     missing_core = sorted(used_core - base_keys[reference_language])
     if missing_core:
         errors.append("UI keys missing from core translations: " + ", ".join(missing_core))
@@ -114,7 +114,7 @@ if extra_keys:
     used_extra = set(re.findall(r"uiText\('([^']+)'", combined_extensions))
     used_extra.update(re.findall(r"uicTr\('([^']+)'", combined_extensions))
     used_extra.update(re.findall(r"\btr\('([^']+)'", combined_extensions))
-    used_extra.update(re.findall(r"xtr\('([^']+)'", base_text))
+    used_extra.update(re.findall(r"\bxtr\('([^']+)'", base_text))
     reference_extra = extra_keys.get("de", next(iter(extra_keys.values())))
     missing_extra = sorted(used_extra - reference_extra)
     if missing_extra:
@@ -131,8 +131,6 @@ else:
             + ", ".join(sorted(meta_codes ^ set(extra_keys)))
         )
 
-# Sichtbarer Rendercode darf keinen einzelnen Sprachcode bevorzugen.
-# Alle Sprachen muessen denselben Schluessel- und Renderpfad verwenden.
 for path in UI_FILES:
     text = path.read_text(encoding="utf-8")
     if "translateDynamicText" in text:
