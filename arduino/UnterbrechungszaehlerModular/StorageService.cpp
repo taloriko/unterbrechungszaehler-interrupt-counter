@@ -87,6 +87,20 @@ bool StorageService::readArchive(uint32_t chronologicalIndex, uint32_t& epoch) {
   return readTimestamp(archive_, chronologicalIndex, epoch);
 }
 
+bool StorageService::readRecentChunk(uint32_t chronologicalStart,
+                                     uint32_t maxItems,
+                                     uint32_t* epochs,
+                                     uint32_t& readCount) {
+  return readTimestampChunk(recent_, chronologicalStart, maxItems, epochs, readCount);
+}
+
+bool StorageService::readArchiveChunk(uint32_t chronologicalStart,
+                                      uint32_t maxItems,
+                                      uint32_t* epochs,
+                                      uint32_t& readCount) {
+  return readTimestampChunk(archive_, chronologicalStart, maxItems, epochs, readCount);
+}
+
 uint32_t StorageService::lastEvent() {
   return lastTimestamp(recent_);
 }
@@ -145,6 +159,47 @@ bool StorageService::readAutark(uint32_t chronologicalIndex, AutarkRecord& recor
                   file.read(reinterpret_cast<uint8_t*>(&record), sizeof(record)) == sizeof(record);
   file.close();
   return ok;
+}
+
+bool StorageService::readAutarkChunk(uint32_t chronologicalStart,
+                                     uint32_t maxItems,
+                                     AutarkRecord* records,
+                                     uint32_t& readCount) {
+  readCount = 0;
+  if (!autarkReady_ || !records || maxItems == 0 || chronologicalStart >= autarkHeader_.count) return false;
+
+  const uint32_t remaining = autarkHeader_.count - chronologicalStart;
+  const uint32_t wanted = remaining < maxItems ? remaining : maxItems;
+  const uint32_t oldest = (autarkHeader_.writeIndex + autarkHeader_.capacity - autarkHeader_.count) % autarkHeader_.capacity;
+  uint32_t physical = (oldest + chronologicalStart) % autarkHeader_.capacity;
+
+  File file = LittleFS.open(UicConfig::AUTARK_FILE, FILE_READ);
+  if (!file) return false;
+
+  uint32_t left = wanted;
+  while (left > 0) {
+    const uint32_t contiguous = (physical + left <= autarkHeader_.capacity)
+                                  ? left
+                                  : (autarkHeader_.capacity - physical);
+    if (!file.seek(autarkOffset(physical), SeekSet)) {
+      file.close();
+      return false;
+    }
+
+    const size_t bytesWanted = static_cast<size_t>(contiguous) * sizeof(AutarkRecord);
+    const size_t bytesRead = file.read(reinterpret_cast<uint8_t*>(records + readCount), bytesWanted);
+    const uint32_t itemsRead = static_cast<uint32_t>(bytesRead / sizeof(AutarkRecord));
+    readCount += itemsRead;
+    left -= itemsRead;
+    if (itemsRead != contiguous) {
+      file.close();
+      return false;
+    }
+    physical = 0;
+  }
+
+  file.close();
+  return readCount == wanted;
 }
 
 bool StorageService::updateAutarkStartAnchor(uint32_t sessionId, uint32_t anchorEpoch) {
@@ -245,6 +300,48 @@ bool StorageService::readTimestamp(RingDescriptor& ring, uint32_t chronologicalI
                   file.read(reinterpret_cast<uint8_t*>(&epoch), sizeof(epoch)) == sizeof(epoch);
   file.close();
   return ok;
+}
+
+bool StorageService::readTimestampChunk(RingDescriptor& ring,
+                                        uint32_t chronologicalStart,
+                                        uint32_t maxItems,
+                                        uint32_t* epochs,
+                                        uint32_t& readCount) {
+  readCount = 0;
+  if (!ring.ready || !epochs || maxItems == 0 || chronologicalStart >= ring.header.count) return false;
+
+  const uint32_t remaining = ring.header.count - chronologicalStart;
+  const uint32_t wanted = remaining < maxItems ? remaining : maxItems;
+  const uint32_t oldest = (ring.header.writeIndex + ring.header.capacity - ring.header.count) % ring.header.capacity;
+  uint32_t physical = (oldest + chronologicalStart) % ring.header.capacity;
+
+  File file = LittleFS.open(ring.path, FILE_READ);
+  if (!file) return false;
+
+  uint32_t left = wanted;
+  while (left > 0) {
+    const uint32_t contiguous = (physical + left <= ring.header.capacity)
+                                  ? left
+                                  : (ring.header.capacity - physical);
+    if (!file.seek(timestampOffset(physical), SeekSet)) {
+      file.close();
+      return false;
+    }
+
+    const size_t bytesWanted = static_cast<size_t>(contiguous) * sizeof(uint32_t);
+    const size_t bytesRead = file.read(reinterpret_cast<uint8_t*>(epochs + readCount), bytesWanted);
+    const uint32_t itemsRead = static_cast<uint32_t>(bytesRead / sizeof(uint32_t));
+    readCount += itemsRead;
+    left -= itemsRead;
+    if (itemsRead != contiguous) {
+      file.close();
+      return false;
+    }
+    physical = 0;
+  }
+
+  file.close();
+  return readCount == wanted;
 }
 
 bool StorageService::popTimestamp(RingDescriptor& ring) {
@@ -433,16 +530,28 @@ void StorageService::migrateLegacyEvents() {
 void StorageService::seedArchiveFromRecent() {
   if (!archive_.ready || archive_.header.count != 0 || !recent_.ready || recent_.header.count == 0) return;
 
+  constexpr uint32_t BLOCK = 128;
+  uint32_t epochs[BLOCK];
   uint32_t copied = 0;
-  for (uint32_t i = 0; i < recent_.header.count; i++) {
-    uint32_t epoch = 0;
-    if (!readTimestamp(recent_, i, epoch)) continue;
-    if (appendTimestamp(archive_, epoch)) copied++;
-    else {
+
+  for (uint32_t start = 0; start < recent_.header.count; start += BLOCK) {
+    uint32_t readCount = 0;
+    if (!readTimestampChunk(recent_, start, BLOCK, epochs, readCount)) {
       archiveSynchronized_ = false;
       break;
     }
+
+    for (uint32_t i = 0; i < readCount; i++) {
+      if (appendTimestamp(archive_, epochs[i])) copied++;
+      else {
+        archiveSynchronized_ = false;
+        break;
+      }
+    }
+    if (!archiveSynchronized_) break;
+    delay(0);
   }
+
   Serial.printf("[SPEICHER] Langzeitarchiv mit %lu bestehenden Eintraegen initialisiert.\n",
                 static_cast<unsigned long>(copied));
 }
