@@ -7,7 +7,9 @@ Reine Fehlerbehebungs- und Optimierungsversion ohne neue Funktionen.
 ### Fehlerbehebungen
 
 - flackernde bzw. zuckende Texte bei Ringspeicher- und Geräteanzeigen behoben
-- wiederholtes Öffnen bzw. instabiles Verhalten der Sprachauswahl auf Smartphones behoben
+- problematischer nativer Sprachdialog auf Smartphones durch eine stabile Button-Auswahl ersetzt
+- springende Symbole und verschobene Buttons bei der Darstellungswahl behoben
+- alte Darstellungs-Rückmeldungen werden beim nächsten Klick entfernt
 - unnötige Mehrfachaktualisierung derselben Statuswerte entfernt
 - Sprach- und UI-Nachbearbeitung wird nicht mehr bei jeder Textänderung der gesamten Seite ausgeführt
 
@@ -17,6 +19,7 @@ Reine Fehlerbehebungs- und Optimierungsversion ohne neue Funktionen.
 - DOM-Werte werden nur noch geschrieben, wenn sich ihr sichtbarer Inhalt wirklich geändert hat
 - RAM-, Flash- und LittleFS-Zusatzanzeigen werden langsamer aktualisiert
 - numerische Geräte- und Speicheranzeigen verwenden eine stabilere Zifferndarstellung
+- Sprachumschaltung verwendet weiterhin die zentrale Sprachverwaltung; der interne Select wird nur noch programmintern genutzt
 
 ## 1.0.0
 
