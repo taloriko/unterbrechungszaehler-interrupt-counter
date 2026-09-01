@@ -47,6 +47,7 @@ uint32_t lastCounterActionSequence = 0;
 uint32_t lastAutarkSession = 0;
 uint32_t lastAutarkEvents = 0;
 bool analyticsReadyAtBoot = false;
+char rtcStatusDetail[96] = "rtc_unknown";
 
 void configureAutarkWakeup() {
   gpio_wakeup_enable(static_cast<gpio_num_t>(UicConfig::BUTTON_PIN), GPIO_INTR_LOW_LEVEL);
@@ -99,6 +100,22 @@ void handleSoundTrigger() {
   if (counter.actionKind() == 1) sound.requestPlay();
 }
 
+void updateRtcStatusDetail() {
+  if (!rtc.present()) {
+    snprintf(rtcStatusDetail, sizeof(rtcStatusDetail), "optional");
+    return;
+  }
+  const float temp = rtc.temperatureC();
+  snprintf(rtcStatusDetail,
+           sizeof(rtcStatusDetail),
+           "comm=%s;valid=%s;osf=%s;temp=%.2f;diff=%ld;age=%lu",
+           rtc.communicationOk() ? "ok" : "error",
+           rtc.timeValid() ? "yes" : "no",
+           rtc.oscillatorStopFlag() ? "set" : "clear",
+           isnan(temp) ? -999.0f : temp,
+           static_cast<long>(rtc.systemDifferenceSeconds()),
+           static_cast<unsigned long>(rtc.lastCheckAgeMs()));
+}
 
 void updateModuleStatuses() {
   watchdog.setStatus(WatchdogService::MainLoop, ModuleState::Ready, "loop_ok");
@@ -119,12 +136,15 @@ void updateModuleStatuses() {
                      timeService.valid() ? ModuleState::Ready : ModuleState::Degraded,
                      timeService.valid() ? timeSourceName(timeService.source()) : "time_invalid");
 
+  updateRtcStatusDetail();
   if (!rtc.present()) {
-    watchdog.setStatus(WatchdogService::Rtc, ModuleState::NotDetected, "optional");
+    watchdog.setStatus(WatchdogService::Rtc, ModuleState::NotDetected, rtcStatusDetail);
+  } else if (!rtc.communicationOk()) {
+    watchdog.setStatus(WatchdogService::Rtc, ModuleState::Error, rtcStatusDetail);
   } else {
     watchdog.setStatus(WatchdogService::Rtc,
                        rtc.timeValid() ? ModuleState::Ready : ModuleState::Degraded,
-                       rtc.timeValid() ? "rtc_ok" : "time_invalid");
+                       rtcStatusDetail);
   }
 
   watchdog.setStatus(WatchdogService::Autark,
@@ -243,10 +263,8 @@ void setup() {
   lastAutarkSession = autark.sessionId();
   lastAutarkEvents = autark.sessionEvents();
 
-  // Heartbeats bestaetigen nur, dass der jeweilige Softwarepfad lebt.
-  // Fachliche bzw. Hardware-Zustaende werden getrennt ueber ModuleStatus bewertet.
   watchdog.heartbeat(WatchdogService::Storage, true);
-  watchdog.heartbeat(WatchdogService::Rtc, true);  // RTC ist optionale Hardware, Abwesenheit ist kein Fehler.
+  if (rtc.present()) watchdog.heartbeat(WatchdogService::Rtc, rtc.communicationOk());
   watchdog.heartbeat(WatchdogService::Analytics, true);
   updateModuleStatuses();
 
@@ -270,9 +288,11 @@ void loop() {
   timeService.tick();
   watchdog.endModule(WatchdogService::Time);
 
-  // RTC besitzt keinen eigenen periodischen tick(). Der Watchdog prueft daher den
-  // Servicepfad selbst; ob physische RTC-Hardware vorhanden ist, zeigt die Hardwarediagnose separat.
-  watchdog.heartbeat(WatchdogService::Rtc, true);
+  if (rtc.present() && (rtc.lastCheckAt() == 0 || rtc.lastCheckAgeMs() >= UicConfig::RTC_DIAGNOSTIC_INTERVAL_MS)) {
+    watchdog.beginModule(WatchdogService::Rtc);
+    rtc.tick();
+    watchdog.endModule(WatchdogService::Rtc, rtc.communicationOk());
+  }
 
   watchdog.beginModule(WatchdogService::Autark);
   autark.tick();
