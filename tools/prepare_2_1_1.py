@@ -71,57 +71,6 @@ def patch_legacy_fix() -> None:
     replace_once(path, old, new)
 
 
-def patch_build_workflow() -> None:
-    path = ROOT / ".github" / "workflows" / "build.yml"
-    replace_once(
-        path,
-        "arduino-cli core install esp32:esp32 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json",
-        "arduino-cli core install esp32:esp32@3.3.11 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json",
-    )
-
-    old = '''      - name: Create test secrets
-        run: cp arduino/Unterbrechungszaehler/Secrets.example.h arduino/Unterbrechungszaehler/Secrets.h
-      - name: Compile firmware
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          mkdir -p build
-          arduino-cli compile --fqbn esp32:esp32:esp32 --output-dir build arduino/Unterbrechungszaehler
-          cp build/Unterbrechungszaehler.ino.bin "build/Unterbrechungszaehler-${VERSION}-OTA.bin"'''
-    new = '''      - name: Create test secrets
-        run: cp arduino/Unterbrechungszaehler/Secrets.example.h arduino/Unterbrechungszaehler/Secrets.h
-      - name: Verify compressed web UI
-        run: |
-          python tools/generate_webui_gzip.py
-          if ! git diff --quiet -- arduino/Unterbrechungszaehler/WebUiGzip.h; then
-            echo "WebUiGzip.h ist nicht aktuell. Bitte Generator ausfuehren und Ergebnis committen." >&2
-            git diff --stat -- arduino/Unterbrechungszaehler/WebUiGzip.h
-            exit 1
-          fi
-      - name: Compile firmware
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          set -o pipefail
-          mkdir -p build
-          arduino-cli compile --fqbn esp32:esp32:esp32 --output-dir build arduino/Unterbrechungszaehler 2>&1 | tee build/compile.log
-          size_line=$(grep -m1 "Sketch uses" build/compile.log || true)
-          used=$(printf '%s\n' "$size_line" | sed -n 's/.*Sketch uses \([0-9][0-9]*\) bytes.*/\1/p')
-          maximum=$(printf '%s\n' "$size_line" | sed -n 's/.*Maximum is \([0-9][0-9]*\) bytes.*/\1/p')
-          if [ -z "$used" ] || [ -z "$maximum" ]; then
-            echo "Firmwaregroesse konnte nicht aus dem Compiler-Log gelesen werden." >&2
-            exit 1
-          fi
-          reserve=$((maximum - used))
-          echo "Firmware: ${used}/${maximum} Bytes, Reserve: ${reserve} Bytes"
-          if [ "$reserve" -lt 65536 ]; then
-            echo "Zu wenig Flash-Reserve fuer einen belastbaren OTA-Release (mindestens 65536 Bytes erforderlich)." >&2
-            exit 1
-          fi
-          cp build/Unterbrechungszaehler.ino.bin "build/Unterbrechungszaehler-${VERSION}-OTA.bin"'''
-    replace_once(path, old, new)
-
-
 def patch_changelog() -> None:
     path = ROOT / "CHANGELOG.md"
     text = path.read_text(encoding="utf-8")
@@ -158,15 +107,8 @@ def main() -> int:
     patch_config()
     patch_web_service()
     patch_legacy_fix()
-    patch_build_workflow()
     patch_changelog()
     raw_size, gzip_size, _ = generate()
-    temporary_workflow = ROOT / ".github" / "workflows" / "prepare-2.1.1.yml"
-    if temporary_workflow.exists():
-        temporary_workflow.unlink()
-    temporary_script = ROOT / "tools" / "prepare_2_1_1.py"
-    if temporary_script.exists():
-        temporary_script.unlink()
     print(f"2.1.1 vorbereitet; Web-UI {raw_size} -> {gzip_size} Bytes")
     return 0
 
