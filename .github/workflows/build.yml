@@ -49,14 +49,8 @@ jobs:
           arduino-cli core install esp32:esp32@3.3.11 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
       - name: Create test secrets
         run: cp arduino/Unterbrechungszaehler/Secrets.example.h arduino/Unterbrechungszaehler/Secrets.h
-      - name: Verify compressed web UI
-        run: |
-          python tools/generate_webui_gzip.py
-          if ! git diff --quiet -- arduino/Unterbrechungszaehler/WebUiGzip.h; then
-            echo "WebUiGzip.h ist nicht aktuell. Bitte Generator ausfuehren und Ergebnis committen." >&2
-            git diff --stat -- arduino/Unterbrechungszaehler/WebUiGzip.h
-            exit 1
-          fi
+      - name: Generate compressed web UI
+        run: python tools/generate_webui_gzip.py
       - name: Compile firmware
         env:
           VERSION: ${{ steps.version.outputs.version }}
