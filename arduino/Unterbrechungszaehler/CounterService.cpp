@@ -1,13 +1,15 @@
 #include "CounterService.h"
 
 #include "LedService.h"
+#include "SoundService.h"
 #include "StorageService.h"
 #include "TimeService.h"
 
-void CounterService::begin(StorageService* storage, TimeService* time, LedService* led) {
+void CounterService::begin(StorageService* storage, TimeService* time, LedService* led, SoundService* sound) {
   storage_ = storage;
   time_ = time;
   led_ = led;
+  sound_ = sound;
 }
 
 bool CounterService::addNormalEvent(bool physicalButton) {
@@ -24,6 +26,11 @@ bool CounterService::addNormalEvent(bool physicalButton) {
   if (physicalButton) pulseSequence_++;
   noteAction(1);
   if (led_) led_->signalStored();
+
+  // Rueckmeldung startet direkt nach erfolgreichem Speichern. Dadurch ist der
+  // Ton unabhaengig davon, ob das Ereignis ueber Web oder Taster kam, vor der
+  // nachfolgenden Display-Aktualisierung dran.
+  if (sound_) sound_->requestPlay();
   return true;
 }
 
