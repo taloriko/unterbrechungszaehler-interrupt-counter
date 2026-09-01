@@ -43,10 +43,8 @@ WatchdogService watchdog;
 
 bool previousAutarkMode = false;
 uint32_t lastDiagnosticAt = 0;
-uint32_t lastCounterActionSequence = 0;
-uint32_t lastAutarkSession = 0;
-uint32_t lastAutarkEvents = 0;
 bool analyticsReadyAtBoot = false;
+char rtcDiagnosticDetail[128] = "-";
 
 void configureAutarkWakeup() {
   gpio_wakeup_enable(static_cast<gpio_num_t>(UicConfig::BUTTON_PIN), GPIO_INTR_LOW_LEVEL);
@@ -70,8 +68,6 @@ void applyModeTransition() {
     setCpuFrequencyMhz(80);
     configureAutarkWakeup();
     display.showBootStatus(true);
-    lastAutarkSession = autark.sessionId();
-    lastAutarkEvents = autark.sessionEvents();
     Serial.printf("[MODUS] Autark EIN | Session %lu\n", static_cast<unsigned long>(autark.sessionId()));
   } else {
     disableAutarkWakeup();
@@ -82,27 +78,9 @@ void applyModeTransition() {
   }
 }
 
-void handleSoundTrigger() {
-  if (autark.active()) {
-    if (lastAutarkSession != autark.sessionId()) {
-      lastAutarkSession = autark.sessionId();
-      lastAutarkEvents = autark.sessionEvents();
-    }
-    const uint32_t nowEvents = autark.sessionEvents();
-    if (nowEvents > lastAutarkEvents) sound.requestPlay();
-    lastAutarkEvents = nowEvents;
-    return;
-  }
-
-  if (counter.actionSequence() == lastCounterActionSequence) return;
-  lastCounterActionSequence = counter.actionSequence();
-  if (counter.actionKind() == 1) sound.requestPlay();
-}
-
-
 void updateModuleStatuses() {
-  watchdog.setStatus(WatchdogService::MainLoop, ModuleState::Ready, "loop_ok");
-  watchdog.setStatus(WatchdogService::Input, ModuleState::Ready, "gpio_ok");
+  watchdog.setStatus(WatchdogService::MainLoop, ModuleState::Ready, "loop_cycle");
+  watchdog.setStatus(WatchdogService::Input, ModuleState::Ready, "gpio");
   watchdog.setStatus(WatchdogService::Mode,
                      autark.active() ? ModuleState::Busy : ModuleState::Ready,
                      autark.active() ? "autark" : "normal");
@@ -110,21 +88,38 @@ void updateModuleStatuses() {
   if (!storage.recentReady()) {
     watchdog.setStatus(WatchdogService::Storage, ModuleState::Error, "recent_unavailable");
   } else if (!storage.archiveReady() || !storage.autarkReady() || !storage.archiveSynchronized()) {
-    watchdog.setStatus(WatchdogService::Storage, ModuleState::Degraded, "partial_storage");
+    watchdog.setStatus(WatchdogService::Storage, ModuleState::Degraded, "partial");
   } else {
     watchdog.setStatus(WatchdogService::Storage, ModuleState::Ready, "rings_ok");
   }
 
   watchdog.setStatus(WatchdogService::Time,
                      timeService.valid() ? ModuleState::Ready : ModuleState::Degraded,
-                     timeService.valid() ? timeSourceName(timeService.source()) : "time_invalid");
+                     timeService.valid() ? timeSourceName(timeService.source()) : "invalid");
 
   if (!rtc.present()) {
     watchdog.setStatus(WatchdogService::Rtc, ModuleState::NotDetected, "optional");
   } else {
+    const float temp = rtc.temperatureC();
+    if (isnan(temp)) {
+      snprintf(rtcDiagnosticDetail, sizeof(rtcDiagnosticDetail),
+               "comm=%s;valid=%s;osf=%s;age=%lu",
+               rtc.communicationOk() ? "ok" : "error",
+               rtc.timeValid() ? "yes" : "no",
+               rtc.oscillatorStopFlag() ? "set" : "clear",
+               static_cast<unsigned long>(rtc.lastCheckAgeMs()));
+    } else {
+      snprintf(rtcDiagnosticDetail, sizeof(rtcDiagnosticDetail),
+               "comm=%s;valid=%s;osf=%s;temp=%.2f;age=%lu",
+               rtc.communicationOk() ? "ok" : "error",
+               rtc.timeValid() ? "yes" : "no",
+               rtc.oscillatorStopFlag() ? "set" : "clear",
+               temp,
+               static_cast<unsigned long>(rtc.lastCheckAgeMs()));
+    }
     watchdog.setStatus(WatchdogService::Rtc,
-                       rtc.timeValid() ? ModuleState::Ready : ModuleState::Degraded,
-                       rtc.timeValid() ? "rtc_ok" : "time_invalid");
+                       rtc.communicationOk() && rtc.timeValid() ? ModuleState::Ready : ModuleState::Degraded,
+                       rtcDiagnosticDetail);
   }
 
   watchdog.setStatus(WatchdogService::Autark,
@@ -134,14 +129,14 @@ void updateModuleStatuses() {
   if (display.present()) {
     watchdog.setStatus(WatchdogService::Display,
                        display.active() ? ModuleState::Busy : ModuleState::Ready,
-                       display.active() ? "display_active" : "display_idle");
+                       display.active() ? "active" : "idle");
   } else if (display.simulationEnabled()) {
     watchdog.setStatus(WatchdogService::Display, ModuleState::Degraded, "simulation");
   } else {
     watchdog.setStatus(WatchdogService::Display, ModuleState::NotDetected, "optional");
   }
 
-  watchdog.setStatus(WatchdogService::Led, ModuleState::Ready, "gpio_ok");
+  watchdog.setStatus(WatchdogService::Led, ModuleState::Ready, "gpio");
 
   if (autark.active()) {
     watchdog.setStatus(WatchdogService::Network, ModuleState::Disabled, "autark");
@@ -163,7 +158,7 @@ void updateModuleStatuses() {
                      analyticsReadyAtBoot ? ModuleState::Ready : ModuleState::Degraded,
                      analyticsReadyAtBoot ? "cache_ready" : "cache_rebuild");
   watchdog.setStatus(WatchdogService::Sound, sound.moduleState(), sound.statusDetail());
-  watchdog.setStatus(WatchdogService::Diagnostics, ModuleState::Ready, "serial_ok");
+  watchdog.setStatus(WatchdogService::Diagnostics, ModuleState::Ready, "serial");
 }
 
 void printDiagnostics() {
@@ -213,11 +208,11 @@ void setup() {
   storage.begin();
   rtc.begin();
   timeService.begin(&rtc);
-  counter.begin(&storage, &timeService, &led);
-  autark.begin(&storage, &timeService, &led);
+  sound.begin();
+  counter.begin(&storage, &timeService, &led, &sound);
+  autark.begin(&storage, &timeService, &led, &sound);
   display.begin(&rtc, &timeService, &storage, &network);
   input.begin(&counter, &autark, &led, &display);
-  sound.begin();
 
   analytics.begin(&storage);
   const uint32_t analyticsStarted = millis();
@@ -239,15 +234,9 @@ void setup() {
     display.showBootStatus(false);
   }
 
-  lastCounterActionSequence = counter.actionSequence();
-  lastAutarkSession = autark.sessionId();
-  lastAutarkEvents = autark.sessionEvents();
-
-  // Heartbeats bestaetigen nur, dass der jeweilige Softwarepfad lebt.
-  // Fachliche bzw. Hardware-Zustaende werden getrennt ueber ModuleStatus bewertet.
-  watchdog.heartbeat(WatchdogService::Storage, true);
-  watchdog.heartbeat(WatchdogService::Rtc, true);  // RTC ist optionale Hardware, Abwesenheit ist kein Fehler.
-  watchdog.heartbeat(WatchdogService::Analytics, true);
+  watchdog.heartbeat(WatchdogService::Storage, storage.recentReady());
+  if (rtc.present()) watchdog.heartbeat(WatchdogService::Rtc, rtc.communicationOk());
+  watchdog.heartbeat(WatchdogService::Analytics, analyticsReadyAtBoot);
   updateModuleStatuses();
 
   if (storage.recentReady()) led.signalStored();
@@ -264,19 +253,26 @@ void loop() {
   applyModeTransition();
   watchdog.endModule(WatchdogService::Mode);
 
-  watchdog.heartbeat(WatchdogService::Storage, true);
-
   watchdog.beginModule(WatchdogService::Time);
   timeService.tick();
   watchdog.endModule(WatchdogService::Time);
 
-  // RTC besitzt keinen eigenen periodischen tick(). Der Watchdog prueft daher den
-  // Servicepfad selbst; ob physische RTC-Hardware vorhanden ist, zeigt die Hardwarediagnose separat.
-  watchdog.heartbeat(WatchdogService::Rtc, true);
+  if (rtc.checkDue()) {
+    watchdog.beginModule(WatchdogService::Rtc);
+    const bool rtcOk = rtc.tick();
+    watchdog.endModule(WatchdogService::Rtc, rtcOk);
+  }
 
   watchdog.beginModule(WatchdogService::Autark);
   autark.tick();
   watchdog.endModule(WatchdogService::Autark);
+
+  // Sound wird bewusst vor Display und Web bedient. Ein gespeichertes Ereignis
+  // startet den Ton bereits im Counter-/Autark-Service; tick() verarbeitet nur
+  // noch UART-Antworten und Wiedergabestatus.
+  watchdog.beginModule(WatchdogService::Sound);
+  sound.tick();
+  watchdog.endModule(WatchdogService::Sound);
 
   watchdog.beginModule(WatchdogService::Display);
   display.tick();
@@ -295,13 +291,6 @@ void loop() {
   watchdog.beginModule(WatchdogService::Web);
   web.tick(normalMode);
   watchdog.endModule(WatchdogService::Web);
-
-  watchdog.heartbeat(WatchdogService::Analytics, true);
-
-  watchdog.beginModule(WatchdogService::Sound);
-  handleSoundTrigger();
-  sound.tick();
-  watchdog.endModule(WatchdogService::Sound);
 
   watchdog.beginModule(WatchdogService::Diagnostics);
   updateModuleStatuses();
