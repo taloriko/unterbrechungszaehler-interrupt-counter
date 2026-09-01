@@ -3,13 +3,15 @@
 #include <esp_timer.h>
 
 #include "LedService.h"
+#include "SoundService.h"
 #include "StorageService.h"
 #include "TimeService.h"
 
-void AutarkService::begin(StorageService* storage, TimeService* time, LedService* led) {
+void AutarkService::begin(StorageService* storage, TimeService* time, LedService* led, SoundService* sound) {
   storage_ = storage;
   time_ = time;
   led_ = led;
+  sound_ = sound;
 }
 
 void AutarkService::tick() {
@@ -54,6 +56,7 @@ bool AutarkService::addEvent() {
   }
   sessionEvents_++;
   if (led_) led_->signalStored();
+  if (sound_) sound_->requestPlay();
   return true;
 }
 
