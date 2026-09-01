@@ -1,0 +1,648 @@
+#include "DisplayService.h"
+
+#include <Wire.h>
+#include <time.h>
+
+#include "Config.h"
+#include "NetworkService.h"
+#include "RtcService.h"
+#include "StorageService.h"
+#include "TimeService.h"
+
+namespace {
+const uint8_t FONT_DIGITS[10][5] = {
+  {0x3E,0x51,0x49,0x45,0x3E}, {0x00,0x42,0x7F,0x40,0x00},
+  {0x42,0x61,0x51,0x49,0x46}, {0x21,0x41,0x45,0x4B,0x31},
+  {0x18,0x14,0x12,0x7F,0x10}, {0x27,0x45,0x45,0x45,0x39},
+  {0x3C,0x4A,0x49,0x49,0x30}, {0x01,0x71,0x09,0x05,0x03},
+  {0x36,0x49,0x49,0x49,0x36}, {0x06,0x49,0x49,0x29,0x1E}
+};
+
+const uint8_t FONT_UPPER[26][5] = {
+  {0x7E,0x11,0x11,0x11,0x7E}, {0x7F,0x49,0x49,0x49,0x36},
+  {0x3E,0x41,0x41,0x41,0x22}, {0x7F,0x41,0x41,0x22,0x1C},
+  {0x7F,0x49,0x49,0x49,0x41}, {0x7F,0x09,0x09,0x09,0x01},
+  {0x3E,0x41,0x49,0x49,0x7A}, {0x7F,0x08,0x08,0x08,0x7F},
+  {0x00,0x41,0x7F,0x41,0x00}, {0x20,0x40,0x41,0x3F,0x01},
+  {0x7F,0x08,0x14,0x22,0x41}, {0x7F,0x40,0x40,0x40,0x40},
+  {0x7F,0x02,0x0C,0x02,0x7F}, {0x7F,0x04,0x08,0x10,0x7F},
+  {0x3E,0x41,0x41,0x41,0x3E}, {0x7F,0x09,0x09,0x09,0x06},
+  {0x3E,0x41,0x51,0x21,0x5E}, {0x7F,0x09,0x19,0x29,0x46},
+  {0x46,0x49,0x49,0x49,0x31}, {0x01,0x01,0x7F,0x01,0x01},
+  {0x3F,0x40,0x40,0x40,0x3F}, {0x1F,0x20,0x40,0x20,0x1F},
+  {0x3F,0x40,0x38,0x40,0x3F}, {0x63,0x14,0x08,0x14,0x63},
+  {0x07,0x08,0x70,0x08,0x07}, {0x61,0x51,0x49,0x45,0x43}
+};
+
+const char* layoutName(DisplayLayout layout) {
+  switch (layout) {
+    case DisplayLayout::Compact: return "kompakt";
+    case DisplayLayout::Clock: return "uhr";
+    default: return "tagesuebersicht";
+  }
+}
+}
+
+void DisplayService::begin(RtcService* rtc,
+                           TimeService* time,
+                           StorageService* storage,
+                           NetworkService* network) {
+  rtc_ = rtc;
+  time_ = time;
+  storage_ = storage;
+  network_ = network;
+  loadSettings();
+
+  if (probe(UicConfig::OLED_ADDRESS_1)) {
+    present_ = true;
+    address_ = UicConfig::OLED_ADDRESS_1;
+  } else if (probe(UicConfig::OLED_ADDRESS_2)) {
+    present_ = true;
+    address_ = UicConfig::OLED_ADDRESS_2;
+  }
+
+  Serial.printf("[DISPLAY] SH1106 %s", present_ ? "erkannt" : "nicht erkannt");
+  Serial.printf(" | Simulation %s", simulationEnabled_ ? "AN" : "AUS");
+  if (present_) Serial.printf(" | 0x%02X", address_);
+  if (available()) {
+    Serial.printf(" | Hell %u | Dim %u nach %us | Aus %lus | Layout %s",
+                  brightness_, dimBrightness_, dimAfterSeconds_,
+                  static_cast<unsigned long>(offAfterSeconds_), layoutName(layout_));
+  }
+  Serial.println();
+}
+
+void DisplayService::tick() {
+  if (!active_) return;
+  const uint32_t now = millis();
+
+  if (screenMode_ != ScreenMode::Live && bootUntil_ != 0 &&
+      static_cast<int32_t>(now - bootUntil_) >= 0) {
+    screenMode_ = ScreenMode::Live;
+    bootUntil_ = 0;
+    renderFrame(currentAutarkMode_, ScreenMode::Live);
+    flush();
+  }
+
+  if (screenMode_ == ScreenMode::Live) {
+    const uint32_t minute = minuteKey();
+    const bool wifiConnected = network_ && network_->connected();
+    const bool apActive = network_ && network_->accessPointActive();
+    const bool rtcPresent = rtc_ && rtc_->present();
+    const bool rtcValid = rtcPresent && rtc_->timeValid();
+
+    if (minute != lastMinuteKey_ ||
+        wifiConnected != lastWifiConnected_ ||
+        apActive != lastApActive_ ||
+        rtcPresent != lastRtcPresent_ ||
+        rtcValid != lastRtcValid_) {
+      renderFrame(currentAutarkMode_, ScreenMode::Live);
+      flush();
+    }
+  }
+
+  if (!dimmed_ && dimAt_ != 0 && static_cast<int32_t>(now - dimAt_) >= 0) {
+    if (setContrast(dimBrightness_)) {
+      dimmed_ = true;
+      frameRevision_++;
+    }
+  }
+
+  if (offAt_ != 0 && static_cast<int32_t>(now - offAt_) >= 0) off();
+}
+
+void DisplayService::showBootStatus(bool autarkMode) {
+  if (!available() || !initializeController()) return;
+  currentAutarkMode_ = autarkMode;
+  screenMode_ = ScreenMode::Boot;
+  bootUntil_ = autarkMode ? 0 : millis() + 3000UL;
+  renderFrame(autarkMode, ScreenMode::Boot);
+  flush();
+  wake(autarkMode, true);
+}
+
+bool DisplayService::showTest(bool autarkMode) {
+  if (!available()) return false;
+  if (!active_ && !initializeController()) return false;
+  currentAutarkMode_ = autarkMode;
+  screenMode_ = ScreenMode::Test;
+  bootUntil_ = millis() + 5000UL;
+  renderFrame(autarkMode, ScreenMode::Test);
+  flush();
+  wake(autarkMode, true);
+  return active_;
+}
+
+void DisplayService::notifyActivity(bool autarkMode) {
+  if (!available()) return;
+  currentAutarkMode_ = autarkMode;
+  screenMode_ = ScreenMode::Live;
+  bootUntil_ = 0;
+  renderFrame(autarkMode, ScreenMode::Live);
+
+  if (!active_ && !initializeController()) return;
+  flush();
+  wake(autarkMode, true);
+}
+
+void DisplayService::notifyEvent(bool autarkMode) {
+  // Ein normaler neuer Impuls kann den bereits bekannten Tageszaehler direkt
+  // inkrementieren. Dadurch muss fuer die sichtbare Rueckmeldung nicht erst der
+  // Ringspeicher erneut gelesen werden.
+  if (!autarkMode && storage_ && time_ && time_->valid() && todayCountRevision_ != 0xFFFFFFFFUL) {
+    time_t now = static_cast<time_t>(time_->epoch());
+    struct tm local = {};
+    localtime_r(&now, &local);
+    local.tm_hour = 0;
+    local.tm_min = 0;
+    local.tm_sec = 0;
+    local.tm_isdst = -1;
+    const time_t dayStartRaw = mktime(&local);
+    const uint32_t revision = storage_->revision();
+    if (dayStartRaw > 0 &&
+        todayCountDayStart_ == static_cast<uint32_t>(dayStartRaw) &&
+        revision == todayCountRevision_ + 1) {
+      todayCountCache_++;
+      todayCountRevision_ = revision;
+    }
+  }
+
+  if (wakeOnEvent_) {
+    notifyActivity(autarkMode);
+    return;
+  }
+
+  if (!available() || !active_) return;
+  currentAutarkMode_ = autarkMode;
+  screenMode_ = ScreenMode::Live;
+  renderFrame(autarkMode, ScreenMode::Live);
+  flush();
+}
+
+void DisplayService::wake(bool autarkMode, bool resetTimers) {
+  if (!available()) return;
+  setContrast(brightness_);
+  applyOrientation();
+  command(0xAF);
+  active_ = true;
+  dimmed_ = false;
+  if (resetTimers) armActivityTimers(autarkMode);
+}
+
+void DisplayService::off() {
+  if (!available()) return;
+  const bool wasActive = active_;
+  if (present_) command(0xAE);
+  active_ = false;
+  dimmed_ = false;
+  dimAt_ = 0;
+  offAt_ = 0;
+  if (wasActive) frameRevision_++;
+}
+
+bool DisplayService::setSimulationEnabled(bool enabled) {
+  preferences_.begin("interrupt", false);
+  preferences_.putBool("oledSim", enabled);
+  preferences_.end();
+  simulationEnabled_ = enabled;
+
+  if (!present_) {
+    if (enabled) {
+      screenMode_ = ScreenMode::Live;
+      bootUntil_ = 0;
+      renderFrame(currentAutarkMode_, ScreenMode::Live);
+      active_ = true;
+      dimmed_ = false;
+      armActivityTimers(currentAutarkMode_);
+      lastFrameAt_ = millis();
+    } else {
+      active_ = false;
+      dimmed_ = false;
+      dimAt_ = 0;
+      offAt_ = 0;
+      frameRevision_++;
+    }
+  }
+  return true;
+}
+
+bool DisplayService::setSettings(uint8_t brightness,
+                                 uint8_t dimBrightness,
+                                 uint16_t dimAfterSeconds,
+                                 uint32_t offAfterSeconds,
+                                 bool wakeOnEvent,
+                                 bool inverted,
+                                 bool rotation180,
+                                 DisplayLayout layout) {
+  if (brightness < 1) brightness = 1;
+  if (dimBrightness < 1) dimBrightness = 1;
+  if (dimBrightness > brightness) dimBrightness = brightness;
+  if (dimAfterSeconds < 5) dimAfterSeconds = 5;
+  if (dimAfterSeconds > 3600) dimAfterSeconds = 3600;
+  if (offAfterSeconds != 0 && offAfterSeconds < 5) offAfterSeconds = 5;
+  if (offAfterSeconds > 86400UL) offAfterSeconds = 86400UL;
+  if (static_cast<uint8_t>(layout) > static_cast<uint8_t>(DisplayLayout::Clock)) {
+    layout = DisplayLayout::Standard;
+  }
+
+  preferences_.begin("interrupt", false);
+  bool ok = true;
+  ok = preferences_.putUChar("oledBright", brightness) > 0 && ok;
+  ok = preferences_.putUChar("oledDimBrt", dimBrightness) > 0 && ok;
+  ok = preferences_.putUShort("oledDimSec", dimAfterSeconds) > 0 && ok;
+  preferences_.putULong("oledOffSec", offAfterSeconds);
+  preferences_.putBool("oledWakeEvt", wakeOnEvent);
+  preferences_.putBool("oledInvert", inverted);
+  preferences_.putBool("oledRot180", rotation180);
+  preferences_.putUChar("oledLayout", static_cast<uint8_t>(layout));
+  preferences_.end();
+  if (!ok) return false;
+
+  brightness_ = brightness;
+  dimBrightness_ = dimBrightness;
+  dimAfterSeconds_ = dimAfterSeconds;
+  offAfterSeconds_ = offAfterSeconds;
+  wakeOnEvent_ = wakeOnEvent;
+  inverted_ = inverted;
+  rotation180_ = rotation180;
+  layout_ = layout;
+
+  renderFrame(currentAutarkMode_, screenMode_ == ScreenMode::Boot ? ScreenMode::Boot : ScreenMode::Live);
+  if (active_) {
+    applyOrientation();
+    flush();
+    setContrast(brightness_);
+    dimmed_ = false;
+    armActivityTimers(currentAutarkMode_);
+  }
+  return true;
+}
+
+void DisplayService::loadSettings() {
+  preferences_.begin("interrupt", true);
+  brightness_ = preferences_.getUChar("oledBright", 127);
+  dimBrightness_ = preferences_.getUChar("oledDimBrt", 32);
+  dimAfterSeconds_ = preferences_.getUShort("oledDimSec", 60);
+  offAfterSeconds_ = preferences_.getULong("oledOffSec", 0);
+  wakeOnEvent_ = preferences_.getBool("oledWakeEvt", true);
+  inverted_ = preferences_.getBool("oledInvert", false);
+  rotation180_ = preferences_.getBool("oledRot180", false);
+  simulationEnabled_ = preferences_.getBool("oledSim", false);
+  const uint8_t layoutValue = preferences_.getUChar("oledLayout", 0);
+  preferences_.end();
+
+  if (brightness_ < 1) brightness_ = 127;
+  if (dimBrightness_ < 1) dimBrightness_ = 32;
+  if (dimBrightness_ > brightness_) dimBrightness_ = brightness_;
+  if (dimAfterSeconds_ < 5 || dimAfterSeconds_ > 3600) dimAfterSeconds_ = 60;
+  if (offAfterSeconds_ > 86400UL) offAfterSeconds_ = 0;
+  layout_ = layoutValue <= static_cast<uint8_t>(DisplayLayout::Clock)
+              ? static_cast<DisplayLayout>(layoutValue)
+              : DisplayLayout::Standard;
+}
+
+bool DisplayService::probe(uint8_t address) {
+  Wire.beginTransmission(address);
+  return Wire.endTransmission() == 0;
+}
+
+bool DisplayService::command(uint8_t commandValue) {
+  if (!present_) return simulationEnabled_;
+  if (!address_) return false;
+  Wire.beginTransmission(address_);
+  Wire.write(static_cast<uint8_t>(0x00));
+  Wire.write(commandValue);
+  return Wire.endTransmission() == 0;
+}
+
+bool DisplayService::setContrast(uint8_t value) {
+  if (!present_) return simulationEnabled_;
+  return command(0x81) && command(value);
+}
+
+bool DisplayService::applyOrientation() {
+  if (!present_) return simulationEnabled_;
+  const bool segmentOk = command(rotation180_ ? 0xA0 : 0xA1);
+  const bool scanOk = command(rotation180_ ? 0xC0 : 0xC8);
+  const bool invertOk = command(inverted_ ? 0xA7 : 0xA6);
+  return segmentOk && scanOk && invertOk;
+}
+
+bool DisplayService::initializeController() {
+  if (!present_) return simulationEnabled_;
+  const uint8_t commands[] = {
+    0xAE, 0xD5, 0x80, 0xA8, 0x3F, 0xD3, 0x00, 0x40,
+    0xAD, 0x8B, 0xDA, 0x12, 0xD9, 0x22, 0xDB, 0x35, 0xA4
+  };
+  for (size_t i = 0; i < sizeof(commands); i++) {
+    if (!command(commands[i])) return false;
+  }
+  if (!applyOrientation()) return false;
+  if (!setContrast(brightness_)) return false;
+  return command(0xAF);
+}
+
+void DisplayService::setPage(uint8_t page) {
+  if (!present_) return;
+  command(static_cast<uint8_t>(0xB0 | (page & 0x07)));
+  command(0x02);
+  command(0x10);
+}
+
+void DisplayService::writeData(const uint8_t* data, size_t length) {
+  if (!present_) return;
+  size_t pos = 0;
+  while (pos < length) {
+    const size_t chunk = min(static_cast<size_t>(16), length - pos);
+    Wire.beginTransmission(address_);
+    Wire.write(static_cast<uint8_t>(0x40));
+    for (size_t i = 0; i < chunk; i++) Wire.write(data[pos + i]);
+    Wire.endTransmission();
+    pos += chunk;
+  }
+}
+
+void DisplayService::flush() {
+  if (!available()) return;
+  if (present_) {
+    for (uint8_t page = 0; page < 8; page++) {
+      setPage(page);
+      writeData(framebuffer_ + static_cast<size_t>(page) * WIDTH, WIDTH);
+    }
+  }
+  lastFrameAt_ = millis();
+}
+
+void DisplayService::glyph(char value, uint8_t out[5]) {
+  memset(out, 0, 5);
+  if (value >= '0' && value <= '9') {
+    memcpy(out, FONT_DIGITS[value - '0'], 5);
+    return;
+  }
+  if (value >= 'a' && value <= 'z') value = static_cast<char>(value - 'a' + 'A');
+  if (value >= 'A' && value <= 'Z') {
+    memcpy(out, FONT_UPPER[value - 'A'], 5);
+    return;
+  }
+  switch (value) {
+    case ':': out[1] = 0x36; out[2] = 0x36; break;
+    case '-': for (uint8_t i = 0; i < 5; i++) out[i] = 0x08; break;
+    case '.': out[1] = 0x60; out[2] = 0x60; break;
+    case '/': out[0] = 0x60; out[1] = 0x18; out[2] = 0x06; out[3] = 0x01; break;
+    case '_': for (uint8_t i = 0; i < 5; i++) out[i] = 0x40; break;
+    default: break;
+  }
+}
+
+void DisplayService::clearBuffer() {
+  memset(framebuffer_, 0, sizeof(framebuffer_));
+}
+
+void DisplayService::pixel(int16_t x, int16_t y, bool on) {
+  if (x < 0 || y < 0 || x >= WIDTH || y >= HEIGHT) return;
+  const size_t index = static_cast<size_t>(y / 8) * WIDTH + x;
+  const uint8_t mask = static_cast<uint8_t>(1U << (y & 7));
+  if (on) framebuffer_[index] |= mask;
+  else framebuffer_[index] &= static_cast<uint8_t>(~mask);
+}
+
+void DisplayService::drawChar(int16_t x, int16_t y, char value, uint8_t scale) {
+  uint8_t columns[5] = {0};
+  glyph(value, columns);
+  scale = scale < 1 ? 1 : scale;
+
+  for (uint8_t col = 0; col < 5; col++) {
+    for (uint8_t row = 0; row < 7; row++) {
+      if ((columns[col] & (1U << row)) == 0) continue;
+      for (uint8_t dx = 0; dx < scale; dx++) {
+        for (uint8_t dy = 0; dy < scale; dy++) {
+          pixel(x + col * scale + dx, y + row * scale + dy);
+        }
+      }
+    }
+  }
+}
+
+void DisplayService::drawText(int16_t x, int16_t y, const String& value, uint8_t scale) {
+  const int16_t advance = static_cast<int16_t>(6 * scale);
+  for (size_t i = 0; i < value.length(); i++) {
+    if (x + 5 * scale >= WIDTH) break;
+    drawChar(x, y, value[i], scale);
+    x += advance;
+  }
+}
+
+void DisplayService::drawHLine(int16_t x, int16_t y, int16_t width) {
+  for (int16_t i = 0; i < width; i++) pixel(x + i, y);
+}
+
+void DisplayService::drawVLine(int16_t x, int16_t y, int16_t height) {
+  for (int16_t i = 0; i < height; i++) pixel(x, y + i);
+}
+
+void DisplayService::drawWifiIcon(int16_t centerX, int16_t centerY, bool connected) {
+  // Kleine 15x13-Pixel-WLAN-Glyphe fuer die rechte Statusspalte.
+  for (int16_t x = -6; x <= 6; x++) {
+    if (abs(x) >= 3) pixel(centerX + x, centerY - 5);
+  }
+  for (int16_t x = -4; x <= 4; x++) {
+    if (abs(x) >= 2) pixel(centerX + x, centerY - 2);
+  }
+  pixel(centerX - 2, centerY + 1);
+  pixel(centerX + 2, centerY + 1);
+  pixel(centerX, centerY + 4);
+  pixel(centerX - 1, centerY + 4);
+  pixel(centerX + 1, centerY + 4);
+
+  if (!connected) {
+    for (int16_t i = -5; i <= 5; i++) pixel(centerX + i, centerY + i / 2);
+  }
+}
+
+void DisplayService::drawRtcIcon(int16_t centerX, int16_t centerY, bool valid) {
+  // Abgerundete Uhr ohne zusaetzliche Schrift.
+  drawHLine(centerX - 4, centerY - 6, 9);
+  drawHLine(centerX - 4, centerY + 6, 9);
+  drawVLine(centerX - 6, centerY - 4, 9);
+  drawVLine(centerX + 6, centerY - 4, 9);
+  pixel(centerX - 5, centerY - 5);
+  pixel(centerX + 5, centerY - 5);
+  pixel(centerX - 5, centerY + 5);
+  pixel(centerX + 5, centerY + 5);
+  drawVLine(centerX, centerY - 3, 4);
+  drawHLine(centerX, centerY, 4);
+
+  if (!valid) {
+    for (int16_t i = -4; i <= 4; i++) pixel(centerX + i, centerY - i);
+  }
+}
+
+String DisplayService::timeText() const {
+  if (!time_ || !time_->valid()) return "--:--";
+  String value = time_->localTime();
+  return value.length() >= 5 ? value.substring(0, 5) : value;
+}
+
+uint32_t DisplayService::minuteKey() const {
+  if (!time_ || !time_->valid()) return 0;
+  return time_->epoch() / 60UL;
+}
+
+String DisplayService::shortDate() const {
+  if (!time_ || !time_->valid()) return "--.--.----";
+  return time_->localDate();
+}
+
+String DisplayService::shortDateCompact() const {
+  if (!time_ || !time_->valid()) return "--.--";
+  String value = time_->localDate();
+  return value.length() >= 5 ? value.substring(0, 5) : value;
+}
+
+String DisplayService::rtcText() const {
+  if (!rtc_ || !rtc_->present()) return "RTC FEHLT";
+  return rtc_->timeValid() ? "RTC OK" : "RTC ZEIT?";
+}
+
+String DisplayService::networkText() const {
+  if (currentAutarkMode_) return "AUTARK";
+  if (network_ && network_->connected()) return "WLAN OK";
+  if (network_ && network_->accessPointActive()) return "AP AKTIV";
+  return "WLAN OFF";
+}
+
+uint32_t DisplayService::todayCount() {
+  if (!storage_ || !time_ || !time_->valid()) return 0;
+
+  time_t now = static_cast<time_t>(time_->epoch());
+  struct tm local = {};
+  localtime_r(&now, &local);
+  local.tm_hour = 0;
+  local.tm_min = 0;
+  local.tm_sec = 0;
+  local.tm_isdst = -1;
+  const time_t dayStartRaw = mktime(&local);
+  if (dayStartRaw <= 0) return 0;
+
+  const uint32_t dayStart = static_cast<uint32_t>(dayStartRaw);
+  const uint32_t revision = storage_->revision();
+  if (todayCountRevision_ == revision && todayCountDayStart_ == dayStart) {
+    return todayCountCache_;
+  }
+
+  uint32_t count = 0;
+  const uint32_t total = storage_->recentCount();
+  for (uint32_t i = total; i > 0; i--) {
+    uint32_t epoch = 0;
+    if (!storage_->readRecent(i - 1, epoch)) continue;
+    if (epoch < dayStart) break;
+    count++;
+  }
+
+  todayCountCache_ = count;
+  todayCountDayStart_ = dayStart;
+  todayCountRevision_ = revision;
+  return count;
+}
+
+String DisplayService::todayCountText() {
+  if (!time_ || !time_->valid()) return "-";
+  return String(todayCount());
+}
+
+void DisplayService::renderFrame(bool autarkMode, ScreenMode mode) {
+  currentAutarkMode_ = autarkMode;
+  clearBuffer();
+  if (mode == ScreenMode::Boot) renderBoot(autarkMode);
+  else if (mode == ScreenMode::Test) renderTest(autarkMode);
+  else renderLive(autarkMode);
+  frameRevision_++;
+}
+
+void DisplayService::renderBoot(bool autarkMode) {
+  drawText(2, 2, autarkMode ? "AUTARKMODUS" : "SYSTEMSTART");
+  drawHLine(0, 11, WIDTH);
+  drawText(2, 17, rtcText());
+  drawText(2, 29, String("ZEIT ") + timeText());
+  drawText(2, 41, networkText());
+  drawText(2, 53, autarkMode ? "AUTARK BEREIT" : "SYSTEM BEREIT");
+}
+
+void DisplayService::renderTest(bool autarkMode) {
+  drawText(2, 2, "DISPLAY TEST");
+  drawHLine(0, 11, WIDTH);
+  drawText(2, 17, "128 X 64 PIXEL");
+  drawText(2, 29, String("HELL ") + String(brightness_) + " DIM " + String(dimBrightness_));
+  drawText(2, 41, rotation180_ ? "ROTATION 180" : "ROTATION 0");
+  drawText(2, 53, autarkMode ? "MODUS AUTARK" : "MODUS NORMAL");
+}
+
+void DisplayService::renderLive(bool autarkMode) {
+  switch (layout_) {
+    case DisplayLayout::Compact: renderCompact(autarkMode); break;
+    case DisplayLayout::Clock: renderClock(autarkMode); break;
+    default: renderStandard(autarkMode); break;
+  }
+
+  lastMinuteKey_ = minuteKey();
+  lastWifiConnected_ = network_ && network_->connected();
+  lastApActive_ = network_ && network_->accessPointActive();
+  lastRtcPresent_ = rtc_ && rtc_->present();
+  lastRtcValid_ = lastRtcPresent_ && rtc_->timeValid();
+}
+
+void DisplayService::renderStandard(bool autarkMode) {
+  const String count = todayCountText();
+
+  // Ruhige Tagesuebersicht: links Datum/Uhrzeit, mittig der Tageszaehler,
+  // rechts nur die zwei relevanten Statussymbole.
+  drawVLine(34, 4, 56);
+  drawVLine(96, 4, 56);
+
+  drawText(2, 12, shortDateCompact());
+  drawText(2, 43, timeText());
+
+  drawText(50, 5, "HEUTE");
+  uint8_t scale = count.length() <= 3 ? 3 : (count.length() <= 5 ? 2 : 1);
+  const int16_t textWidth = static_cast<int16_t>(count.length() * 6 * scale - scale);
+  const int16_t countX = 65 - textWidth / 2;
+  const int16_t countY = scale == 3 ? 25 : (scale == 2 ? 29 : 33);
+  drawText(countX, countY, count, scale);
+
+  const bool wifiOk = !autarkMode && network_ && network_->connected();
+  const bool rtcOk = rtc_ && rtc_->present() && rtc_->timeValid();
+  drawWifiIcon(112, 18, wifiOk);
+  drawRtcIcon(112, 47, rtcOk);
+}
+
+void DisplayService::renderCompact(bool autarkMode) {
+  const String count = todayCountText();
+  drawText(2, 1, timeText());
+  drawText(62, 1, shortDate());
+  drawHLine(0, 11, WIDTH);
+  drawText(2, 17, "HEUTE");
+  drawText(78, 15, count, 2);
+  drawText(2, 33, rtcText());
+  drawText(2, 44, autarkMode ? "AUTARK" : networkText());
+  drawText(2, 55, dimmed_ ? "GEDIMMT" : "DISPLAY AKTIV");
+}
+
+void DisplayService::renderClock(bool autarkMode) {
+  const String count = todayCountText();
+  drawText(15, 3, timeText(), 2);
+  drawHLine(0, 21, WIDTH);
+  drawText(34, 27, shortDate());
+  drawText(2, 40, String("HEUTE ") + count);
+  drawText(2, 52, autarkMode ? String("AUTARK ") + rtcText() : rtcText() + String(" ") + networkText());
+}
+
+void DisplayService::armActivityTimers(bool autarkMode) {
+  currentAutarkMode_ = autarkMode;
+  const uint32_t now = millis();
+  dimAt_ = now + static_cast<uint32_t>(dimAfterSeconds_) * 1000UL;
+
+  // Im Autarkbetrieb bleibt die feste 15-s-Abschaltung bestehen. Im
+  // Normalbetrieb ist 0 = nie ganz ausschalten.
+  if (autarkMode) offAt_ = now + UicConfig::DISPLAY_BOOT_MS;
+  else offAt_ = offAfterSeconds_ ? now + offAfterSeconds_ * 1000UL : 0;
+}
