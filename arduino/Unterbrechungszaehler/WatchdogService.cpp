@@ -31,12 +31,25 @@ void WatchdogService::beginModule(Module module) {
 
 void WatchdogService::endModule(Module module, bool ok) {
   if (module >= Count) return;
-  State& s = states_[module];
   const uint32_t duration = micros() - startedUs_[module];
+  states_[module].running = false;
+  recordDuration(module, duration, ok);
+}
+
+void WatchdogService::recordDuration(Module module, uint32_t durationUs, bool ok) {
+  if (module >= Count) return;
+  State& s = states_[module];
   s.running = false;
-  s.lastDurationUs = duration;
-  if (duration > s.maxDurationUs) s.maxDurationUs = duration;
-  if (duration > UicConfig::MODULE_WARN_MS * 1000UL) s.slowCount++;
+  s.lastDurationUs = durationUs;
+  if (durationUs > s.maxDurationUs) s.maxDurationUs = durationUs;
+
+  const uint32_t threshold = warnThresholdUs(module);
+  if (threshold > 0 && durationUs > threshold) {
+    s.slowCount++;
+    s.lastSlowAt = millis();
+    s.lastSlowDurationUs = durationUs;
+  }
+
   s.lastResultOk = ok;
   if (!ok) s.errorCount++;
   if (ok) s.lastOkAt = millis();
@@ -46,7 +59,6 @@ void WatchdogService::heartbeat(Module module, bool ok) {
   if (module >= Count) return;
   State& s = states_[module];
   s.running = false;
-  s.lastDurationUs = 0;
   s.lastResultOk = ok;
   if (!ok) s.errorCount++;
   if (ok) s.lastOkAt = millis();
@@ -69,6 +81,39 @@ uint32_t WatchdogService::ageMs(Module module) const {
   return millis() - s.lastOkAt;
 }
 
+uint32_t WatchdogService::warnThresholdUs(Module module) const {
+  switch (module) {
+    case MainLoop: return 50000UL;
+    case Input: return 5000UL;
+    case Mode: return 5000UL;
+    case Storage: return 50000UL;
+    case Time: return 10000UL;
+    case Rtc: return 20000UL;
+    case Autark: return 10000UL;
+    case Display: return 20000UL;
+    case Led: return 5000UL;
+    case Network: return 50000UL;
+    case Web: return 250000UL;
+    case Analytics: return 250000UL;
+    case Sound: return 50000UL;
+    case Diagnostics: return 100000UL;
+    default: return 1000000UL;
+  }
+}
+
+uint32_t WatchdogService::heartbeatTimeoutMs(Module module) const {
+  switch (module) {
+    case Rtc:
+      return UicConfig::RTC_HEALTH_TIMEOUT_MS;
+    case Storage:
+    case Analytics:
+      // Passive Module: deren Zustand wird ueber die Fachdiagnose bewertet.
+      return 0;
+    default:
+      return UicConfig::WATCHDOG_TIMEOUT_MS;
+  }
+}
+
 bool WatchdogService::executionHealthy(Module module) const {
   if (module >= Count) return false;
   const State& s = states_[module];
@@ -79,8 +124,9 @@ bool WatchdogService::executionHealthy(Module module) const {
   }
 
   if (!s.lastResultOk) return false;
-  if (s.lastOkAt == 0) return true;
-  return millis() - s.lastOkAt < UicConfig::WATCHDOG_TIMEOUT_MS;
+  const uint32_t timeout = heartbeatTimeoutMs(module);
+  if (timeout == 0 || s.lastOkAt == 0) return true;
+  return millis() - s.lastOkAt < timeout;
 }
 
 bool WatchdogService::healthy(Module module) const {
