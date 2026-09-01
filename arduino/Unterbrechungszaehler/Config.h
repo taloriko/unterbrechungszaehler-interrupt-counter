@@ -40,7 +40,13 @@ static constexpr uint32_t LONG_PRESS_MS = 3000;
 static constexpr uint32_t WIFI_RETRY_MS = 10000;
 static constexpr uint32_t DISPLAY_BOOT_MS = 15000;
 static constexpr uint32_t DIAGNOSTIC_INTERVAL_MS = 60000;
-static constexpr uint32_t WATCHDOG_TIMEOUT_MS = 12000;
+
+// Der klassische WebServer verarbeitet Uploads synchron. Bei einer grossen
+// OTA-Datei kann handleClient() deshalb laenger als 12 s blockieren. Der
+// Hardware-Watchdog bekommt fuer solche legitimen Langlaeufer 120 s Luft.
+// Die Moduldiagnose arbeitet weiterhin mit eigenen, wesentlich kuerzeren
+// Grenzwerten und verliert dadurch nicht ihre Aussagekraft.
+static constexpr uint32_t WATCHDOG_TIMEOUT_MS = 120000;
 
 // RTC wird nicht fuer jede Web-/Displayausgabe angesprochen. Ein zentraler
 // Healthcheck aktualisiert Zeitcache, OSF-Status, Temperatur und Abweichung.
