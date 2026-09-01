@@ -86,7 +86,20 @@ void WebService::tick(bool enabled) {
     return;
   }
   startIfNeeded();
-  if (started_) server_.handleClient();
+  if (started_) {
+    const uint32_t startedUs = micros();
+    server_.handleClient();
+    const uint32_t durationUs = micros() - startedUs;
+    const uint32_t slowThresholdUs = watchdog_
+                                       ? watchdog_->warnThresholdUs(WatchdogService::Web)
+                                       : 250000UL;
+    if (durationUs > slowThresholdUs) {
+      lastSlowRequestUs_ = durationUs;
+      lastSlowRequestAt_ = millis();
+      lastSlowRequest_ = server_.uri();
+      if (!lastSlowRequest_.length()) lastSlowRequest_ = "-";
+    }
+  }
 }
 
 void WebService::stop() {
@@ -303,7 +316,7 @@ void WebService::sendStatus() {
   const size_t fsUsed = storage_ ? storage_->fsUsedBytes() : 0;
 
   String json;
-  json.reserve(2250);
+  json.reserve(2800);
   json = "{\"ok\":true";
   json += ",\"version\":\"" + String(UicConfig::APP_VERSION) + "\"";
   json += ",\"deviceDate\":\"" + (time_ ? time_->localDate() : String("-")) + "\"";
@@ -335,6 +348,16 @@ void WebService::sendStatus() {
   json += ",\"rtcValid\":" + String(rtc_ && rtc_->timeValid() ? "true" : "false");
   json += ",\"rtcDate\":\"" + (rtc_ ? rtc_->dateText() : String("-")) + "\"";
   json += ",\"rtcTime\":\"" + (rtc_ ? rtc_->timeText() : String("-")) + "\"";
+  json += ",\"rtcOsf\":" + String(rtc_ && rtc_->oscillatorStopFlag() ? "true" : "false");
+  json += ",\"rtcTemperatureValid\":" + String(rtc_ && rtc_->temperatureValid() ? "true" : "false");
+  json += ",\"rtcTemperature\":" + String(rtc_ && rtc_->temperatureValid() ? rtc_->temperatureC() : 0.0f, 2);
+  json += ",\"rtcOffsetValid\":" + String(rtc_ && rtc_->systemOffsetValid() ? "true" : "false");
+  json += ",\"rtcOffsetSeconds\":" + String(rtc_ ? rtc_->systemOffsetSeconds() : 0);
+  json += ",\"rtcLastCheckUs\":" + String(rtc_ ? rtc_->lastCheckDurationUs() : 0);
+  json += ",\"rtcLastCheckAgeMs\":" + String(rtc_ && rtc_->checkSequence() ? millis() - rtc_->lastCheckAt() : 0xFFFFFFFFUL);
+  json += ",\"webLastSlowRequest\":\"" + lastSlowRequest_ + "\"";
+  json += ",\"webLastSlowUs\":" + String(lastSlowRequestUs_);
+  json += ",\"webLastSlowAgeMs\":" + String(lastSlowRequestAt_ ? millis() - lastSlowRequestAt_ : 0xFFFFFFFFUL);
   json += ",\"displayPresent\":" + String(display_ && display_->present() ? "true" : "false");
   json += ",\"displaySimulation\":" + String(display_ && display_->simulationEnabled() ? "true" : "false");
   json += ",\"displayAvailable\":" + String(display_ && display_->available() ? "true" : "false");
@@ -386,6 +409,9 @@ void WebService::sendStatus() {
       json += ",\"ageMs\":" + String(watchdog_->ageMs(module));
       json += ",\"lastUs\":" + String(state.lastDurationUs);
       json += ",\"maxUs\":" + String(state.maxDurationUs);
+      json += ",\"warnUs\":" + String(watchdog_->warnThresholdUs(module));
+      json += ",\"lastSlowUs\":" + String(state.lastSlowDurationUs);
+      json += ",\"lastSlowAgeMs\":" + String(state.lastSlowAt ? millis() - state.lastSlowAt : 0xFFFFFFFFUL);
       json += ",\"slow\":" + String(state.slowCount);
       json += ",\"errors\":" + String(state.errorCount) + "}";
     }
@@ -720,7 +746,6 @@ bool WebService::testNtp(const String& host) {
   udp.stop();
   return false;
 }
-
 
 void WebService::sendTrackList() {
   auto escapeJson = [](String value) {
