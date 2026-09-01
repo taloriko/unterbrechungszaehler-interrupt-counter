@@ -15,6 +15,9 @@ on:
       - ".github/workflows/build.yml"
       - ".github/workflows/release.yml"
 
+permissions:
+  contents: write
+
 jobs:
   translations:
     runs-on: ubuntu-latest
@@ -49,13 +52,21 @@ jobs:
           arduino-cli core install esp32:esp32@3.3.11 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
       - name: Create test secrets
         run: cp arduino/Unterbrechungszaehler/Secrets.example.h arduino/Unterbrechungszaehler/Secrets.h
-      - name: Verify compressed web UI
+      - name: Generate compressed web UI
         run: |
           python tools/generate_webui_gzip.py
           if ! git diff --quiet -- arduino/Unterbrechungszaehler/WebUiGzip.h; then
-            echo "WebUiGzip.h ist nicht aktuell. Bitte Generator ausfuehren und Ergebnis committen." >&2
-            git diff --stat -- arduino/Unterbrechungszaehler/WebUiGzip.h
-            exit 1
+            if [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$GITHUB_REF_NAME" = "feature/2.1.2-rtc-mobile" ]; then
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add arduino/Unterbrechungszaehler/WebUiGzip.h
+              git commit -m "2.1.2: WebUiGzip regenerieren"
+              git push
+            else
+              echo "WebUiGzip.h ist nicht aktuell. Bitte Generator ausfuehren und Ergebnis committen." >&2
+              git diff --stat -- arduino/Unterbrechungszaehler/WebUiGzip.h
+              exit 1
+            fi
           fi
       - name: Compile firmware
         env:
