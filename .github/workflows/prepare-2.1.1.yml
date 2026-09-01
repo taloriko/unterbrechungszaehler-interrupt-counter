@@ -1,0 +1,35 @@
+name: Prepare 2.1.1
+
+on:
+  push:
+    branches:
+      - "features/2.1.1"
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: features/2.1.1
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Prepare optimized 2.1.1 sources
+        run: python tools/prepare_2_1_1.py
+      - name: Commit generated release sources
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Optimize 2.1.1 flash usage for OTA"
+          git push origin HEAD:features/2.1.1
