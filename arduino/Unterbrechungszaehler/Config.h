@@ -4,7 +4,7 @@
 
 namespace UicConfig {
 
-static constexpr char APP_VERSION[] = "2.1.1";
+static constexpr char APP_VERSION[] = "2.1.2";
 static constexpr char HOSTNAME[] = "unterbrechungen";
 static constexpr char FALLBACK_AP_SSID[] = "Unterbrechungszaehler";
 static constexpr char TZ_INFO[] = "CET-1CEST,M3.5.0,M10.5.0/3";
@@ -40,6 +40,7 @@ static constexpr uint32_t LONG_PRESS_MS = 3000;
 static constexpr uint32_t WIFI_RETRY_MS = 10000;
 static constexpr uint32_t DISPLAY_BOOT_MS = 15000;
 static constexpr uint32_t DIAGNOSTIC_INTERVAL_MS = 60000;
+static constexpr uint32_t RTC_DIAGNOSTIC_INTERVAL_MS = 60000;
 static constexpr uint32_t WATCHDOG_TIMEOUT_MS = 12000;
 static constexpr uint32_t MODULE_WARN_MS = 1000;
 
