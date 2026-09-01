@@ -5,10 +5,11 @@
 class StorageService;
 class TimeService;
 class LedService;
+class SoundService;
 
 class AutarkService {
 public:
-  void begin(StorageService* storage, TimeService* time, LedService* led);
+  void begin(StorageService* storage, TimeService* time, LedService* led, SoundService* sound);
   void tick();
   bool enter();
   bool leave();
@@ -25,6 +26,7 @@ private:
   StorageService* storage_ = nullptr;
   TimeService* time_ = nullptr;
   LedService* led_ = nullptr;
+  SoundService* sound_ = nullptr;
 
   bool active_ = false;
   uint32_t sessionId_ = 0;
