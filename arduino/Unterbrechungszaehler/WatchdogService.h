@@ -28,6 +28,8 @@ public:
     uint32_t lastOkAt = 0;
     uint32_t lastDurationUs = 0;
     uint32_t maxDurationUs = 0;
+    uint32_t lastSlowAt = 0;
+    uint32_t lastSlowDurationUs = 0;
     uint32_t slowCount = 0;
     uint32_t errorCount = 0;
     bool running = false;
@@ -42,12 +44,11 @@ public:
   void setStatus(Module module, ModuleState state, const char* detail = "-");
   void feed();
 
-  // executionHealthy() bewertet nur, ob der Modulpfad regelmaessig und ohne
-  // Laufzeitfehler ausgefuehrt wird. healthy() kombiniert dies mit dem
-  // fachlichen Modulzustand.
   bool executionHealthy(Module module) const;
   bool healthy(Module module) const;
   uint32_t ageMs(Module module) const;
+  uint32_t healthTimeoutMs(Module module) const;
+  uint32_t slowThresholdMs(Module module) const;
   const State& state(Module module) const { return states_[module]; }
   static const char* name(Module module);
 
