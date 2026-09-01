@@ -5,10 +5,11 @@
 class StorageService;
 class TimeService;
 class LedService;
+class SoundService;
 
 class CounterService {
 public:
-  void begin(StorageService* storage, TimeService* time, LedService* led);
+  void begin(StorageService* storage, TimeService* time, LedService* led, SoundService* sound);
   bool addNormalEvent(bool physicalButton);
   bool deleteNormalEvent();
 
@@ -22,6 +23,7 @@ private:
   StorageService* storage_ = nullptr;
   TimeService* time_ = nullptr;
   LedService* led_ = nullptr;
+  SoundService* sound_ = nullptr;
   uint32_t pulseSequence_ = 0;
   uint32_t actionSequence_ = 0;
   uint8_t actionKind_ = 0;
