@@ -19,6 +19,7 @@ public:
   bool temperatureValid() const { return temperatureValid_; }
   int32_t systemOffsetSeconds() const { return systemOffsetSeconds_; }
   bool systemOffsetValid() const { return systemOffsetValid_; }
+  const char* diagnosticText() const { return diagnosticText_; }
 
   bool applyToSystem();
   bool writeSystemTime();
@@ -37,6 +38,7 @@ private:
   bool cachedTime(struct tm& value) const;
   void configureOutputs();
   void updateSystemOffset();
+  void updateDiagnosticText();
 
   bool present_ = false;
   bool timeValid_ = false;
@@ -51,4 +53,5 @@ private:
   uint32_t lastCheckAt_ = 0;
   uint32_t lastCheckDurationUs_ = 0;
   uint32_t checkSequence_ = 0;
+  char diagnosticText_[64] = "rtc_not_checked";
 };
