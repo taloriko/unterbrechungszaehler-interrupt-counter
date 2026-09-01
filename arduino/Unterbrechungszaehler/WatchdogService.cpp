@@ -36,7 +36,14 @@ void WatchdogService::endModule(Module module, bool ok) {
   s.running = false;
   s.lastDurationUs = duration;
   if (duration > s.maxDurationUs) s.maxDurationUs = duration;
-  if (duration > UicConfig::MODULE_WARN_MS * 1000UL) s.slowCount++;
+
+  const uint32_t slowMs = slowThresholdMs(module);
+  if (slowMs > 0 && duration > slowMs * 1000UL) {
+    s.slowCount++;
+    s.lastSlowAt = millis();
+    s.lastSlowDurationUs = duration;
+  }
+
   s.lastResultOk = ok;
   if (!ok) s.errorCount++;
   if (ok) s.lastOkAt = millis();
@@ -46,7 +53,6 @@ void WatchdogService::heartbeat(Module module, bool ok) {
   if (module >= Count) return;
   State& s = states_[module];
   s.running = false;
-  s.lastDurationUs = 0;
   s.lastResultOk = ok;
   if (!ok) s.errorCount++;
   if (ok) s.lastOkAt = millis();
@@ -69,6 +75,36 @@ uint32_t WatchdogService::ageMs(Module module) const {
   return millis() - s.lastOkAt;
 }
 
+uint32_t WatchdogService::healthTimeoutMs(Module module) const {
+  switch (module) {
+    case Rtc: return UicConfig::RTC_HEALTH_TIMEOUT_MS;
+    case Storage:
+    case Analytics:
+      return 0;  // Ereignis-/zustandsbasiert, kein kuenstlicher Dauer-Heartbeat.
+    default:
+      return UicConfig::WATCHDOG_TIMEOUT_MS;
+  }
+}
+
+uint32_t WatchdogService::slowThresholdMs(Module module) const {
+  switch (module) {
+    case MainLoop: return 0;       // Gesamtzyklus enthaelt die Laufzeiten aller Kindmodule.
+    case Input:
+    case Mode:
+    case Time:
+    case Autark:
+    case Led:
+      return 100;
+    case Rtc: return 100;
+    case Display: return 150;
+    case Network: return 250;
+    case Sound: return 100;
+    case Diagnostics: return 250;
+    case Web: return UicConfig::MODULE_WARN_MS;
+    default: return UicConfig::MODULE_WARN_MS;
+  }
+}
+
 bool WatchdogService::executionHealthy(Module module) const {
   if (module >= Count) return false;
   const State& s = states_[module];
@@ -79,8 +115,9 @@ bool WatchdogService::executionHealthy(Module module) const {
   }
 
   if (!s.lastResultOk) return false;
-  if (s.lastOkAt == 0) return true;
-  return millis() - s.lastOkAt < UicConfig::WATCHDOG_TIMEOUT_MS;
+  const uint32_t timeout = healthTimeoutMs(module);
+  if (timeout == 0 || s.lastOkAt == 0) return true;
+  return millis() - s.lastOkAt < timeout;
 }
 
 bool WatchdogService::healthy(Module module) const {
