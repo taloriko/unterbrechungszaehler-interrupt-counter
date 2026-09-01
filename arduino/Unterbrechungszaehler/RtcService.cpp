@@ -1,5 +1,6 @@
 #include "RtcService.h"
 
+#include <math.h>
 #include <sys/time.h>
 #include <time.h>
 
@@ -12,15 +13,27 @@ void RtcService::begin() {
 
   Wire.beginTransmission(UicConfig::RTC_ADDRESS);
   present_ = Wire.endTransmission() == 0;
-  refreshState();
+  if (present_) refreshState();
   Serial.printf("[RTC] DS3231 %s | Zeit %s\n", present_ ? "erkannt" : "nicht erkannt", timeValid_ ? "OK" : "ungueltig");
 }
 
-bool RtcService::applyToSystem() {
-  struct tm value = {};
-  bool osf = false;
-  if (!read(value, osf) || osf) return false;
+void RtcService::tick() {
+  if (!present_) return;
+  if (lastCheckAt_ != 0 && millis() - lastCheckAt_ < UicConfig::RTC_DIAGNOSTIC_INTERVAL_MS) return;
+  refreshState();
+}
 
+uint32_t RtcService::lastCheckAgeMs() const {
+  if (lastCheckAt_ == 0) return 0xFFFFFFFFUL;
+  return millis() - lastCheckAt_;
+}
+
+bool RtcService::applyToSystem() {
+  if (!present_) return false;
+  if (!cachedTimeAvailable_ && !refreshState()) return false;
+  if (oscillatorStopFlag_ || !timeValid_) return false;
+
+  struct tm value = cachedTime_;
   setenv("TZ", UicConfig::TZ_INFO, 1);
   tzset();
   const time_t epochValue = mktime(&value);
@@ -49,12 +62,14 @@ bool RtcService::writeSystemTime() {
   Wire.write(decToBcd(static_cast<uint8_t>(value.tm_mday)));
   Wire.write(decToBcd(static_cast<uint8_t>(value.tm_mon + 1)));
   Wire.write(decToBcd(static_cast<uint8_t>((value.tm_year + 1900) % 100)));
-  if (Wire.endTransmission() != 0) return false;
+  if (Wire.endTransmission() != 0) {
+    communicationOk_ = false;
+    return false;
+  }
 
   uint8_t status = 0;
   if (readRegister(0x0F, status)) writeRegister(0x0F, status & static_cast<uint8_t>(~0x80));
-  refreshState();
-  return true;
+  return refreshState();
 }
 
 bool RtcService::read(struct tm& value, bool& oscillatorStopFlag) {
@@ -108,21 +123,17 @@ bool RtcService::read(struct tm& value, bool& oscillatorStopFlag) {
   return true;
 }
 
-String RtcService::dateText() {
-  struct tm value = {};
-  bool osf = false;
-  if (!read(value, osf)) return "-";
+String RtcService::dateText() const {
+  if (!cachedTimeAvailable_) return "-";
   char text[16];
-  snprintf(text, sizeof(text), "%02d.%02d.%04d", value.tm_mday, value.tm_mon + 1, value.tm_year + 1900);
+  snprintf(text, sizeof(text), "%02d.%02d.%04d", cachedTime_.tm_mday, cachedTime_.tm_mon + 1, cachedTime_.tm_year + 1900);
   return String(text);
 }
 
-String RtcService::timeText() {
-  struct tm value = {};
-  bool osf = false;
-  if (!read(value, osf)) return "-";
+String RtcService::timeText() const {
+  if (!cachedTimeAvailable_) return "-";
   char text[16];
-  snprintf(text, sizeof(text), "%02d:%02d:%02d", value.tm_hour, value.tm_min, value.tm_sec);
+  snprintf(text, sizeof(text), "%02d:%02d:%02d", cachedTime_.tm_hour, cachedTime_.tm_min, cachedTime_.tm_sec);
   return String(text);
 }
 
@@ -152,16 +163,58 @@ bool RtcService::writeRegister(uint8_t reg, uint8_t value) {
   return Wire.endTransmission() == 0;
 }
 
-void RtcService::refreshState() {
+bool RtcService::readTemperature(float& value) {
+  uint8_t msb = 0;
+  uint8_t lsb = 0;
+  if (!readRegister(0x11, msb) || !readRegister(0x12, lsb)) return false;
+  const int8_t signedMsb = static_cast<int8_t>(msb);
+  value = static_cast<float>(signedMsb) + static_cast<float>((lsb >> 6) & 0x03) * 0.25f;
+  return true;
+}
+
+void RtcService::updateDifference() {
+  if (!cachedTimeAvailable_) {
+    systemDifferenceSeconds_ = 0;
+    return;
+  }
+  const time_t systemNow = time(nullptr);
+  if (systemNow <= static_cast<time_t>(UicConfig::VALID_TIME_MIN)) {
+    systemDifferenceSeconds_ = 0;
+    return;
+  }
+  struct tm rtcValue = cachedTime_;
+  const time_t rtcEpoch = mktime(&rtcValue);
+  if (rtcEpoch <= 0) {
+    systemDifferenceSeconds_ = 0;
+    return;
+  }
+  const int64_t diff = static_cast<int64_t>(rtcEpoch) - static_cast<int64_t>(systemNow);
+  systemDifferenceSeconds_ = diff > INT32_MAX ? INT32_MAX : (diff < INT32_MIN ? INT32_MIN : static_cast<int32_t>(diff));
+}
+
+bool RtcService::refreshState() {
+  lastCheckAt_ = millis();
   if (!present_) {
     timeValid_ = false;
     oscillatorStopFlag_ = false;
-    return;
+    communicationOk_ = false;
+    cachedTimeAvailable_ = false;
+    return false;
   }
 
   struct tm value = {};
   bool osf = false;
-  const bool ok = read(value, osf);
+  const bool timeOk = read(value, osf);
+  float temp = NAN;
+  const bool tempOk = readTemperature(temp);
+  communicationOk_ = timeOk && tempOk;
   oscillatorStopFlag_ = osf;
-  timeValid_ = ok && !osf;
+  timeValid_ = timeOk && !osf;
+  if (timeOk) {
+    cachedTime_ = value;
+    cachedTimeAvailable_ = true;
+  }
+  if (tempOk) temperatureC_ = temp;
+  updateDifference();
+  return communicationOk_;
 }
