@@ -46,6 +46,8 @@ uint32_t lastDiagnosticAt = 0;
 uint32_t lastCounterActionSequence = 0;
 uint32_t lastAutarkSession = 0;
 uint32_t lastAutarkEvents = 0;
+uint32_t lastLoopCycleStartedUs = 0;
+uint32_t lastRtcCheckSequence = 0;
 bool analyticsReadyAtBoot = false;
 
 void configureAutarkWakeup() {
@@ -99,9 +101,8 @@ void handleSoundTrigger() {
   if (counter.actionKind() == 1) sound.requestPlay();
 }
 
-
 void updateModuleStatuses() {
-  watchdog.setStatus(WatchdogService::MainLoop, ModuleState::Ready, "loop_ok");
+  watchdog.setStatus(WatchdogService::MainLoop, ModuleState::Ready, "loop_cycle");
   watchdog.setStatus(WatchdogService::Input, ModuleState::Ready, "gpio_ok");
   watchdog.setStatus(WatchdogService::Mode,
                      autark.active() ? ModuleState::Busy : ModuleState::Ready,
@@ -121,10 +122,12 @@ void updateModuleStatuses() {
 
   if (!rtc.present()) {
     watchdog.setStatus(WatchdogService::Rtc, ModuleState::NotDetected, "optional");
+  } else if (rtc.oscillatorStopFlag()) {
+    watchdog.setStatus(WatchdogService::Rtc, ModuleState::Degraded, "oscillator_stopped");
+  } else if (!rtc.timeValid()) {
+    watchdog.setStatus(WatchdogService::Rtc, ModuleState::Degraded, "time_invalid");
   } else {
-    watchdog.setStatus(WatchdogService::Rtc,
-                       rtc.timeValid() ? ModuleState::Ready : ModuleState::Degraded,
-                       rtc.timeValid() ? "rtc_ok" : "time_invalid");
+    watchdog.setStatus(WatchdogService::Rtc, ModuleState::Ready, "rtc_ok");
   }
 
   watchdog.setStatus(WatchdogService::Autark,
@@ -186,15 +189,26 @@ void printDiagnostics() {
                 static_cast<unsigned long>(sound.sentCount()),
                 static_cast<unsigned long>(sound.completedCount()));
 
+  if (rtc.present()) {
+    Serial.printf("[RTC] Zeit=%s %s | OSF=%s | Temp=%s | Offset=%s | Check=%luus\n",
+                  rtc.dateText().c_str(),
+                  rtc.timeText().c_str(),
+                  rtc.oscillatorStopFlag() ? "JA" : "NEIN",
+                  rtc.temperatureValid() ? String(rtc.temperatureC(), 2).c_str() : "-",
+                  rtc.systemOffsetValid() ? String(rtc.systemOffsetSeconds()).c_str() : "-",
+                  static_cast<unsigned long>(rtc.lastCheckDurationUs()));
+  }
+
   Serial.print("[WATCHDOG]");
   for (uint8_t i = 0; i < WatchdogService::Count; i++) {
     const auto module = static_cast<WatchdogService::Module>(i);
     const auto& state = watchdog.state(module);
-    Serial.printf(" %s=%s/%luus(max%lu)/err%lu",
+    Serial.printf(" %s=%s/%luus(max%lu)/slow%lu/err%lu",
                   WatchdogService::name(module),
                   watchdog.healthy(module) ? moduleStateName(state.status.state) : "TIMEOUT/FEHLER",
                   static_cast<unsigned long>(state.lastDurationUs),
                   static_cast<unsigned long>(state.maxDurationUs),
+                  static_cast<unsigned long>(state.slowCount),
                   static_cast<unsigned long>(state.errorCount));
   }
   Serial.println();
@@ -212,6 +226,11 @@ void setup() {
   led.begin();
   storage.begin();
   rtc.begin();
+  watchdog.recordDuration(WatchdogService::Rtc,
+                          rtc.lastCheckDurationUs(),
+                          rtc.present() ? rtc.lastCheckOk() : true);
+  lastRtcCheckSequence = rtc.checkSequence();
+
   timeService.begin(&rtc);
   counter.begin(&storage, &timeService, &led);
   autark.begin(&storage, &timeService, &led);
@@ -222,7 +241,9 @@ void setup() {
   analytics.begin(&storage);
   const uint32_t analyticsStarted = millis();
   const bool analyticsReady = analytics.warmCurrent();
+  const uint32_t analyticsDurationUs = (millis() - analyticsStarted) * 1000UL;
   analyticsReadyAtBoot = analyticsReady;
+  watchdog.recordDuration(WatchdogService::Analytics, analyticsDurationUs, analyticsReady);
   Serial.printf("[ANALYTIK] Vorbereitet=%s in %lu ms\n",
                 analyticsReady ? "JA" : "NEIN",
                 static_cast<unsigned long>(millis() - analyticsStarted));
@@ -243,18 +264,20 @@ void setup() {
   lastAutarkSession = autark.sessionId();
   lastAutarkEvents = autark.sessionEvents();
 
-  // Heartbeats bestaetigen nur, dass der jeweilige Softwarepfad lebt.
-  // Fachliche bzw. Hardware-Zustaende werden getrennt ueber ModuleStatus bewertet.
-  watchdog.heartbeat(WatchdogService::Storage, true);
-  watchdog.heartbeat(WatchdogService::Rtc, true);  // RTC ist optionale Hardware, Abwesenheit ist kein Fehler.
-  watchdog.heartbeat(WatchdogService::Analytics, true);
+  // Passive Module melden nur echte Initialisierung bzw. Aktivitaet und werden
+  // nicht mit kuenstlichen Heartbeats in jedem Loop auf "jetzt" gehalten.
+  watchdog.heartbeat(WatchdogService::Storage, storage.recentReady());
   updateModuleStatuses();
 
   if (storage.recentReady()) led.signalStored();
 }
 
 void loop() {
-  watchdog.beginModule(WatchdogService::MainLoop);
+  const uint32_t loopNowUs = micros();
+  if (lastLoopCycleStartedUs != 0) {
+    watchdog.recordDuration(WatchdogService::MainLoop, loopNowUs - lastLoopCycleStartedUs, true);
+  }
+  lastLoopCycleStartedUs = loopNowUs;
 
   watchdog.beginModule(WatchdogService::Input);
   input.tick();
@@ -264,15 +287,17 @@ void loop() {
   applyModeTransition();
   watchdog.endModule(WatchdogService::Mode);
 
-  watchdog.heartbeat(WatchdogService::Storage, true);
-
   watchdog.beginModule(WatchdogService::Time);
   timeService.tick();
   watchdog.endModule(WatchdogService::Time);
 
-  // RTC besitzt keinen eigenen periodischen tick(). Der Watchdog prueft daher den
-  // Servicepfad selbst; ob physische RTC-Hardware vorhanden ist, zeigt die Hardwarediagnose separat.
-  watchdog.heartbeat(WatchdogService::Rtc, true);
+  rtc.tick();
+  if (rtc.checkSequence() != lastRtcCheckSequence) {
+    lastRtcCheckSequence = rtc.checkSequence();
+    watchdog.recordDuration(WatchdogService::Rtc,
+                            rtc.lastCheckDurationUs(),
+                            rtc.present() ? rtc.lastCheckOk() : true);
+  }
 
   watchdog.beginModule(WatchdogService::Autark);
   autark.tick();
@@ -296,8 +321,6 @@ void loop() {
   web.tick(normalMode);
   watchdog.endModule(WatchdogService::Web);
 
-  watchdog.heartbeat(WatchdogService::Analytics, true);
-
   watchdog.beginModule(WatchdogService::Sound);
   handleSoundTrigger();
   sound.tick();
@@ -308,7 +331,6 @@ void loop() {
   printDiagnostics();
   watchdog.endModule(WatchdogService::Diagnostics);
 
-  watchdog.endModule(WatchdogService::MainLoop);
   updateModuleStatuses();
   watchdog.feed();
 
