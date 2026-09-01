@@ -16,6 +16,7 @@ COMPONENTS = (
     "WebUiV2.h",
     "WebUiNetwork.h",
     "WebUiDisplay.h",
+    "WebUiV212.h",
 )
 RAW_RE = re.compile(r'R"HTML\((.*)\)HTML";', re.DOTALL)
 
