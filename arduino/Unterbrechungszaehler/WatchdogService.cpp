@@ -6,7 +6,7 @@
 
 void WatchdogService::begin() {
   esp_task_wdt_config_t config = {};
-  config.timeout_ms = UicConfig::WATCHDOG_TIMEOUT_MS;
+  config.timeout_ms = UicConfig::TASK_WATCHDOG_TIMEOUT_MS;
   config.idle_core_mask = 0;
   config.trigger_panic = true;
   esp_task_wdt_reconfigure(&config);
@@ -17,7 +17,8 @@ void WatchdogService::begin() {
     states_[i].status.detail = "boot";
   }
 
-  Serial.printf("[WATCHDOG] Hardware-Watchdog %lu ms | %u Modulpfade\n",
+  Serial.printf("[WATCHDOG] Hardware-Watchdog %lu ms | Modulueberwachung %lu ms | %u Modulpfade\n",
+                static_cast<unsigned long>(UicConfig::TASK_WATCHDOG_TIMEOUT_MS),
                 static_cast<unsigned long>(UicConfig::WATCHDOG_TIMEOUT_MS),
                 static_cast<unsigned>(Count));
 }
