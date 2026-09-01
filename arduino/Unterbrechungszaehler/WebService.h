@@ -30,6 +30,9 @@ public:
   void tick(bool enabled);
   void stop();
   bool started() const { return started_; }
+  uint32_t lastSlowRequestUs() const { return lastSlowRequestUs_; }
+  uint32_t lastSlowRequestAt() const { return lastSlowRequestAt_; }
+  const String& lastSlowRequest() const { return lastSlowRequest_; }
 
 private:
   void registerRoutes();
@@ -62,4 +65,7 @@ private:
   bool started_ = false;
   bool updateOk_ = false;
   uint32_t restartAt_ = 0;
+  uint32_t lastSlowRequestUs_ = 0;
+  uint32_t lastSlowRequestAt_ = 0;
+  String lastSlowRequest_ = "-";
 };
