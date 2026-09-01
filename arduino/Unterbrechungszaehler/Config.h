@@ -40,7 +40,12 @@ static constexpr uint32_t LONG_PRESS_MS = 3000;
 static constexpr uint32_t WIFI_RETRY_MS = 10000;
 static constexpr uint32_t DISPLAY_BOOT_MS = 15000;
 static constexpr uint32_t DIAGNOSTIC_INTERVAL_MS = 60000;
+
+// Modulpfade werden weiterhin eng ueberwacht. Der ESP32 Task-Watchdog bekommt
+// ein groesseres Zeitfenster, weil ein synchroner OTA-Upload den Webserver
+// laenger als einen normalen Loop-Zyklus belegen kann.
 static constexpr uint32_t WATCHDOG_TIMEOUT_MS = 12000;
+static constexpr uint32_t TASK_WATCHDOG_TIMEOUT_MS = 60000;
 static constexpr uint32_t MODULE_WARN_MS = 1000;
 static constexpr uint32_t RTC_CHECK_INTERVAL_MS = 60000;
 static constexpr uint32_t RTC_HEALTH_TIMEOUT_MS = 90000;
