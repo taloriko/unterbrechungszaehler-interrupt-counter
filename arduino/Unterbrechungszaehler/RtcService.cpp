@@ -1,5 +1,6 @@
 #include "RtcService.h"
 
+#include <math.h>
 #include <sys/time.h>
 #include <time.h>
 
@@ -12,14 +13,29 @@ void RtcService::begin() {
 
   Wire.beginTransmission(UicConfig::RTC_ADDRESS);
   present_ = Wire.endTransmission() == 0;
-  refreshState();
+  if (present_) sample();
   Serial.printf("[RTC] DS3231 %s | Zeit %s\n", present_ ? "erkannt" : "nicht erkannt", timeValid_ ? "OK" : "ungueltig");
+}
+
+bool RtcService::checkDue() const {
+  if (!present_) return false;
+  if (lastCheckAtMs_ == 0) return true;
+  return millis() - lastCheckAtMs_ >= UicConfig::RTC_CHECK_INTERVAL_MS;
+}
+
+bool RtcService::tick() {
+  if (!checkDue()) return communicationOk_;
+  return sample();
+}
+
+uint32_t RtcService::lastCheckAgeMs() const {
+  if (lastCheckAtMs_ == 0) return 0xFFFFFFFFUL;
+  return millis() - lastCheckAtMs_;
 }
 
 bool RtcService::applyToSystem() {
   struct tm value = {};
-  bool osf = false;
-  if (!read(value, osf) || osf) return false;
+  if (!cachedLocalTime(value) || oscillatorStopFlag_) return false;
 
   setenv("TZ", UicConfig::TZ_INFO, 1);
   tzset();
@@ -49,12 +65,17 @@ bool RtcService::writeSystemTime() {
   Wire.write(decToBcd(static_cast<uint8_t>(value.tm_mday)));
   Wire.write(decToBcd(static_cast<uint8_t>(value.tm_mon + 1)));
   Wire.write(decToBcd(static_cast<uint8_t>((value.tm_year + 1900) % 100)));
-  if (Wire.endTransmission() != 0) return false;
+  if (Wire.endTransmission() != 0) {
+    communicationOk_ = false;
+    lastCheckAtMs_ = millis();
+    return false;
+  }
 
   uint8_t status = 0;
-  if (readRegister(0x0F, status)) writeRegister(0x0F, status & static_cast<uint8_t>(~0x80));
-  refreshState();
-  return true;
+  if (readRegister(0x0F, status)) {
+    writeRegister(0x0F, status & static_cast<uint8_t>(~0x80));
+  }
+  return sample();
 }
 
 bool RtcService::read(struct tm& value, bool& oscillatorStopFlag) {
@@ -108,19 +129,17 @@ bool RtcService::read(struct tm& value, bool& oscillatorStopFlag) {
   return true;
 }
 
-String RtcService::dateText() {
+String RtcService::dateText() const {
   struct tm value = {};
-  bool osf = false;
-  if (!read(value, osf)) return "-";
+  if (!cachedLocalTime(value)) return "-";
   char text[16];
   snprintf(text, sizeof(text), "%02d.%02d.%04d", value.tm_mday, value.tm_mon + 1, value.tm_year + 1900);
   return String(text);
 }
 
-String RtcService::timeText() {
+String RtcService::timeText() const {
   struct tm value = {};
-  bool osf = false;
-  if (!read(value, osf)) return "-";
+  if (!cachedLocalTime(value)) return "-";
   char text[16];
   snprintf(text, sizeof(text), "%02d:%02d:%02d", value.tm_hour, value.tm_min, value.tm_sec);
   return String(text);
@@ -152,16 +171,44 @@ bool RtcService::writeRegister(uint8_t reg, uint8_t value) {
   return Wire.endTransmission() == 0;
 }
 
-void RtcService::refreshState() {
-  if (!present_) {
-    timeValid_ = false;
-    oscillatorStopFlag_ = false;
-    return;
-  }
-
+bool RtcService::sample() {
+  lastCheckAtMs_ = millis();
   struct tm value = {};
   bool osf = false;
-  const bool ok = read(value, osf);
+  if (!read(value, osf)) {
+    communicationOk_ = false;
+    timeValid_ = false;
+    return false;
+  }
+
+  setenv("TZ", UicConfig::TZ_INFO, 1);
+  tzset();
+  const time_t epochValue = mktime(&value);
+  if (epochValue <= static_cast<time_t>(UicConfig::VALID_TIME_MIN)) {
+    communicationOk_ = true;
+    oscillatorStopFlag_ = osf;
+    timeValid_ = false;
+    return false;
+  }
+
+  uint8_t tempMsb = 0;
+  uint8_t tempLsb = 0;
+  if (readRegister(0x11, tempMsb) && readRegister(0x12, tempLsb)) {
+    const int8_t signedMsb = static_cast<int8_t>(tempMsb);
+    temperatureC_ = static_cast<float>(signedMsb) + static_cast<float>((tempLsb >> 6) & 0x03) * 0.25f;
+  }
+
+  communicationOk_ = true;
   oscillatorStopFlag_ = osf;
-  timeValid_ = ok && !osf;
+  timeValid_ = !osf;
+  cachedEpoch_ = epochValue;
+  cachedAtMs_ = millis();
+  return true;
+}
+
+bool RtcService::cachedLocalTime(struct tm& value) const {
+  if (!communicationOk_ || cachedEpoch_ <= static_cast<time_t>(UicConfig::VALID_TIME_MIN)) return false;
+  const time_t current = cachedEpoch_ + static_cast<time_t>((millis() - cachedAtMs_) / 1000UL);
+  localtime_r(&current, &value);
+  return true;
 }
