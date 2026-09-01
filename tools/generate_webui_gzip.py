@@ -30,8 +30,12 @@ def extract_component(path: Path) -> str:
 
 def build_payload() -> tuple[bytes, bytes]:
     html = "".join(extract_component(SKETCH / name) for name in COMPONENTS).encode("utf-8")
-    packed = gzip.compress(html, compresslevel=9, mtime=0)
-    return html, packed
+    packed = bytearray(gzip.compress(html, compresslevel=9, mtime=0))
+    # Python-Versionen vor 3.13 koennen bei mtime=0 die OS-Kennung von zlib
+    # uebernehmen. Byte 9 wird daher explizit auf 255 (unknown) normalisiert,
+    # damit die generierte Firmwarequelle versionsunabhaengig reproduzierbar ist.
+    packed[9] = 255
+    return html, bytes(packed)
 
 
 def render_header(html: bytes, packed: bytes) -> str:
