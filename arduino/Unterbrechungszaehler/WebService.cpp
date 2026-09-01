@@ -16,12 +16,7 @@
 #include "SoundService.h"
 #include "WatchdogService.h"
 #include "TimeService.h"
-#include "WebUi.h"
-#include "WebUiPatch.h"
-#include "WebUiFixes.h"
-#include "WebUiNetwork.h"
-#include "WebUiDisplay.h"
-#include "WebUiV2.h"
+#include "WebUiGzip.h"
 
 namespace {
 String exportDownloadName(const char* baseName, TimeService* timeService) {
@@ -112,15 +107,12 @@ void WebService::registerRoutes() {
 
   server_.on("/", HTTP_GET, [this]() {
     server_.sendHeader("Cache-Control", "no-store");
-    server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
-    server_.send(200, "text/html; charset=utf-8", "");
-    server_.sendContent_P(WEB_UI);
-    server_.sendContent_P(WEB_UI_PATCH);
-    server_.sendContent_P(WEB_UI_FIXES);
-    server_.sendContent_P(WEB_UI_NETWORK);
-    server_.sendContent_P(WEB_UI_DISPLAY);
-    server_.sendContent_P(WEB_UI_V2);
-    server_.sendContent("");
+    server_.sendHeader("Content-Encoding", "gzip");
+    server_.sendHeader("Vary", "Accept-Encoding");
+    server_.send_P(200,
+                   PSTR("text/html; charset=utf-8"),
+                   WEB_UI_GZIP,
+                   WEB_UI_GZIP_LENGTH);
   });
 
   server_.on("/api/status", HTTP_GET, [this]() { sendStatus(); });

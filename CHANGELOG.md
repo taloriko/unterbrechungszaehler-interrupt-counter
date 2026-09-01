@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.1.1
+
+Flash-/OTA-Fix ohne Funktionsabbau. Die Weboberflaeche bleibt inhaltlich unveraendert, wird aber nicht mehr als rund 150 kB Klartext in die Firmware gelinkt.
+
+### Flash / OTA
+
+- Weboberflaeche wird deterministisch mit gzip komprimiert und als `WebUiGzip.h` in PROGMEM eingebettet
+- Browser erhalten die Seite mit `Content-Encoding: gzip` und entpacken sie automatisch
+- doppelte Auslieferung von `WEB_UI_V2` entfernt
+- editierbare `WebUi*.h`-Quelldateien bleiben erhalten; `tools/generate_webui_gzip.py` erzeugt daraus die komprimierte Fassung
+- ESP32-Arduino-Core im CI auf `3.3.11` festgesetzt, damit Builds reproduzierbar bleiben
+- CI bricht einen Release ab, wenn weniger als 64 KiB Programmspeicher-Reserve verbleiben
+- Versionsstand auf `2.1.1` angehoben
+
+### Kompatibilitaet
+
+- keine Aenderung an Pinbelegung, LittleFS-Daten, Einstellungen, API oder Bedienung
+- bestehende OTA-Partitionierung bleibt unveraendert
+- 2.1.1 ist als direktes OTA-Update fuer bestehende kompatible 2.x-Installationen vorgesehen
+
 ## 2.1.0
 
 Stabilitäts- und Diagnose-Release auf Basis des vollständigen 2.0.0-Stands. Schwerpunkt sind echte Hardwarezustände, eine belastbare DY-SV17F-Ansteuerung und ein reproduzierbarer OTA-Releaseprozess.

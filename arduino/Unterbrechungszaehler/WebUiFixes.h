@@ -3,7 +3,6 @@
 #include "WebUiBehavior.h"
 #include "WebUiV2.h"
 
-// WebService sendet diesen Baustein bereits zwischen Basis-UI und den weiteren
-// Erweiterungen. Die Makroverkettung haelt die bestehende 1.0.1-Reihenfolge
-// unveraendert und fuegt die 2.0-UI ohne Kopie der grossen Behavior-Datei an.
-#define WEB_UI_FIXES WEB_UI_BEHAVIOR); server_.sendContent_P(WEB_UI_V2
+// Legacy-Alias fuer den unkomprimierten Entwicklungsstand. Die produktive
+// Auslieferung verwendet ab 2.1.1 die automatisch erzeugte WebUiGzip.h.
+#define WEB_UI_FIXES WEB_UI_BEHAVIOR
