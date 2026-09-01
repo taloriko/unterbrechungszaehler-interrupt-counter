@@ -217,6 +217,7 @@ bool RtcService::refreshState() {
   lastCheckAt_ = millis();
   lastCheckDurationUs_ = micros() - startedUs;
   checkSequence_++;
+  updateDiagnosticText();
   return lastCheckOk_;
 }
 
@@ -254,4 +255,34 @@ void RtcService::updateSystemOffset() {
   const time_t estimatedRtc = cachedEpoch_ + static_cast<time_t>((millis() - cacheAtMs_) / 1000UL);
   systemOffsetSeconds_ = static_cast<int32_t>(estimatedRtc - now);
   systemOffsetValid_ = true;
+}
+
+void RtcService::updateDiagnosticText() {
+  if (!present_) {
+    snprintf(diagnosticText_, sizeof(diagnosticText_), "nicht erkannt");
+    return;
+  }
+
+  if (oscillatorStopFlag_) {
+    if (temperatureValid_) {
+      snprintf(diagnosticText_, sizeof(diagnosticText_), "OSF gesetzt | %.2f C", temperatureC_);
+    } else {
+      snprintf(diagnosticText_, sizeof(diagnosticText_), "OSF gesetzt");
+    }
+    return;
+  }
+
+  if (!timeValid_) {
+    snprintf(diagnosticText_, sizeof(diagnosticText_), "Zeit ungueltig");
+    return;
+  }
+
+  if (temperatureValid_ && systemOffsetValid_) {
+    snprintf(diagnosticText_, sizeof(diagnosticText_), "%.2f C | Offset %+ld s",
+             temperatureC_, static_cast<long>(systemOffsetSeconds_));
+  } else if (temperatureValid_) {
+    snprintf(diagnosticText_, sizeof(diagnosticText_), "%.2f C | Offset -", temperatureC_);
+  } else {
+    snprintf(diagnosticText_, sizeof(diagnosticText_), "RTC OK");
+  }
 }
