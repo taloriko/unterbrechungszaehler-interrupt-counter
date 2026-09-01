@@ -5,11 +5,14 @@ on:
     branches:
       - main
       - "reboot/**"
+      - "feature/**"
+      - "features/**"
   pull_request:
     paths:
       - "arduino/Unterbrechungszaehler/**"
       - "tools/check_translations.py"
       - ".github/workflows/build.yml"
+      - ".github/workflows/release.yml"
 
 jobs:
   translations:
@@ -26,6 +29,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Read firmware version
+        id: version
+        shell: bash
+        run: |
+          version=$(sed -n 's/.*APP_VERSION\[\] = "\([^"]*\)".*/\1/p' arduino/Unterbrechungszaehler/Config.h)
+          if [ -z "$version" ]; then
+            echo "Firmware version not found" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Install Arduino CLI
         uses: arduino/setup-arduino-cli@v2
       - name: Install ESP32 core
@@ -36,4 +49,15 @@ jobs:
       - name: Create test secrets
         run: cp arduino/Unterbrechungszaehler/Secrets.example.h arduino/Unterbrechungszaehler/Secrets.h
       - name: Compile firmware
-        run: arduino-cli compile --fqbn esp32:esp32:esp32 arduino/Unterbrechungszaehler
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p build
+          arduino-cli compile --fqbn esp32:esp32:esp32 --output-dir build arduino/Unterbrechungszaehler
+          cp build/Unterbrechungszaehler.ino.bin "build/Unterbrechungszaehler-${VERSION}-OTA.bin"
+      - name: Upload OTA firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: unterbrechungszaehler-${{ steps.version.outputs.version }}-ota
+          path: build/Unterbrechungszaehler-${{ steps.version.outputs.version }}-OTA.bin
+          if-no-files-found: error

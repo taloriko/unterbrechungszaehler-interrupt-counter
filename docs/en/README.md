@@ -4,7 +4,7 @@
 > **AI notice:** This project was created with substantial help from AI, then tested, revised and developed further in real-world use.  
 > If AI-generated code fundamentally offends your worldview, this is probably a good place to stop. Saves us both some time. ;-)
 
-> **README version:** `1.0.1`
+> **README version:** `2.1.0`
 
 [Deutsch](../de/README.md) · [Schwäbisch](../swg/README.md) · [Project home](../../README.md)
 

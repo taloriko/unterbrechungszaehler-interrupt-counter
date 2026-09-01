@@ -3,6 +3,7 @@
 #include <LittleFS.h>
 #include <WiFiUdp.h>
 #include <time.h>
+#include <Update.h>
 
 #include "AnalyticsService.h"
 #include "AutarkService.h"
@@ -12,12 +13,15 @@
 #include "NetworkService.h"
 #include "RtcService.h"
 #include "StorageService.h"
+#include "SoundService.h"
+#include "WatchdogService.h"
 #include "TimeService.h"
 #include "WebUi.h"
 #include "WebUiPatch.h"
 #include "WebUiFixes.h"
 #include "WebUiNetwork.h"
 #include "WebUiDisplay.h"
+#include "WebUiV2.h"
 
 namespace {
 String exportDownloadName(const char* baseName, TimeService* timeService) {
@@ -64,7 +68,9 @@ void WebService::begin(StorageService* storage,
                        AutarkService* autark,
                        RtcService* rtc,
                        DisplayService* display,
-                       AnalyticsService* analytics) {
+                       AnalyticsService* analytics,
+                       SoundService* sound,
+                       WatchdogService* watchdog) {
   storage_ = storage;
   time_ = time;
   network_ = network;
@@ -73,10 +79,13 @@ void WebService::begin(StorageService* storage,
   rtc_ = rtc;
   display_ = display;
   analytics_ = analytics;
+  sound_ = sound;
+  watchdog_ = watchdog;
   registerRoutes();
 }
 
 void WebService::tick(bool enabled) {
+  if (restartAt_ && static_cast<int32_t>(millis() - restartAt_) >= 0) ESP.restart();
   if (!enabled) {
     stop();
     return;
@@ -110,6 +119,7 @@ void WebService::registerRoutes() {
     server_.sendContent_P(WEB_UI_FIXES);
     server_.sendContent_P(WEB_UI_NETWORK);
     server_.sendContent_P(WEB_UI_DISPLAY);
+    server_.sendContent_P(WEB_UI_V2);
     server_.sendContent("");
   });
 
@@ -118,6 +128,49 @@ void WebService::registerRoutes() {
   server_.on("/api/autark", HTTP_GET, [this]() { sendAutark(); });
   server_.on("/api/aggregate", HTTP_GET, [this]() { sendAggregate(); });
   server_.on("/api/display-preview", HTTP_GET, [this]() { sendDisplayPreview(); });
+
+  server_.on("/api/sound-settings", HTTP_POST, [this]() {
+    if (!sound_) { sendJsonError(503, "sound_unavailable"); return; }
+    const bool enabled = boolArg(server_.arg("enabled"));
+    const int volume = server_.arg("volume").toInt();
+    const int track = server_.arg("track").toInt();
+    if (volume < 0 || volume > 30 || track < 1 || track > 65535 ||
+        !sound_->setSettings(enabled, static_cast<uint8_t>(volume), static_cast<uint16_t>(track))) {
+      sendJsonError(400, "invalid_sound_settings"); return;
+    }
+    server_.send(200, "application/json", "{\"ok\":true}");
+  });
+
+  server_.on("/api/sound-test", HTTP_POST, [this]() {
+    if (!sound_ || !sound_->present()) { sendJsonError(409, "sound_hardware_missing"); return; }
+    if (!sound_->test()) { sendJsonError(409, "sound_not_ready"); return; }
+    server_.send(200, "application/json", "{\"ok\":true}");
+  });
+
+  server_.on("/api/tracks", HTTP_GET, [this]() { sendTrackList(); });
+  server_.on("/api/tracks", HTTP_POST, [this]() { saveTrackList(); });
+
+  server_.on("/api/ota", HTTP_POST,
+    [this]() {
+      updateOk_ = !Update.hasError() && updateOk_;
+      server_.send(updateOk_ ? 200 : 500, "application/json",
+                   updateOk_ ? "{\"ok\":true}" : "{\"ok\":false,\"error\":\"update_failed\"}");
+      if (updateOk_) restartAt_ = millis() + 1200;
+    },
+    [this]() {
+      HTTPUpload& upload = server_.upload();
+      if (upload.status == UPLOAD_FILE_START) {
+        updateOk_ = Update.begin(UPDATE_SIZE_UNKNOWN);
+        Serial.printf("[OTA] Start: %s\n", upload.filename.c_str());
+      } else if (upload.status == UPLOAD_FILE_WRITE) {
+        if (updateOk_ && Update.write(upload.buf, upload.currentSize) != upload.currentSize) updateOk_ = false;
+      } else if (upload.status == UPLOAD_FILE_END) {
+        if (updateOk_) updateOk_ = Update.end(true);
+        Serial.printf("[OTA] Ende: %u Bytes | %s\n", upload.totalSize, updateOk_ ? "OK" : "FEHLER");
+      } else if (upload.status == UPLOAD_FILE_ABORTED) {
+        Update.abort(); updateOk_ = false; Serial.println("[OTA] Abgebrochen");
+      }
+    });
 
   server_.on("/api/add", HTTP_POST, [this]() {
     if (autark_ && autark_->active()) {
@@ -308,7 +361,44 @@ void WebService::sendStatus() {
   json += ",\"autarkSession\":" + String(autark_ ? autark_->sessionId() : 0);
   json += ",\"autarkElapsed\":" + String(autark_ ? (autark_->active() ? autark_->elapsedSeconds() : autark_->lastElapsedSeconds()) : 0);
   json += ",\"autarkSessionEvents\":" + String(autark_ ? autark_->sessionEvents() : 0);
-  json += "}";
+  json += ",\"sound\":{";
+  json += "\"present\":" + String(sound_ && sound_->present() ? "true" : "false");
+  json += ",\"enabled\":" + String(sound_ && sound_->enabled() ? "true" : "false");
+  json += ",\"volume\":" + String(sound_ ? sound_->volume() : 0);
+  json += ",\"track\":" + String(sound_ ? sound_->track() : 0);
+  json += ",\"state\":" + String(sound_ ? sound_->playState() : 255);
+  json += ",\"waiting\":" + String(sound_ && sound_->waitingForCompletion() ? "true" : "false");
+  json += ",\"hardwareState\":\"" + String(sound_ ? soundHardwareStateName(sound_->hardwareState()) : "unavailable") + "\"";
+  json += ",\"moduleState\":\"" + String(sound_ ? moduleStateName(sound_->moduleState()) : "error") + "\"";
+  json += ",\"detail\":\"" + String(sound_ ? sound_->statusDetail() : "sound_unavailable") + "\"";
+  json += ",\"confirmations\":" + String(sound_ ? sound_->confirmationCount() : 0);
+  json += ",\"sent\":" + String(sound_ ? sound_->sentCount() : 0);
+  json += ",\"completed\":" + String(sound_ ? sound_->completedCount() : 0);
+  json += ",\"failed\":" + String(sound_ ? sound_->failedCount() : 0);
+  json += ",\"timeouts\":" + String(sound_ ? sound_->timeoutCount() : 0);
+  json += ",\"responses\":" + String(sound_ ? sound_->responseCount() : 0);
+  json += ",\"errors\":" + String(sound_ ? sound_->errorCount() : 0);
+  json += "},\"modules\":[";
+  if (watchdog_) {
+    for (uint8_t i = 0; i < WatchdogService::Count; i++) {
+      if (i) json += ',';
+      const auto module = static_cast<WatchdogService::Module>(i);
+      const auto& state = watchdog_->state(module);
+      const bool executionOk = watchdog_->executionHealthy(module);
+      const ModuleState effectiveState = executionOk ? state.status.state : ModuleState::Timeout;
+      json += "{\"name\":\"" + String(WatchdogService::name(module)) + "\"";
+      json += ",\"ok\":" + String(watchdog_->healthy(module) ? "true" : "false");
+      json += ",\"executionOk\":" + String(executionOk ? "true" : "false");
+      json += ",\"state\":\"" + String(moduleStateName(effectiveState)) + "\"";
+      json += ",\"detail\":\"" + String(state.status.detail ? state.status.detail : "-") + "\"";
+      json += ",\"ageMs\":" + String(watchdog_->ageMs(module));
+      json += ",\"lastUs\":" + String(state.lastDurationUs);
+      json += ",\"maxUs\":" + String(state.maxDurationUs);
+      json += ",\"slow\":" + String(state.slowCount);
+      json += ",\"errors\":" + String(state.errorCount) + "}";
+    }
+  }
+  json += "]}";
 
   server_.sendHeader("Cache-Control", "no-store");
   server_.send(200, "application/json", json);
@@ -637,6 +727,44 @@ bool WebService::testNtp(const String& host) {
 
   udp.stop();
   return false;
+}
+
+
+void WebService::sendTrackList() {
+  auto escapeJson = [](String value) {
+    value.replace("\\", "\\\\");
+    value.replace("\"", "\\\"");
+    return value;
+  };
+  String json = "{\"ok\":true,\"tracks\":[";
+  File file = LittleFS.open("/sound_tracks.txt", FILE_READ);
+  bool first = true;
+  while (file && file.available()) {
+    String line = file.readStringUntil('\n');
+    line.trim();
+    if (!line.length()) continue;
+    const int separator = line.indexOf('|');
+    if (separator < 1) continue;
+    const int id = line.substring(0, separator).toInt();
+    const String name = line.substring(separator + 1);
+    if (!first) json += ',';
+    first = false;
+    json += "{\"id\":" + String(id) + ",\"name\":\"" + escapeJson(name) + "\"}";
+  }
+  if (file) file.close();
+  json += "]}";
+  server_.sendHeader("Cache-Control", "no-store");
+  server_.send(200, "application/json", json);
+}
+
+void WebService::saveTrackList() {
+  String body = server_.arg("plain");
+  if (body.length() > 12000) { sendJsonError(413, "track_list_too_large"); return; }
+  File file = LittleFS.open("/sound_tracks.txt", FILE_WRITE);
+  if (!file) { sendJsonError(500, "track_list_storage_error"); return; }
+  file.print(body);
+  file.close();
+  server_.send(200, "application/json", "{\"ok\":true}");
 }
 
 void WebService::sendJsonError(int code, const char* error) {

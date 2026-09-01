@@ -4,7 +4,7 @@
 > **KI-Hinweis:** Dieses Projekt wurde maßgeblich mit Unterstützung von KI erstellt, anschließend aber praktisch getestet, überarbeitet und weiterentwickelt.  
 > Wem KI-generierter Code grundsätzlich nicht ins Weltbild passt, kann an dieser Stelle aufhören. Spart uns beiden Zeit. ;-)
 
-> **Stand dieser README:** `1.0.1`
+> **Stand dieser README:** `2.1.0`
 
 ## Sprache
 

@@ -11,6 +11,8 @@ class AutarkService;
 class RtcService;
 class DisplayService;
 class AnalyticsService;
+class SoundService;
+class WatchdogService;
 
 class WebService {
 public:
@@ -22,9 +24,12 @@ public:
              AutarkService* autark,
              RtcService* rtc,
              DisplayService* display,
-             AnalyticsService* analytics);
+             AnalyticsService* analytics,
+             SoundService* sound,
+             WatchdogService* watchdog);
   void tick(bool enabled);
   void stop();
+  bool started() const { return started_; }
 
 private:
   void registerRoutes();
@@ -33,6 +38,8 @@ private:
   void sendAutark();
   void sendAggregate();
   void sendDisplayPreview();
+  void sendTrackList();
+  void saveTrackList();
   void exportNormalCsv();
   void exportArchiveCsv();
   void exportAutarkCsv();
@@ -49,6 +56,10 @@ private:
   RtcService* rtc_ = nullptr;
   DisplayService* display_ = nullptr;
   AnalyticsService* analytics_ = nullptr;
+  SoundService* sound_ = nullptr;
+  WatchdogService* watchdog_ = nullptr;
   bool routesRegistered_ = false;
   bool started_ = false;
+  bool updateOk_ = false;
+  uint32_t restartAt_ = 0;
 };

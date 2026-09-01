@@ -8,11 +8,16 @@ import sys
 UI_DIR = Path("arduino/Unterbrechungszaehler")
 BASE_FILE = UI_DIR / "WebUi.h"
 BEHAVIOR_FILE = UI_DIR / "WebUiBehavior.h"
+V2_FILE = UI_DIR / "WebUiV2.h"
 UI_FILES = sorted(UI_DIR.glob("WebUi*.h"))
 
 base_text = BASE_FILE.read_text(encoding="utf-8")
 behavior_text = BEHAVIOR_FILE.read_text(encoding="utf-8")
-key_pattern = re.compile(r"['\"]([^'\"]+)['\"]\s*:")
+v2_text = V2_FILE.read_text(encoding="utf-8") if V2_FILE.exists() else ""
+quoted_key_pattern = re.compile(r"['\"]([^'\"]+)['\"]\s*:")
+bare_entry_pattern = re.compile(
+    r"(?:^|,)\s*(?:['\"]([^'\"]+)['\"]|([A-Za-z_][A-Za-z0-9_]*))\s*:"
+)
 
 
 def matching_brace(text: str, opening: int) -> int:
@@ -40,7 +45,9 @@ def matching_brace(text: str, opening: int) -> int:
     raise ValueError("unclosed object")
 
 
-def extract_language_blocks(text: str, variable: str) -> dict[str, set[str]]:
+def extract_language_blocks(
+    text: str, variable: str, allow_bare_keys: bool = False
+) -> dict[str, set[str]]:
     marker = re.search(rf"const\s+{re.escape(variable)}\s*=\s*\{{", text)
     if not marker:
         raise ValueError(f"{variable} could not be parsed")
@@ -57,7 +64,12 @@ def extract_language_blocks(text: str, variable: str) -> dict[str, set[str]]:
         code = match.group(1)
         opening = body.find("{", match.start())
         closing = matching_brace(body, opening)
-        blocks[code] = set(key_pattern.findall(body[opening + 1 : closing]))
+        language_body = body[opening + 1 : closing]
+        if allow_bare_keys:
+            matches = bare_entry_pattern.findall(language_body)
+            blocks[code] = {quoted or bare for quoted, bare in matches}
+        else:
+            blocks[code] = set(quoted_key_pattern.findall(language_body))
     return blocks
 
 
@@ -89,14 +101,27 @@ except ValueError as exc:
     errors.append(str(exc))
     extra_keys = {}
 
+v2_keys: dict[str, set[str]] = {}
+if v2_text:
+    try:
+        v2_keys = extract_language_blocks(v2_text, "T", allow_bare_keys=True)
+    except ValueError as exc:
+        errors.append(str(exc))
+
 if set(base_keys) != set(extra_keys):
     errors.append(
         "Core and extension language sets differ: "
         + ", ".join(sorted(set(base_keys) ^ set(extra_keys)))
     )
+if v2_keys and set(base_keys) != set(v2_keys):
+    errors.append(
+        "Core and 2.0 language sets differ: "
+        + ", ".join(sorted(set(base_keys) ^ set(v2_keys)))
+    )
 
 compare_language_keys("Core translations", base_keys, errors)
 compare_language_keys("Extension translations", extra_keys, errors)
+compare_language_keys("2.0 translations", v2_keys, errors)
 
 reference_language = "de" if "de" in base_keys else next(iter(base_keys), "")
 if reference_language:
@@ -108,7 +133,9 @@ if reference_language:
         errors.append("UI keys missing from core translations: " + ", ".join(missing_core))
 
 combined_extensions = "\n".join(
-    path.read_text(encoding="utf-8") for path in UI_FILES if path != BASE_FILE
+    path.read_text(encoding="utf-8")
+    for path in UI_FILES
+    if path not in (BASE_FILE, V2_FILE)
 )
 if extra_keys:
     used_extra = set(re.findall(r"uiText\('([^']+)'", combined_extensions))
@@ -119,6 +146,14 @@ if extra_keys:
     missing_extra = sorted(used_extra - reference_extra)
     if missing_extra:
         errors.append("UI keys missing from extension translations: " + ", ".join(missing_extra))
+
+if v2_keys:
+    used_v2 = set(re.findall(r'data-v2="([^"]+)"', v2_text))
+    used_v2.update(re.findall(r"\btr\('([^']+)'", v2_text))
+    reference_v2 = v2_keys.get("de", next(iter(v2_keys.values())))
+    missing_v2 = sorted(used_v2 - reference_v2)
+    if missing_v2:
+        errors.append("UI keys missing from 2.0 translations: " + ", ".join(missing_v2))
 
 meta_match = re.search(r"const\s+META\s*=\s*\{(.*?)\};", behavior_text, re.S)
 if not meta_match:
@@ -152,8 +187,11 @@ if errors:
 
 languages = sorted(base_keys)
 reference = "de" if "de" in base_keys else languages[0]
-print(
+message = (
     f"OK: {len(base_keys[reference])} core keys, "
-    f"{len(extra_keys[reference])} extension keys, "
-    f"{len(languages)} languages ({', '.join(languages)}) complete and structurally identical."
+    f"{len(extra_keys[reference])} extension keys"
 )
+if v2_keys:
+    message += f", {len(v2_keys[reference])} 2.0 keys"
+message += f", {len(languages)} languages ({', '.join(languages)}) complete and structurally identical."
+print(message)

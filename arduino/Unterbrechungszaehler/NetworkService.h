@@ -15,14 +15,24 @@ public:
   bool running() const { return running_; }
   String ip() const;
   int32_t rssi() const { return connected() ? WiFi.RSSI() : 0; }
+  String configuredSsid() const { return ssid_; }
+  bool credentialsStored() const { return credentialsStored_; }
 
 private:
   void startFallbackAccessPoint();
   void stopFallbackAccessPoint();
   void startMdns();
+  void loadCredentials();
+  bool importEspWifiCredentials();
+  bool storeCredentials(const String& ssid, const String& password);
+  bool validCompileTimeCredentials() const;
+  void connectStation();
 
   bool running_ = false;
   bool accessPointActive_ = false;
   bool mdnsActive_ = false;
+  bool credentialsStored_ = false;
   uint32_t lastRetryAt_ = 0;
+  String ssid_;
+  String password_;
 };

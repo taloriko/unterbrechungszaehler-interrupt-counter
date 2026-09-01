@@ -4,7 +4,7 @@
 > **KI-Hinweis:** Des Projekt isch mit ordentlich KI-Unterstützung entstonda, isch danach aber praktisch getestet, verbessert ond weiterentwickelt worda.  
 > Wem KI-generierter Code grundsätzlich net in Kram passt, der ka an der Stell au uffhöra. Spart ons beida Zeit. ;-)
 
-> **Stand von der README:** `1.0.1`
+> **Stand von der README:** `2.1.0`
 
 [Deutsch](docs/de/README.md) · [English](docs/en/README.md) · [Schwäbisch](docs/swg/README.md)
 
