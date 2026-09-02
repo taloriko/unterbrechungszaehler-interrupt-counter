@@ -8,7 +8,10 @@ public:
   void begin();
   bool tick();
   bool checkDue() const;
+  bool checkNow();
 
+  // present() beschreibt den zuletzt wirklich am I2C-Bus bestaetigten Zustand.
+  // Zwischen zwei Hardwarepruefungen bleibt dieser Zustand erhalten.
   bool present() const { return present_; }
   bool timeValid() const { return timeValid_; }
   bool oscillatorStopFlag() const { return oscillatorStopFlag_; }
@@ -26,6 +29,7 @@ public:
 private:
   uint8_t bcdToDec(uint8_t value) const;
   uint8_t decToBcd(uint8_t value) const;
+  bool probeHardware();
   bool readRegister(uint8_t reg, uint8_t& value);
   bool writeRegister(uint8_t reg, uint8_t value);
   bool sample();
