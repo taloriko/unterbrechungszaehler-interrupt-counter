@@ -66,12 +66,12 @@ private:
   void handleFrame(const uint8_t* frame, uint8_t length);
   void registerValidStatus(uint8_t state);
   void failPlayback(bool timeout, const char* reason);
-  void loseHardware();
 
   HardwareSerial serial_{2};
   SoundHardwareState hardwareState_ = SoundHardwareState::Probing;
   Playback playback_ = Playback::Idle;
   bool enabled_ = false;
+  bool bootProbeActive_ = false;
   uint8_t volume_ = 20;
   uint16_t track_ = 1;
   uint8_t playState_ = 0xFF;
@@ -85,7 +85,7 @@ private:
   uint32_t errorCount_ = 0;
   uint32_t lastQueryAt_ = 0;
   uint32_t lastResponseAt_ = 0;
-  uint32_t lastProbeAt_ = 0;
+  uint32_t bootProbeStartedAt_ = 0;
   uint32_t playbackStartedAt_ = 0;
   const char* lastPlaybackError_ = "-";
   uint8_t rx_[16] = {};
