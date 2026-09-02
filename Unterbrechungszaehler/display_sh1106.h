@@ -27,6 +27,8 @@ bool setPower(bool on);
 bool setContrast(uint8_t contrast);
 bool showBootScreen();
 bool showTestScreen();
+bool bootScreenActive();
+bool manualTestActive();
 
 // Lightweight drawing surface used by project-level display templates. The
 // SH1106 transport/framebuffer stays owned by this module; project code never

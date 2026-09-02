@@ -25,6 +25,7 @@ char lastAge[16] = "";
 ProjectPreferences::DisplayMode lastMode = ProjectPreferences::DisplayMode::Standard;
 int16_t lastContrast = -1;
 bool dimmed = false;
+bool displayPowerOn = true;
 
 bool due(uint32_t now, uint32_t deadline) { return static_cast<int32_t>(now - deadline) >= 0; }
 
@@ -166,6 +167,7 @@ void updateContrast(uint32_t nowMs) {
 void begin(const InterruptionTypes::Summary &summary) {
   lastActivityMs = millis();
   lastMode = ProjectPreferences::displayMode();
+  displayPowerOn = true;  // Hardware boot/init leaves the panel powered.
   renderRequested = true;
   update(summary);
 }
@@ -175,10 +177,16 @@ void notifyInterruption(bool flashEnabled) {
   lastActivityMs = nowMs;
   dimmed = false;
   renderRequested = true;
-  flashRequested = flashEnabled;
-  // A new interruption always wakes the display to normal brightness even when
-  // the optional inversion flash is disabled.
   lastContrast = -1;
+
+  // A disabled project display never wakes for an interruption. During the
+  // mandatory boot screen window the event is captured immediately, but the
+  // boot image stays visible and the updated Home view appears afterwards.
+  if (!ProjectPreferences::displayEnabled() || DisplaySh1106::bootScreenActive()) {
+    flashRequested = false;
+    return;
+  }
+  flashRequested = flashEnabled;
 }
 
 void requestHomeRefresh() { renderRequested = true; }
@@ -188,11 +196,53 @@ void settingsChanged() {
   dimmed = false;
   lastContrast = -1;
   renderRequested = true;
+
+  if (!DisplaySh1106::enabled() || !DisplaySh1106::detected()) return;
+  if (DisplaySh1106::bootScreenActive() || DisplaySh1106::manualTestActive()) return;
+
+  if (!ProjectPreferences::displayEnabled()) {
+    if (flashActive) DisplaySh1106::setInverted(false);
+    flashActive = false;
+    flashRequested = false;
+    if (DisplaySh1106::setPower(false)) displayPowerOn = false;
+    return;
+  }
+
+  if (DisplaySh1106::setPower(true)) displayPowerOn = true;
 }
 
 void update(const InterruptionTypes::Summary &summary) {
   if (!DisplaySh1106::enabled() || !DisplaySh1106::detected()) return;
   const uint32_t nowMs = millis();
+
+  // Neither normal rendering nor a user preference may overwrite the boot
+  // image before its minimum visibility time has elapsed. A manual display
+  // test gets the same short ownership window and then returns to the user's
+  // persistent display preference.
+  if (DisplaySh1106::bootScreenActive()) {
+    displayPowerOn = true;
+    return;
+  }
+  if (DisplaySh1106::manualTestActive()) {
+    displayPowerOn = true;
+    return;
+  }
+
+  if (!ProjectPreferences::displayEnabled()) {
+    if (flashActive) DisplaySh1106::setInverted(false);
+    flashActive = false;
+    flashRequested = false;
+    if (displayPowerOn && DisplaySh1106::setPower(false)) displayPowerOn = false;
+    return;
+  }
+
+  if (!displayPowerOn) {
+    if (!DisplaySh1106::setPower(true)) return;
+    displayPowerOn = true;
+    lastContrast = -1;
+    renderRequested = true;
+  }
+
   updateContrast(nowMs);
 
   // The project loop runs every few milliseconds, but the idle OLED view does
@@ -223,7 +273,7 @@ void update(const InterruptionTypes::Summary &summary) {
     lastTimeOk = timeOk;
     lastMode = mode;
     strncpy(lastAge, age, sizeof(lastAge) - 1);
-    lastAge[sizeof(lastAge) - 1] = '\0';
+    lastAge[sizeof(lastAge) - 1] = ' ';
     renderRequested = false;
     if (flashRequested) {
       flashRequested = false;

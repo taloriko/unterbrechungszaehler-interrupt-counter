@@ -20,6 +20,7 @@ constexpr char TIMEZONE_POSIX[] = "CET-1CEST,M3.5.0,M10.5.0/3";
 constexpr uint16_t INTERRUPTION_SOUND_TRACK_DEFAULT = 2;
 constexpr ProjectPreferences::SoundMode INTERRUPTION_SOUND_MODE_DEFAULT = ProjectPreferences::SoundMode::Fixed;
 constexpr bool INTERRUPTION_SOUND_DEFAULT = true;
+constexpr bool DISPLAY_ENABLED_DEFAULT = true;
 constexpr bool DISPLAY_FLASH_DEFAULT = true;
 constexpr uint32_t DISPLAY_FLASH_MS = 220;
 

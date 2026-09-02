@@ -20,12 +20,18 @@
 
   const I18N = {
     de: {
+      'project.displayEnabled': 'Display',
+      'analytics.metric': 'Metrik',
+      'analytics.metric.count': 'Anzahl',
+      'analytics.metric.averageInterval': 'Ø Abstand',
+      'analytics.intervalSamples': '{n} Abstände',
+      'analytics.coveragePartial': 'Ø-Abstand basiert auf den noch vorhandenen Rohereignissen.',
       'nav.home': 'Home', 'nav.analytics': 'Auswertung', 'nav.device': 'Gerät', 'nav.settings': 'Einstellungen',
-      'view.analytics.title': 'Auswertung', 'view.analytics.desc': 'Langzeitauswertung aus kompakten Tagesaggregaten – ohne den Rohdatenspeicher für jede Ansicht zu scannen.',
+      'view.analytics.title': 'Auswertung', 'view.analytics.desc': 'Heatmaps wahlweise als Anzahl oder durchschnittlicher abgeschlossener Zeitabstand zwischen Unterbrechungen.',
       'interruptions.title': 'Unterbrechungszähler', 'interruptions.desc': 'Jeder Tastendruck oder Klick wird sofort als Unterbrechung erfasst.', 'interruptions.today': 'Unterbrechungen heute', 'interruptions.last': 'Letzte Unterbrechung', 'interruptions.button': 'Unterbrechung', 'interruptions.sound': 'Ton bei Unterbrechung', 'interruptions.soundOn': 'Ein', 'interruptions.soundOff': 'Aus', 'interruptions.pending': 'Wird gespeichert …', 'interruptions.dropped': '{n} Unterbrechung(en) konnten in diesem Lauf nicht dauerhaft gespeichert werden.', 'interruptions.captureFailed': 'Unterbrechung konnte nicht erfasst werden.', 'interruptions.justNow': 'gerade eben', 'interruptions.never': 'noch keine', 'interruptions.ageUnknown': 'Zeitabstand nicht bestimmbar', 'interruptions.agoSeconds': 'vor {n} Sek.', 'interruptions.agoMinutes': 'vor {n} Min.', 'interruptions.agoHours': 'vor {n} Std.', 'interruptions.agoDays': 'vor {n} Tagen',
       'project.settings.title': 'Feedback & Display', 'project.settings.desc': 'Gerätebezogene Rückmeldung für Unterbrechungen und die lokale OLED-Anzeige. Änderungen gelten sofort und bleiben im ESP32 gespeichert.', 'project.soundMode': 'Unterbrechungston', 'project.soundMode.fixed': 'Fester Track', 'project.soundMode.rotate': 'Wechselnd – jedes Mal nächster Track', 'project.soundTrack': 'Track bei festem Ton', 'project.soundTrackHint': 'Track 1 bleibt ausschließlich für den Boot-Ton reserviert.', 'project.soundTracksAvailable': 'Verfügbare Tracks: {n}. Wechselnd verwendet Track 2 bis {n}.', 'project.soundTracksUnknown': 'Trackanzahl nicht bekannt; im Wechselmodus dient der feste Track als Fallback.', 'project.displayFlash': 'Display bei Unterbrechung aufblitzen', 'project.displayMode': 'Display-Anzeige', 'project.displayMode.standard': 'Standard: Heute + letzte Unterbrechung', 'project.displayMode.count': 'Nur Zahl – maximal groß', 'project.displayMode.last': 'Nur letzte Unterbrechung – maximal groß', 'project.displayBrightness': 'Display-Helligkeit', 'project.displayDimAfter': 'Dimmen nach', 'project.displayDimBrightness': 'Helligkeit gedimmt', 'project.minutes': 'Minuten', 'project.dimDisabled': '0 = Dimmer aus', 'project.preferenceError': 'Einstellung konnte nicht gespeichert werden.',
       'event.source.physical_button': 'Taster', 'event.source.web_button': 'Web', 'event.source.software': 'Software', 'event.source.api': 'API', 'event.source.hardware': 'Hardware', 'event.source.unknown': 'Unbekannt',
-      'analytics.hourly.title': 'Wochentage / Stunden', 'analytics.hourly.desc': 'Anzahl je Stunde. Die aktuelle Zeile und Spalte dienen als Fadenkreuz zur Orientierung.', 'analytics.monthWeek.title': 'Monate / Kalenderwochen', 'analytics.monthWeek.desc': 'Verteilung eines Jahres nach Monat und ISO-Kalenderwoche.', 'analytics.yearMonth.title': 'Letzte 5 Jahre / Monate', 'analytics.yearMonth.desc': 'Monatssummen der letzten fünf Kalenderjahre.', 'analytics.storage.title': 'Daten & Export', 'analytics.storage.desc': 'Rohereignisse liegen binär im Ringspeicher; CSV wird erst beim Download erzeugt.', 'analytics.mode': 'Auswahl', 'analytics.mode.week': 'Kalenderwoche', 'analytics.mode.range': 'Von / Bis', 'analytics.year': 'Jahr', 'analytics.week': 'Kalenderwoche', 'analytics.from': 'Von', 'analytics.to': 'Bis', 'analytics.load': 'Anzeigen', 'analytics.download': 'CSV herunterladen', 'analytics.rawEvents': 'Rohereignisse', 'analytics.dailyRecords': 'Tagesaggregate', 'analytics.storageUsed': 'Dateisystem verwendet', 'analytics.unassigned': 'Ohne Kalenderzeit', 'analytics.dropped': 'Nicht dauerhaft gespeichert (dieser Lauf)', 'analytics.recovering': 'Datenwiederherstellung läuft', 'analytics.noData': 'Keine Daten im gewählten Zeitraum.', 'analytics.loadError': 'Auswertung konnte nicht geladen werden.', 'analytics.ringHint': 'Bei vollem Ringspeicher werden die ältesten Rohereignisse überschrieben; Tagesaggregate bleiben separat erhalten.',
+      'analytics.hourly.title': 'Wochentage / Stunden', 'analytics.hourly.desc': 'Wochentage und Stunden – wahlweise Anzahl oder Ø Abstand bis zur nächsten Unterbrechung am selben Tag.', 'analytics.monthWeek.title': 'Monate / Kalenderwochen', 'analytics.monthWeek.desc': 'Monate und ISO-Kalenderwochen – wahlweise Anzahl oder Ø Abstand.', 'analytics.yearMonth.title': 'Letzte 5 Jahre / Monate', 'analytics.yearMonth.desc': 'Letzte fünf Kalenderjahre nach Monat – wahlweise Anzahl oder Ø Abstand.', 'analytics.storage.title': 'Daten & Export', 'analytics.storage.desc': 'Rohereignisse liegen binär im Ringspeicher; CSV wird erst beim Download erzeugt.', 'analytics.mode': 'Auswahl', 'analytics.mode.week': 'Kalenderwoche', 'analytics.mode.range': 'Von / Bis', 'analytics.year': 'Jahr', 'analytics.week': 'Kalenderwoche', 'analytics.from': 'Von', 'analytics.to': 'Bis', 'analytics.load': 'Anzeigen', 'analytics.download': 'CSV herunterladen', 'analytics.rawEvents': 'Rohereignisse', 'analytics.dailyRecords': 'Tagesaggregate', 'analytics.storageUsed': 'Dateisystem verwendet', 'analytics.unassigned': 'Ohne Kalenderzeit', 'analytics.dropped': 'Nicht dauerhaft gespeichert (dieser Lauf)', 'analytics.recovering': 'Datenwiederherstellung läuft', 'analytics.noData': 'Keine Daten im gewählten Zeitraum.', 'analytics.loadError': 'Auswertung konnte nicht geladen werden.', 'analytics.ringHint': 'Bei vollem Ringspeicher werden die ältesten Rohereignisse überschrieben; Tagesaggregate bleiben separat erhalten.',
       'view.home.title': 'Home',
       'view.device.title': 'Gerät', 'view.device.desc': 'Allgemeine Informationen des ESP32 und seiner aktuellen Verbindung.',
       'view.settings.title': 'Einstellungen', 'view.settings.desc': 'Browserbezogene Darstellungseinstellungen ohne ESP32-Flash-Schreibzugriffe.',
@@ -75,12 +81,18 @@
       'aria.primaryNav': 'Hauptnavigation', 'aria.status': 'Systemstatus', 'time.week': 'KW'
     },
     en: {
+      'project.displayEnabled': 'Display',
+      'analytics.metric': 'Metric',
+      'analytics.metric.count': 'Count',
+      'analytics.metric.averageInterval': 'Average interval',
+      'analytics.intervalSamples': '{n} intervals',
+      'analytics.coveragePartial': 'Average interval is based on the raw events that are still retained.',
       'nav.home': 'Home', 'nav.analytics': 'Analytics', 'nav.device': 'Device', 'nav.settings': 'Settings',
-      'view.analytics.title': 'Analytics', 'view.analytics.desc': 'Long-term analysis from compact daily aggregates without scanning the raw event ring for every view.',
+      'view.analytics.title': 'Analytics', 'view.analytics.desc': 'Heatmaps can show either interruption counts or the average completed interval between interruptions.',
       'interruptions.title': 'Interruption counter', 'interruptions.desc': 'Every physical press or web click is captured immediately as one interruption.', 'interruptions.today': 'Interruptions today', 'interruptions.last': 'Last interruption', 'interruptions.button': 'Interruption', 'interruptions.sound': 'Sound on interruption', 'interruptions.soundOn': 'On', 'interruptions.soundOff': 'Off', 'interruptions.pending': 'Saving …', 'interruptions.dropped': '{n} interruption(s) could not be persisted during this run.', 'interruptions.captureFailed': 'The interruption could not be captured.', 'interruptions.justNow': 'just now', 'interruptions.never': 'none yet', 'interruptions.ageUnknown': 'age cannot be determined', 'interruptions.agoSeconds': '{n} sec ago', 'interruptions.agoMinutes': '{n} min ago', 'interruptions.agoHours': '{n} h ago', 'interruptions.agoDays': '{n} d ago',
       'project.settings.title': 'Feedback & display', 'project.settings.desc': 'Device-side interruption feedback and the local OLED view. Changes apply immediately and are stored on the ESP32.', 'project.soundMode': 'Interruption sound', 'project.soundMode.fixed': 'Fixed track', 'project.soundMode.rotate': 'Rotating – next track every time', 'project.soundTrack': 'Track for fixed sound', 'project.soundTrackHint': 'Track 1 is reserved exclusively for the boot sound.', 'project.soundTracksAvailable': 'Available tracks: {n}. Rotating mode uses tracks 2 through {n}.', 'project.soundTracksUnknown': 'Track count is unknown; rotating mode uses the fixed track as fallback.', 'project.displayFlash': 'Flash display on interruption', 'project.displayMode': 'Display view', 'project.displayMode.standard': 'Standard: today + last interruption', 'project.displayMode.count': 'Count only – maximum size', 'project.displayMode.last': 'Last interruption only – maximum size', 'project.displayBrightness': 'Display brightness', 'project.displayDimAfter': 'Dim after', 'project.displayDimBrightness': 'Dimmed brightness', 'project.minutes': 'minutes', 'project.dimDisabled': '0 = dimmer off', 'project.preferenceError': 'The setting could not be saved.',
       'event.source.physical_button': 'Button', 'event.source.web_button': 'Web', 'event.source.software': 'Software', 'event.source.api': 'API', 'event.source.hardware': 'Hardware', 'event.source.unknown': 'Unknown',
-      'analytics.hourly.title': 'Weekdays / hours', 'analytics.hourly.desc': 'Count per hour. The current row and column form a crosshair for orientation.', 'analytics.monthWeek.title': 'Months / calendar weeks', 'analytics.monthWeek.desc': 'Distribution of one year by month and ISO week.', 'analytics.yearMonth.title': 'Last 5 years / months', 'analytics.yearMonth.desc': 'Monthly totals for the last five calendar years.', 'analytics.storage.title': 'Data & export', 'analytics.storage.desc': 'Raw events are stored in a binary ring; CSV is generated only when downloaded.', 'analytics.mode': 'Selection', 'analytics.mode.week': 'Calendar week', 'analytics.mode.range': 'From / to', 'analytics.year': 'Year', 'analytics.week': 'Calendar week', 'analytics.from': 'From', 'analytics.to': 'To', 'analytics.load': 'Show', 'analytics.download': 'Download CSV', 'analytics.rawEvents': 'Raw events', 'analytics.dailyRecords': 'Daily aggregates', 'analytics.storageUsed': 'Filesystem used', 'analytics.unassigned': 'Without calendar time', 'analytics.dropped': 'Not persisted (this run)', 'analytics.recovering': 'Data recovery is running', 'analytics.noData': 'No data in the selected period.', 'analytics.loadError': 'Analytics could not be loaded.', 'analytics.ringHint': 'When the raw ring is full, the oldest raw events are overwritten; daily aggregates are retained separately.',
+      'analytics.hourly.title': 'Weekdays / hours', 'analytics.hourly.desc': 'Weekdays and hours – either count or average interval to the next interruption on the same day.', 'analytics.monthWeek.title': 'Months / calendar weeks', 'analytics.monthWeek.desc': 'Months and ISO calendar weeks – either count or average interval.', 'analytics.yearMonth.title': 'Last 5 years / months', 'analytics.yearMonth.desc': 'The last five calendar years by month – either count or average interval.', 'analytics.storage.title': 'Data & export', 'analytics.storage.desc': 'Raw events are stored in a binary ring; CSV is generated only when downloaded.', 'analytics.mode': 'Selection', 'analytics.mode.week': 'Calendar week', 'analytics.mode.range': 'From / to', 'analytics.year': 'Year', 'analytics.week': 'Calendar week', 'analytics.from': 'From', 'analytics.to': 'To', 'analytics.load': 'Show', 'analytics.download': 'Download CSV', 'analytics.rawEvents': 'Raw events', 'analytics.dailyRecords': 'Daily aggregates', 'analytics.storageUsed': 'Filesystem used', 'analytics.unassigned': 'Without calendar time', 'analytics.dropped': 'Not persisted (this run)', 'analytics.recovering': 'Data recovery is running', 'analytics.noData': 'No data in the selected period.', 'analytics.loadError': 'Analytics could not be loaded.', 'analytics.ringHint': 'When the raw ring is full, the oldest raw events are overwritten; daily aggregates are retained separately.',
       'view.home.title': 'Home',
       'view.device.title': 'Device', 'view.device.desc': 'General ESP32 information and current connection data.',
       'view.settings.title': 'Settings', 'view.settings.desc': 'Browser-only display preferences without ESP32 flash writes.',
@@ -130,12 +142,18 @@
       'aria.primaryNav': 'Primary navigation', 'aria.status': 'System status', 'time.week': 'Wk'
     },
     swg: {
+      'project.displayEnabled': 'Display',
+      'analytics.metric': 'Metrik',
+      'analytics.metric.count': 'Anzahl',
+      'analytics.metric.averageInterval': 'Ø Abstand',
+      'analytics.intervalSamples': '{n} Abständ',
+      'analytics.coveragePartial': 'Dr Ø-Abstand basiert auf de Rohereignisse, wo no im Speicher send.',
       'nav.home': 'Dahoim', 'nav.analytics': 'Auswertung', 'nav.device': 'Grät', 'nav.settings': 'Eistellonga',
-      'view.analytics.title': 'Auswertung', 'view.analytics.desc': 'D Langzeitauswertung kommt aus kompakta Tageswert – dr Rohspeicher muaß net jedes Mol komplett durchgschaut werda.',
+      'view.analytics.title': 'Auswertung', 'view.analytics.desc': 'D Heatmaps zeiget entweder d Anzahl oder dr durchschnittlich abgeschlossene Abstand zwischa de Unterbrechunga.',
       'interruptions.title': 'Unterbrechungszähler', 'interruptions.desc': 'Jeder Druck am Knopf oder im Web zählt sofort als oine Unterbrechung.', 'interruptions.today': 'Unterbrechunga heit', 'interruptions.last': 'Letzte Unterbrechung', 'interruptions.button': 'Unterbrechung', 'interruptions.sound': 'Ton bei Unterbrechung', 'interruptions.soundOn': 'Ei', 'interruptions.soundOff': 'Aus', 'interruptions.pending': 'Wird gspeichert …', 'interruptions.dropped': '{n} Unterbrechung(en) send in dem Lauf net dauerhaft gspeichert worda.', 'interruptions.captureFailed': 'D Unterbrechung hot net erfasst werda kenna.', 'interruptions.justNow': 'grad eben', 'interruptions.never': 'no koine', 'interruptions.ageUnknown': 'Zeitabstand net bestimmbar', 'interruptions.agoSeconds': 'vor {n} Sek.', 'interruptions.agoMinutes': 'vor {n} Min.', 'interruptions.agoHours': 'vor {n} Std.', 'interruptions.agoDays': 'vor {n} Täg',
       'project.settings.title': 'Rückmeldung & Display', 'project.settings.desc': 'D Rückmeldung bei Unterbrechunga ond d OLED-Azeig. Änderungen geltet sofort ond bleibet im ESP32 gspeichert.', 'project.soundMode': 'Unterbrechungston', 'project.soundMode.fixed': 'Feschter Track', 'project.soundMode.rotate': 'Wechselnd – jedes Mol dr nächste Track', 'project.soundTrack': 'Track beim feschta Ton', 'project.soundTrackHint': 'Track 1 bleibt bloß für dr Boot-Ton reserviert.', 'project.soundTracksAvailable': 'Verfügbare Tracks: {n}. Wechselnd nimmt Track 2 bis {n}.', 'project.soundTracksUnknown': 'Trackanzahl isch net bekannt; beim Wechseln dient dr feschte Track als Fallback.', 'project.displayFlash': 'Display bei Unterbrechung aufblitza', 'project.displayMode': 'Display-Azeig', 'project.displayMode.standard': 'Standard: Heit + letzte Unterbrechung', 'project.displayMode.count': 'Bloß Zahl – so groß wie möglich', 'project.displayMode.last': 'Bloß letzte Unterbrechung – so groß wie möglich', 'project.displayBrightness': 'Display-Helligkeit', 'project.displayDimAfter': 'Dimma nach', 'project.displayDimBrightness': 'Helligkeit gedimmt', 'project.minutes': 'Minuta', 'project.dimDisabled': '0 = Dimmer aus', 'project.preferenceError': 'D Eistellung hot sich net speichera lassa.',
       'event.source.physical_button': 'Taster', 'event.source.web_button': 'Web', 'event.source.software': 'Software', 'event.source.api': 'API', 'event.source.hardware': 'Hardware', 'event.source.unknown': 'Net bekannt',
-      'analytics.hourly.title': 'Wochentäg / Stunda', 'analytics.hourly.desc': 'Anzahl pro Stund. D aktuelle Zeil und Spalt zeiget wie a Fadenkreuz, wo mr grad send.', 'analytics.monthWeek.title': 'Monat / Kalenderwocha', 'analytics.monthWeek.desc': 'Verteilung vom Jahr nach Monat und ISO-Kalenderwoch.', 'analytics.yearMonth.title': 'Letzte 5 Johr / Monat', 'analytics.yearMonth.desc': 'Monatssumma von de letzte fünf Kalenderjohr.', 'analytics.storage.title': 'Dada & Export', 'analytics.storage.desc': 'D Rohereignisse lieget kompakt im Ringspeicher; CSV wird erscht beim Runterlada gmacht.', 'analytics.mode': 'Auswahl', 'analytics.mode.week': 'Kalenderwoch', 'analytics.mode.range': 'Von / Bis', 'analytics.year': 'Johr', 'analytics.week': 'Kalenderwoch', 'analytics.from': 'Von', 'analytics.to': 'Bis', 'analytics.load': 'Azeiga', 'analytics.download': 'CSV runterlada', 'analytics.rawEvents': 'Rohereignisse', 'analytics.dailyRecords': 'Tagesaggregate', 'analytics.storageUsed': 'Dateisystem belegt', 'analytics.unassigned': 'Ohne Kalenderzeit', 'analytics.dropped': 'Net dauerhaft gspeichert (der Lauf)', 'analytics.recovering': 'Dada-Wiederherstellig läuft', 'analytics.noData': 'In dem Zeitraum hot s koine Dada.', 'analytics.loadError': 'D Auswertung hot net glada werda kenna.', 'analytics.ringHint': 'Wenn dr Roh-Ring voll isch, werdet d älteste Rohereignisse überschrieba; d Tageswerte bleibet extra erhalta.',
+      'analytics.hourly.title': 'Wochentäg / Stunda', 'analytics.hourly.desc': 'Wochentäg ond Stunda – Anzahl oder Ø Abstand bis zur nächste Unterbrechung am selba Tag.', 'analytics.monthWeek.title': 'Monat / Kalenderwocha', 'analytics.monthWeek.desc': 'Monat ond ISO-Kalenderwocha – Anzahl oder Ø Abstand.', 'analytics.yearMonth.title': 'Letzte 5 Johr / Monat', 'analytics.yearMonth.desc': 'D letzte fünf Kalenderjohr nach Monat – Anzahl oder Ø Abstand.', 'analytics.storage.title': 'Dada & Export', 'analytics.storage.desc': 'D Rohereignisse lieget kompakt im Ringspeicher; CSV wird erscht beim Runterlada gmacht.', 'analytics.mode': 'Auswahl', 'analytics.mode.week': 'Kalenderwoch', 'analytics.mode.range': 'Von / Bis', 'analytics.year': 'Johr', 'analytics.week': 'Kalenderwoch', 'analytics.from': 'Von', 'analytics.to': 'Bis', 'analytics.load': 'Azeiga', 'analytics.download': 'CSV runterlada', 'analytics.rawEvents': 'Rohereignisse', 'analytics.dailyRecords': 'Tagesaggregate', 'analytics.storageUsed': 'Dateisystem belegt', 'analytics.unassigned': 'Ohne Kalenderzeit', 'analytics.dropped': 'Net dauerhaft gspeichert (der Lauf)', 'analytics.recovering': 'Dada-Wiederherstellig läuft', 'analytics.noData': 'In dem Zeitraum hot s koine Dada.', 'analytics.loadError': 'D Auswertung hot net glada werda kenna.', 'analytics.ringHint': 'Wenn dr Roh-Ring voll isch, werdet d älteste Rohereignisse überschrieba; d Tageswerte bleibet extra erhalta.',
       'view.home.title': 'Dahoim',
       'view.device.title': 'Grät', 'view.device.desc': 'Allgemeine ESP32-Info ond was grad mit em Netz los isch.',
       'view.settings.title': 'Eistellonga', 'view.settings.desc': 'Darstellung im Browser – ohne unnötig am ESP32-Flash rumzuschreiba.',
@@ -189,12 +207,18 @@
   // Additional bundled language packs. Dialect variants inherit the general Swabian pack
   // so technical terminology and future fallbacks remain consistent.
   I18N.it = {
+    'project.displayEnabled': 'Display',
+    'analytics.metric': 'Metrica',
+    'analytics.metric.count': 'Conteggio',
+    'analytics.metric.averageInterval': 'Intervallo medio',
+    'analytics.intervalSamples': '{n} intervalli',
+    'analytics.coveragePartial': 'L\'intervallo medio si basa sugli eventi grezzi ancora presenti in memoria.',
     "nav.home": "Home",
     "nav.analytics": "Analisi",
     "nav.device": "Dispositivo",
     "nav.settings": "Impostazioni",
     "view.analytics.title": "Analisi",
-    "view.analytics.desc": "Analisi a lungo termine da aggregati giornalieri compatti, senza scansionare il ring degli eventi grezzi per ogni vista.",
+    "view.analytics.desc": "Le mappe di calore mostrano il numero di interruzioni oppure l'intervallo medio completato tra le interruzioni.",
     "interruptions.title": "Contatore delle interruzioni",
     "interruptions.desc": "Ogni pressione del pulsante o clic sul web viene registrato immediatamente come un’interruzione.",
     "interruptions.today": "Interruzioni oggi",
@@ -240,11 +264,11 @@
     "event.source.hardware": "Hardware",
     "event.source.unknown": "Sconosciuto",
     "analytics.hourly.title": "Giorni della settimana / ore",
-    "analytics.hourly.desc": "Numero per ora. La riga e la colonna correnti formano un mirino di orientamento.",
+    "analytics.hourly.desc": "Giorni e ore: conteggio oppure intervallo medio fino all'interruzione successiva dello stesso giorno.",
     "analytics.monthWeek.title": "Mesi / settimane di calendario",
-    "analytics.monthWeek.desc": "Distribuzione di un anno per mese e settimana ISO.",
+    "analytics.monthWeek.desc": "Mesi e settimane ISO: conteggio oppure intervallo medio.",
     "analytics.yearMonth.title": "Ultimi 5 anni / mesi",
-    "analytics.yearMonth.desc": "Totali mensili degli ultimi cinque anni di calendario.",
+    "analytics.yearMonth.desc": "Ultimi cinque anni per mese: conteggio oppure intervallo medio.",
     "analytics.storage.title": "Dati ed esportazione",
     "analytics.storage.desc": "Gli eventi grezzi sono memorizzati in un ring binario; il CSV viene generato solo al download.",
     "analytics.mode": "Selezione",
@@ -494,12 +518,18 @@
     "time.week": "Sett."
 };
   I18N.fr = {
+    'project.displayEnabled': 'Écran',
+    'analytics.metric': 'Mesure',
+    'analytics.metric.count': 'Nombre',
+    'analytics.metric.averageInterval': 'Intervalle moyen',
+    'analytics.intervalSamples': '{n} intervalles',
+    'analytics.coveragePartial': 'L\'intervalle moyen repose sur les événements bruts encore conservés.',
     "nav.home": "Accueil",
     "nav.analytics": "Analyse",
     "nav.device": "Appareil",
     "nav.settings": "Paramètres",
     "view.analytics.title": "Analyse",
-    "view.analytics.desc": "Analyse à long terme à partir d’agrégats journaliers compacts, sans parcourir l’anneau des événements bruts pour chaque vue.",
+    "view.analytics.desc": "Les cartes thermiques affichent le nombre d'interruptions ou l'intervalle moyen terminé entre les interruptions.",
     "interruptions.title": "Compteur d’interruptions",
     "interruptions.desc": "Chaque pression sur le bouton ou clic Web est immédiatement enregistré comme une interruption.",
     "interruptions.today": "Interruptions aujourd’hui",
@@ -545,11 +575,11 @@
     "event.source.hardware": "Matériel",
     "event.source.unknown": "Inconnu",
     "analytics.hourly.title": "Jours de la semaine / heures",
-    "analytics.hourly.desc": "Nombre par heure. La ligne et la colonne actuelles forment un réticule d’orientation.",
+    "analytics.hourly.desc": "Jours et heures : nombre ou intervalle moyen jusqu'à l'interruption suivante du même jour.",
     "analytics.monthWeek.title": "Mois / semaines calendaires",
-    "analytics.monthWeek.desc": "Répartition d’une année par mois et semaine ISO.",
+    "analytics.monthWeek.desc": "Mois et semaines ISO : nombre ou intervalle moyen.",
     "analytics.yearMonth.title": "5 dernières années / mois",
-    "analytics.yearMonth.desc": "Totaux mensuels des cinq dernières années civiles.",
+    "analytics.yearMonth.desc": "Cinq dernières années par mois : nombre ou intervalle moyen.",
     "analytics.storage.title": "Données & export",
     "analytics.storage.desc": "Les événements bruts sont stockés dans un anneau binaire ; le CSV n’est généré qu’au téléchargement.",
     "analytics.mode": "Sélection",
@@ -800,6 +830,16 @@
 };
 
   I18N['swg-alb'] = {
+    'analytics.yearMonth.desc': 'D letzte fünf Johr nach Monat – Anzahl oder Ø Abstand.',
+    'analytics.monthWeek.desc': 'Monat ond Kalenderwocha – Anzahl oder Ø Abstand.',
+    'analytics.hourly.desc': 'Wochentäg ond Stunda – Anzahl oder Ø Abstand bis zom nächste Druck am selba Tag.',
+    'view.analytics.desc': 'D Heatmaps zeiget Anzahl oder dr durchschnittlich fertige Abstand zwischa de Unterbrechunga.',
+    'project.displayEnabled': 'Display',
+    'analytics.metric': 'Metrik',
+    'analytics.metric.count': 'Anzahl',
+    'analytics.metric.averageInterval': 'Ø Abstand',
+    'analytics.intervalSamples': '{n} Abständ',
+    'analytics.coveragePartial': 'Dr Ø-Abstand kommt aus de Rohereignisse, wo no do send.',
     ...I18N.swg,
     'nav.analytics': 'Auswertig',
     'nav.device': 'Grät',
@@ -836,6 +876,16 @@
   };
 
   I18N['swg-ob'] = {
+    'analytics.yearMonth.desc': 'D letzte fünf Johr nach Monat – Anzahl oder Ø Abstand.',
+    'analytics.monthWeek.desc': 'Monat ond Kalenderwocha – Anzahl oder Ø Abstand.',
+    'analytics.hourly.desc': 'Wochentäg ond Stunda – Anzahl oder Ø Abstand bis zur nächste Unterbrechung am selba Tag.',
+    'view.analytics.desc': 'D Heatmaps zeiget Anzahl oder dr durchschnittlich abgeschlossene Abstand zwischa de Unterbrechunga.',
+    'project.displayEnabled': 'Display',
+    'analytics.metric': 'Metrik',
+    'analytics.metric.count': 'Anzahl',
+    'analytics.metric.averageInterval': 'Ø Abstand',
+    'analytics.intervalSamples': '{n} Abständ',
+    'analytics.coveragePartial': 'Dr Ø-Abstand basiert auf de Rohereignisse, wo no gspeichert send.',
     ...I18N.swg,
     'nav.analytics': 'Auswertung',
     'nav.device': 'Gerät',
@@ -1014,8 +1064,8 @@
     connection: { deviceLoading: false, deviceRequested: false, deviceLoaded: false },
     device: {}, wifi: {}, memory: {}, hardware: { checking: false, modules: [] }, ota: { supported: null, currentBytes: 0, maxBytes: 0, headroomBytes: 0, usedPercent: 0 },
     interruptions: { todayCount: 0, unassignedCount: 0, sequence: 0, persistedSequence: 0, pendingCount: 0, droppedCount: 0, storageState: 'unavailable', soundEnabled: true, last: { available: false } },
-    projectSettings: { soundEnabled: true, soundMode: 'fixed', soundTrack: 2, soundTrackCount: 0, displayFlashEnabled: true, displayMode: 'standard', displayBrightness: 50, displayDimAfterMinutes: 10, displayDimBrightness: 10 },
-    analytics: { loaded: false, loading: false, dirty: false, error: '', storage: null, hourly: null, monthWeek: null, yearMonth: null, hourlyMode: 'week' },
+    projectSettings: { soundEnabled: true, soundMode: 'fixed', soundTrack: 2, soundTrackCount: 0, displayEnabled: true, displayFlashEnabled: true, displayMode: 'standard', displayBrightness: 50, displayDimAfterMinutes: 10, displayDimBrightness: 10 },
+    analytics: { loaded: false, loading: false, dirty: false, error: '', storage: null, hourly: null, monthWeek: null, yearMonth: null, hourlyMode: 'week', metric: 'count' },
     time: { valid: false, source: 'relative', quality: 'relative', epochMs: 0, syncPerf: 0 },
     timeManagement: { activeSource: 'relative', quality: 'relative', valid: false, ntpServer: '', browserFallbackAllowed: false, ntp: {}, rtc: {}, browser: {}, system: {} },
     uptime: { baseMs: 0, syncPerf: 0 },
@@ -1915,6 +1965,7 @@
     addSelect('soundMode', 'project.soundMode', [['fixed','project.soundMode.fixed'],['rotate','project.soundMode.rotate']]);
     addNumber('soundTrack', 'project.soundTrack', 2, 65535);
     const soundHint = el('div', 'form-note project-setting-note'); grid.append(soundHint);
+    addSwitch('displayEnabled', 'project.displayEnabled');
     addSwitch('displayFlashEnabled', 'project.displayFlash');
     addSelect('displayMode', 'project.displayMode', [['standard','project.displayMode.standard'],['count','project.displayMode.count'],['last','project.displayMode.last']]);
     addRange('displayBrightness', 'project.displayBrightness', 1, 100);
@@ -1969,6 +2020,17 @@
     return transpose ? { rows: months, cols: years } : { rows: years, cols: months };
   }
 
+  function formatIntervalSeconds(value, compact = false) {
+    const total = Math.max(0, Math.round(Number(value) || 0));
+    if (total < 60) return `${total}s`;
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const seconds = total % 60;
+    if (hours > 0) return `${hours}h${minutes ? ` ${minutes}m` : ''}${!compact && seconds ? ` ${seconds}s` : ''}`;
+    if (compact && total >= 600) return `${Math.floor(total / 60)}m`;
+    return `${Math.floor(total / 60)}m${seconds ? ` ${seconds}s` : ''}`;
+  }
+
   function renderHeatmapGrid(root, kind, data) {
     const holder = $('.heatmap-holder', root);
     if (!holder) return;
@@ -1979,13 +2041,20 @@
     if (!data || !Array.isArray(data.values)) {
       const empty = el('div', 'heatmap-empty'); empty.textContent = t('analytics.noData'); holder.append(empty); return;
     }
+    const isAverage = data.metric === 'averageInterval';
+    const samples = Array.isArray(data.samples) ? data.samples : [];
     const narrow = window.matchMedia('(max-width: 700px)').matches;
     const transpose = kind === 'monthWeek' ? window.matchMedia('(max-width: 1300px)').matches : narrow;
     const originalRows = Number(data.rows || 0), originalCols = Number(data.cols || 0);
     const rows = transpose ? originalCols : originalRows;
     const cols = transpose ? originalRows : originalCols;
     const labels = heatmapLabels(kind, data, transpose);
-    const max = Math.max(0, ...data.values.map(v => Number(v) || 0));
+    const validAverages = isAverage
+      ? data.values.map((v, i) => Number(samples[i] || 0) > 0 ? Number(v) : null).filter(v => Number.isFinite(v))
+      : [];
+    const minAverage = validAverages.length ? Math.min(...validAverages) : 0;
+    const maxAverage = validAverages.length ? Math.max(...validAverages) : 0;
+    const maxCount = isAverage ? 0 : Math.max(0, ...data.values.map(v => Number(v) || 0));
     const grid = el('div', 'heatmap-grid');
     grid.setAttribute('role', 'grid');
     grid.style.setProperty('--heat-cols', String(cols));
@@ -2007,22 +2076,44 @@
       for (let col = 0; col < cols; col++) {
         const originalRow = transpose ? col : row;
         const originalCol = transpose ? row : col;
-        const value = Number(data.values[originalRow * originalCols + originalCol] || 0);
+        const index = originalRow * originalCols + originalCol;
+        const value = Number(data.values[index] || 0);
+        const sampleCount = Number(samples[index] || 0);
+        const hasValue = isAverage ? sampleCount > 0 : value > 0;
         const cell = el('div', 'heatmap-cell');
-        cell.textContent = String(value);
-        cell.style.setProperty('--heat-pct', max > 0 && value > 0 ? `${Math.round(Math.max(8, (value / max) * 88))}%` : '0%');
-        if (value === 0) cell.classList.add('is-zero');
+        const shown = isAverage ? (hasValue ? formatIntervalSeconds(value, true) : '—') : String(value);
+        cell.textContent = shown;
+        let heatPercent = 0;
+        if (isAverage && hasValue) {
+          heatPercent = maxAverage > minAverage
+            ? 8 + ((maxAverage - value) / (maxAverage - minAverage)) * 88
+            : 70;
+        } else if (!isAverage && value > 0 && maxCount > 0) {
+          heatPercent = Math.max(8, (value / maxCount) * 88);
+        }
+        cell.style.setProperty('--heat-pct', `${Math.round(heatPercent)}%`);
+        if (!hasValue) cell.classList.add('is-zero');
         if (originalRow === Number(data.currentRow)) cell.classList.add('current-row');
         if (originalCol === Number(data.currentCol)) cell.classList.add('current-col');
         if (originalRow === Number(data.currentRow) && originalCol === Number(data.currentCol)) cell.classList.add('current-intersection');
         cell.setAttribute('role', 'gridcell');
         const rowLabel = transpose ? labels.cols[col] : labels.rows[row];
         const colLabel = transpose ? labels.rows[row] : labels.cols[col];
-        cell.setAttribute('aria-label', `${rowLabel}, ${colLabel}: ${value}`);
+        const detail = isAverage
+          ? (hasValue ? `${formatIntervalSeconds(value, false)} · ${t('analytics.intervalSamples').replace('{n}', String(sampleCount))}` : '—')
+          : String(value);
+        const accessible = `${rowLabel}, ${colLabel}: ${detail}`;
+        cell.setAttribute('aria-label', accessible);
+        cell.title = accessible;
         grid.append(cell);
       }
     }
     holder.append(grid);
+    if (isAverage && data.coverage?.complete === false) {
+      const coverage = el('div', 'form-note heatmap-coverage');
+      coverage.textContent = t('analytics.coveragePartial');
+      holder.append(coverage);
+    }
   }
 
   function createFilterField(labelKey, type, value, datasetName) {
@@ -2032,9 +2123,22 @@
     wrap.append(label, input); return { wrap, input };
   }
 
+  function createAnalyticsMetricField() {
+    const wrap = el('label', 'analytics-filter-field');
+    const label = el('span'); label.textContent = t('analytics.metric');
+    const select = el('select'); select.dataset.analyticsMetric = '1';
+    for (const [value, key] of [['count','analytics.metric.count'],['averageInterval','analytics.metric.averageInterval']]) {
+      const option = el('option'); option.value = value; option.textContent = t(key); select.append(option);
+    }
+    select.value = state.analytics.metric || 'count';
+    wrap.append(label, select);
+    return { wrap, select };
+  }
+
   function renderHeatmapHourly() {
     const root = el('div', 'analytics-block'); root.dataset.heatmapKind = 'hourly';
     const controls = el('div', 'analytics-filters');
+    const metricField = createAnalyticsMetricField();
     const modeWrap = el('label', 'analytics-filter-field'); const modeLabel = el('span'); modeLabel.textContent = t('analytics.mode');
     const mode = el('select'); mode.dataset.analyticsHourlyMode = '1';
     for (const [value, key] of [['week','analytics.mode.week'],['range','analytics.mode.range']]) { const option=el('option'); option.value=value; option.textContent=t(key); mode.append(option); }
@@ -2046,7 +2150,7 @@
     const fromField = createFilterField('analytics.from','date',dateText,'analyticsHourlyFrom');
     const toField = createFilterField('analytics.to','date',dateText,'analyticsHourlyTo');
     const button = el('button','button'); button.type='button'; button.dataset.analyticsAction='hourly'; button.append(icon('refresh')); const bt=el('span'); bt.textContent=t('analytics.load'); button.append(bt);
-    controls.append(modeWrap,yearField.wrap,weekField.wrap,fromField.wrap,toField.wrap,button);
+    controls.append(metricField.wrap,modeWrap,yearField.wrap,weekField.wrap,fromField.wrap,toField.wrap,button);
     const holder = el('div','heatmap-holder'); root.append(controls,holder);
     const updateMode = () => { const isWeek=mode.value==='week'; yearField.wrap.hidden=!isWeek; weekField.wrap.hidden=!isWeek; fromField.wrap.hidden=isWeek; toField.wrap.hidden=isWeek; state.analytics.hourlyMode=mode.value; };
     mode.addEventListener('change', updateMode); updateMode();
@@ -2056,14 +2160,16 @@
 
   function renderHeatmapMonthWeek() {
     const root=el('div','analytics-block'); root.dataset.heatmapKind='monthWeek';
-    const controls=el('div','analytics-filters'); const year=createFilterField('analytics.year','number',String(projectCurrentCalendar().year),'analyticsMonthWeekYear'); year.input.min='2020'; year.input.max='2199';
-    const button=el('button','button'); button.type='button'; button.dataset.analyticsAction='month-week'; button.append(icon('refresh')); const bt=el('span');bt.textContent=t('analytics.load');button.append(bt); controls.append(year.wrap,button);
+    const controls=el('div','analytics-filters'); const metricField=createAnalyticsMetricField(); const year=createFilterField('analytics.year','number',String(projectCurrentCalendar().year),'analyticsMonthWeekYear'); year.input.min='2020'; year.input.max='2199';
+    const button=el('button','button'); button.type='button'; button.dataset.analyticsAction='month-week'; button.append(icon('refresh')); const bt=el('span');bt.textContent=t('analytics.load');button.append(bt); controls.append(metricField.wrap,year.wrap,button);
     const holder=el('div','heatmap-holder'); root.append(controls,holder);
     Bindings.add(['analytics.monthWeek','analytics.error'],()=>renderHeatmapGrid(root,'monthWeek',state.analytics.monthWeek)); return root;
   }
 
   function renderHeatmapYearMonth() {
-    const root=el('div','analytics-block'); root.dataset.heatmapKind='yearMonth'; const holder=el('div','heatmap-holder'); root.append(holder);
+    const root=el('div','analytics-block'); root.dataset.heatmapKind='yearMonth';
+    const controls=el('div','analytics-filters'); const metricField=createAnalyticsMetricField(); controls.append(metricField.wrap);
+    const holder=el('div','heatmap-holder'); root.append(controls,holder);
     Bindings.add(['analytics.yearMonth','analytics.error'],()=>renderHeatmapGrid(root,'yearMonth',state.analytics.yearMonth)); return root;
   }
 
@@ -2334,7 +2440,8 @@
       const mode = hourlyRoot?.querySelector('[data-analytics-hourly-mode]')?.value || state.analytics.hourlyMode || 'week';
       state.analytics.hourlyMode = mode;
 
-      const parts = [`hourlyMode=${encodeURIComponent(mode)}`];
+      const metric = state.analytics.metric || 'count';
+      const parts = [`metric=${encodeURIComponent(metric)}`, `hourlyMode=${encodeURIComponent(mode)}`];
       if (mode === 'range') {
         const from = hourlyRoot?.querySelector('[data-analytics-hourly-from]')?.value || '';
         const to = hourlyRoot?.querySelector('[data-analytics-hourly-to]')?.value || '';
@@ -2715,7 +2822,8 @@
     const analyticsAction = event.target.closest('[data-analytics-action]');
     if (analyticsAction) {
       const root = analyticsAction.closest('[data-heatmap-kind]');
-      if (analyticsAction.dataset.analyticsAction === 'hourly') await Transport.loadHourlyHeatmap(root);
+      if ((state.analytics.metric || 'count') === 'averageInterval') await Transport.loadAnalytics(true);
+      else if (analyticsAction.dataset.analyticsAction === 'hourly') await Transport.loadHourlyHeatmap(root);
       else if (analyticsAction.dataset.analyticsAction === 'month-week') await Transport.loadMonthWeekHeatmap(root);
       return;
     }
@@ -2760,6 +2868,14 @@
   });
 
   document.addEventListener('change', event => {
+    const metricControl = event.target.closest('[data-analytics-metric]');
+    if (metricControl) {
+      state.analytics.metric = metricControl.value === 'averageInterval' ? 'averageInterval' : 'count';
+      for (const control of document.querySelectorAll('[data-analytics-metric]')) control.value = state.analytics.metric;
+      state.analytics.dirty = true;
+      Transport.loadAnalytics(true);
+      return;
+    }
     const projectSetting = event.target.closest('[data-project-setting]');
     if (projectSetting) {
       const field = projectSetting.dataset.projectSetting || '';

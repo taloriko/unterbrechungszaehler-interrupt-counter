@@ -26,6 +26,8 @@ const char *soundModeName();
 bool setSoundMode(SoundMode mode);
 bool parseSoundMode(const char *value, SoundMode &mode);
 
+bool displayEnabled();
+bool setDisplayEnabled(bool enabled);
 bool displayFlashEnabled();
 bool setDisplayFlashEnabled(bool enabled);
 DisplayMode displayMode();

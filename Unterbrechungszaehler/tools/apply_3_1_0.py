@@ -56,6 +56,13 @@ def set_translation(text: str, start_token: str, end_token: str, key: str, value
         pos = segment.find(quoted)
         if pos >= 0:
             positions.append((pos, quoted))
+    if len(positions) == 0:
+        line_end = text.find("\n", start)
+        if line_end < 0:
+            raise AssertionError(f"translation block line missing: {start_token}")
+        indent = "      " if start_token.startswith("    ") else "    "
+        payload = f"{indent}'{key}': '{js_escape(value, chr(39))}',\n"
+        return text[: line_end + 1] + payload + text[line_end + 1 :]
     if len(positions) != 1:
         raise AssertionError(f"translation key {key!r} not unique in {start_token}: {len(positions)}")
     pos, quoted = positions[0]

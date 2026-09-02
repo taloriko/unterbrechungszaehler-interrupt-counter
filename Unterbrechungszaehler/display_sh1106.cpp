@@ -17,6 +17,12 @@ bool isInitialized = false;
 bool transferOk = false;
 uint32_t checkedAtMs = 0;
 const char *errorText = "";
+uint32_t bootScreenUntilMs = 0;
+uint32_t manualTestUntilMs = 0;
+
+bool deadlinePending(uint32_t deadlineMs) {
+  return deadlineMs != 0U && static_cast<int32_t>(millis() - deadlineMs) < 0;
+}
 
 // 128 x 64 x 1 bit = 1024 bytes. A single reusable framebuffer keeps drawing
 // code simple while staying far smaller than a graphics framework.
@@ -268,6 +274,8 @@ StatusRegistry::State health() { return moduleHealth; }
 uint32_t lastCheckMs() { return checkedAtMs; }
 const char *lastError() { return errorText; }
 HardwareTypes::FeedbackType feedbackType() { return HardwareTypes::FeedbackType::TransportAck; }
+bool bootScreenActive() { return deadlinePending(bootScreenUntilMs); }
+bool manualTestActive() { return deadlinePending(manualTestUntilMs); }
 
 bool initialize() {
   if (!HardwareConfig::ENABLE_DISPLAY_SH1106 || !isDetected) return false;
@@ -318,13 +326,18 @@ bool setContrast(uint8_t contrast) {
 
 bool showBootScreen() {
   if (!HardwareConfig::ENABLE_DISPLAY_SH1106 || !isDetected) return false;
+  if (!setPower(true)) return false;
   clearFrame();
   drawChipIcon(52, 1);
   centeredText(28, AppConfig::PROJECT_NAME);
   centeredText(40, AppConfig::SOFTWARE_VERSION);
   centeredText(52, "STARTING");
   const bool ok = flushFrame();
-  if (ok) SerialLog::success("DISPLAY", "Boot screen shown");
+  if (ok) {
+    bootScreenUntilMs = millis() + HardwareConfig::DISPLAY_BOOT_SCREEN_MIN_MS;
+    SerialLog::successf("DISPLAY", "Boot screen shown | minimum=%lu ms",
+                        static_cast<unsigned long>(HardwareConfig::DISPLAY_BOOT_SCREEN_MIN_MS));
+  }
   return ok;
 }
 
@@ -348,6 +361,7 @@ bool setInverted(bool inverted) {
 
 bool showTestScreen() {
   if (!HardwareConfig::ENABLE_DISPLAY_SH1106 || !isDetected) return false;
+  if (!setPower(true)) return false;
   clearFrame();
   rect(0, 0, HardwareConfig::DISPLAY_WIDTH, HardwareConfig::DISPLAY_HEIGHT);
   centeredText(9, "DISPLAY TEST");
@@ -361,7 +375,10 @@ bool showTestScreen() {
     pixel(x + 2, 58);
   }
   const bool ok = flushFrame();
-  if (ok) SerialLog::success("DISPLAY", "Display test screen shown");
+  if (ok) {
+    manualTestUntilMs = millis() + HardwareConfig::DISPLAY_TEST_SCREEN_MS;
+    SerialLog::success("DISPLAY", "Display test screen shown");
+  }
   return ok;
 }
 
