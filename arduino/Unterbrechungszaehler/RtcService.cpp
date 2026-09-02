@@ -11,20 +11,21 @@ void RtcService::begin() {
   Wire.setClock(100000);
   delay(5);
 
-  Wire.beginTransmission(UicConfig::RTC_ADDRESS);
-  present_ = Wire.endTransmission() == 0;
-  if (present_) sample();
+  sample();
   Serial.printf("[RTC] DS3231 %s | Zeit %s\n", present_ ? "erkannt" : "nicht erkannt", timeValid_ ? "OK" : "ungueltig");
 }
 
 bool RtcService::checkDue() const {
-  if (!present_) return false;
   if (lastCheckAtMs_ == 0) return true;
   return millis() - lastCheckAtMs_ >= UicConfig::RTC_CHECK_INTERVAL_MS;
 }
 
 bool RtcService::tick() {
   if (!checkDue()) return communicationOk_;
+  return sample();
+}
+
+bool RtcService::checkNow() {
   return sample();
 }
 
@@ -48,7 +49,11 @@ bool RtcService::applyToSystem() {
 }
 
 bool RtcService::writeSystemTime() {
-  if (!present_) return false;
+  if (!present_) {
+    sample();
+    if (!present_) return false;
+  }
+
   const time_t now = time(nullptr);
   if (now <= static_cast<time_t>(UicConfig::VALID_TIME_MIN)) return false;
 
@@ -66,7 +71,9 @@ bool RtcService::writeSystemTime() {
   Wire.write(decToBcd(static_cast<uint8_t>(value.tm_mon + 1)));
   Wire.write(decToBcd(static_cast<uint8_t>((value.tm_year + 1900) % 100)));
   if (Wire.endTransmission() != 0) {
+    present_ = false;
     communicationOk_ = false;
+    timeValid_ = false;
     lastCheckAtMs_ = millis();
     return false;
   }
@@ -153,6 +160,18 @@ uint8_t RtcService::decToBcd(uint8_t value) const {
   return static_cast<uint8_t>(((value / 10) << 4) | (value % 10));
 }
 
+bool RtcService::probeHardware() {
+  Wire.beginTransmission(UicConfig::RTC_ADDRESS);
+  const bool detected = Wire.endTransmission() == 0;
+  present_ = detected;
+  if (!detected) {
+    communicationOk_ = false;
+    timeValid_ = false;
+    temperatureC_ = NAN;
+  }
+  return detected;
+}
+
 bool RtcService::readRegister(uint8_t reg, uint8_t& value) {
   if (!present_) return false;
   Wire.beginTransmission(UicConfig::RTC_ADDRESS);
@@ -173,6 +192,8 @@ bool RtcService::writeRegister(uint8_t reg, uint8_t value) {
 
 bool RtcService::sample() {
   lastCheckAtMs_ = millis();
+  if (!probeHardware()) return false;
+
   struct tm value = {};
   bool osf = false;
   if (!read(value, osf)) {
@@ -196,6 +217,8 @@ bool RtcService::sample() {
   if (readRegister(0x11, tempMsb) && readRegister(0x12, tempLsb)) {
     const int8_t signedMsb = static_cast<int8_t>(tempMsb);
     temperatureC_ = static_cast<float>(signedMsb) + static_cast<float>((tempLsb >> 6) & 0x03) * 0.25f;
+  } else {
+    temperatureC_ = NAN;
   }
 
   communicationOk_ = true;
