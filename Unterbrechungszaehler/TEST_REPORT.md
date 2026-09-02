@@ -8,11 +8,11 @@ Ziel: ESP32 Dev Module / ESP32-WROOM-32, Arduino-ESP32
 Der Releasecheck `tools/release_check.py` prüft:
 
 - Projektname und Version 3.0.0
-- deklarierte UI-Sprachen Deutsch/Englisch/Schwäbisch
+- deklarierte UI-Sprachen Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch und Oberschwäbisch
+- Parität der drei Basis-Sprachpakete Deutsch/Englisch/Schwäbisch sowie Vorhandensein der zusätzlichen Sprach-/Dialektpakete
 - 100.000er Raw-Ring und 2.300 Tagesaggregate
 - DI1 auf GPIO13 mit aktivem Edge-Latch
 - DY-SV17F auf GPIO18/19 plus BUSY GPIO39
-- Übersetzungsparität
 - Projekt-API-Routen
 - Storage-/Recovery-Simulationen
 - JavaScript-Syntax
@@ -24,7 +24,8 @@ GitHub Actions führt diese Checks zusätzlich aus, regeneriert `web_assets.h` z
 
 - 14/14 Storage-/Recovery-/Heatmap-Simulationen bestanden
 - 100.000er Ring-Wrap bestanden
-- identische i18n-Keysets der drei UI-Sprachen
+- identische i18n-Keysets der drei Basis-Sprachpakete Deutsch/Englisch/Schwäbisch
+- zusätzliche UI-Pakete Italienisch, Französisch, Alb-Schwäbisch und Oberschwäbisch vorhanden
 - Webbundle/ETag/gzip-Prüfung bestanden
 - C++-Syntaxprüfungen gegen Host-Stubs bestanden
 
