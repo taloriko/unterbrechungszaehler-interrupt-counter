@@ -17,7 +17,9 @@
 - NVS-gespeicherte Sound-/Displayeinstellungen
 - DS3231/NTP/Browser-Zeitquellen
 - OTA mit eigener 4-MiB-Partitionstabelle
-- UI in Deutsch, Englisch und Schwäbisch
+- UI in Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch und Oberschwäbisch
+
+Die ausführliche README-Dokumentation wird bewusst nur in Deutsch, Englisch und Schwäbisch gepflegt.
 
 ## Hardware 3.0.0
 
