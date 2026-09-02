@@ -1,4 +1,4 @@
-name: Apply 3.1.0 feature patch
+name: Polish 3.1.0 feature
 
 on:
   push:
@@ -11,13 +11,11 @@ permissions:
   contents: write
 
 jobs:
-  apply:
+  polish:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -27,51 +25,58 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Support inherited dialect translation keys
+      - name: Apply runtime polish
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
-          path = Path('Unterbrechungszaehler/tools/apply_3_1_0.py')
+          path = Path('Unterbrechungszaehler/display_views.cpp')
           text = path.read_text(encoding='utf-8')
-          old = (
-              "    if len(positions) != 1:\n"
-              "        raise AssertionError(f\"translation key {key!r} not unique in {start_token}: {len(positions)}\")\n"
-              "    pos, quoted = positions[0]\n"
-          )
-          new = (
-              "    if len(positions) == 0:\n"
-              "        line_end = text.find(\"\\n\", start)\n"
-              "        if line_end < 0:\n"
-              "            raise AssertionError(f\"translation block line missing: {start_token}\")\n"
-              "        indent = \"      \" if start_token.startswith(\"    \") else \"    \"\n"
-              "        payload = f\"{indent}'{key}': '{js_escape(value, chr(39))}',\\n\"\n"
-              "        return text[: line_end + 1] + payload + text[line_end + 1 :]\n"
-              "    if len(positions) != 1:\n"
-              "        raise AssertionError(f\"translation key {key!r} not unique in {start_token}: {len(positions)}\")\n"
-              "    pos, quoted = positions[0]\n"
-          )
+          old = 'bool dimmed = false;\nbool displayPowerOn = true;\n'
+          new = 'bool dimmed = false;\nbool displayPowerOn = true;\nbool manualTestWasActive = false;\n'
           if old not in text:
-              raise SystemExit('translation replacement marker not found')
+              raise SystemExit('display state marker missing')
+          text = text.replace(old, new, 1)
+
+          old = '''  if (DisplaySh1106::manualTestActive()) {
+              displayPowerOn = true;
+              return;
+            }
+          '''
+          new = '''  if (DisplaySh1106::manualTestActive()) {
+              manualTestWasActive = true;
+              displayPowerOn = true;
+              return;
+            }
+            if (manualTestWasActive) {
+              manualTestWasActive = false;
+              renderRequested = true;
+              lastContrast = -1;
+            }
+          '''
+          if old not in text:
+              raise SystemExit('manual test marker missing')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          path = Path('Unterbrechungszaehler/interruption_api.cpp')
+          text = path.read_text(encoding='utf-8')
+          old = '  ctx = AnalyticsBundleContext{};\n'
+          new = '  memset(&ctx, 0, sizeof(ctx));\n'
+          if old not in text:
+              raise SystemExit('analytics context reset marker missing')
           path.write_text(text.replace(old, new, 1), encoding='utf-8')
           PY
-
-      - name: Apply 3.1.0 source changes
-        run: python3 Unterbrechungszaehler/tools/apply_3_1_0.py
-
-      - name: Regenerate embedded web UI
-        run: python3 Unterbrechungszaehler/tools/build_web.py
 
       - name: Run portable release checks
         run: python3 Unterbrechungszaehler/tools/release_check.py
 
-      - name: Commit generated feature changes
+      - name: Commit runtime polish
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Unterbrechungszaehler
+          git add Unterbrechungszaehler/display_views.cpp Unterbrechungszaehler/interruption_api.cpp
           git diff --cached --check
-          git commit -m "Add average interval heatmaps and display control"
+          git commit -m "Harden display test recovery and analytics memory use"
           git push origin HEAD:feature/3.1.0-heatmap-interval-display
