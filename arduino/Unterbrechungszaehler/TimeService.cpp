@@ -66,6 +66,16 @@ bool TimeService::setFromBrowser(uint32_t epochValue) {
   return valid();
 }
 
+bool TimeService::setFromRtc() {
+  if (!rtc_) return false;
+  rtc_->checkNow();
+  if (!rtc_->present() || !rtc_->timeValid()) return false;
+  if (!rtc_->applyToSystem()) return false;
+  applyTimezone();
+  source_ = TimeSource::Rtc;
+  return valid();
+}
+
 bool TimeService::setPrimaryNtp(const String& host) {
   if (!validNtpHost(host)) return false;
 
