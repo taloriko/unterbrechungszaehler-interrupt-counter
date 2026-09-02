@@ -29,10 +29,13 @@ public:
   bool requestPlay(uint16_t track);
   bool test();
   bool setSettings(bool enabled, uint8_t volume, uint16_t track);
+  bool requestHardwareCheck();
 
   bool present() const { return hardwareState_ == SoundHardwareState::Ready; }
   bool enabled() const { return enabled_; }
   bool busy() const { return playback_ != Playback::Idle; }
+  bool hardwareCheckActive() const { return hardwareProbeActive_; }
+  uint32_t hardwareCheckAgeMs() const;
   uint8_t volume() const { return volume_; }
   uint16_t track() const { return track_; }
   uint8_t playState() const { return playState_; }
@@ -64,14 +67,19 @@ private:
   void playSpecified(uint16_t track);
   void parseSerial();
   void handleFrame(const uint8_t* frame, uint8_t length);
-  void registerValidStatus(uint8_t state);
+  void registerPlaybackStatus(uint8_t state);
+  void startHardwareProbe(bool bootProbe);
+  void finishHardwareProbe(bool detected);
   void failPlayback(bool timeout, const char* reason);
 
   HardwareSerial serial_{2};
   SoundHardwareState hardwareState_ = SoundHardwareState::Probing;
   Playback playback_ = Playback::Idle;
   bool enabled_ = false;
-  bool bootProbeActive_ = false;
+  bool hardwareProbeActive_ = false;
+  bool playbackResponseSeen_ = false;
+  uint8_t hardwareProbeResponses_ = 0;
+  uint8_t hardwareProbeRequired_ = 1;
   uint8_t volume_ = 20;
   uint16_t track_ = 1;
   uint8_t playState_ = 0xFF;
@@ -85,7 +93,8 @@ private:
   uint32_t errorCount_ = 0;
   uint32_t lastQueryAt_ = 0;
   uint32_t lastResponseAt_ = 0;
-  uint32_t bootProbeStartedAt_ = 0;
+  uint32_t hardwareProbeStartedAt_ = 0;
+  uint32_t lastHardwareCheckAt_ = 0;
   uint32_t playbackStartedAt_ = 0;
   const char* lastPlaybackError_ = "-";
   uint8_t rx_[16] = {};
