@@ -4,7 +4,7 @@
 
 namespace UicConfig {
 
-static constexpr char APP_VERSION[] = "2.1.3";
+static constexpr char APP_VERSION[] = "2.1.4";
 static constexpr char HOSTNAME[] = "unterbrechungen";
 static constexpr char FALLBACK_AP_SSID[] = "Unterbrechungszaehler";
 static constexpr char TZ_INFO[] = "CET-1CEST,M3.5.0,M10.5.0/3";
@@ -19,9 +19,9 @@ static constexpr uint8_t I2C_SDA = 21;
 static constexpr uint8_t I2C_SCL = 22;
 static constexpr bool LED_ACTIVE_LOW = false;
 
-// DY-SV17F: UART2. Die Hardware wird beim Boot kurz geprueft. Danach bleibt
-// der UART im Leerlauf ruhig; Statusabfragen erfolgen nur waehrend einer
-// angeforderten Wiedergabe, um Start und Abschluss zu bestaetigen.
+// DY-SV17F: UART2. Beim Boot wird die Hardware kurz bestaetigt. Im normalen
+// Leerlauf bleibt der UART ruhig. Eine kurze Hardwarepruefung erfolgt nur bei
+// Bedarf, waehrend einer Wiedergabe oder im langen Wartungszyklus.
 static constexpr uint8_t SOUND_RX_PIN = 16;
 static constexpr uint8_t SOUND_TX_PIN = 17;
 static constexpr uint32_t SOUND_BAUD = 9600;
@@ -30,6 +30,7 @@ static constexpr uint32_t SOUND_RESPONSE_TIMEOUT_MS = 300;
 static constexpr uint8_t SOUND_REQUIRED_CONFIRMATIONS = 3;
 static constexpr uint32_t SOUND_BOOT_PROBE_INTERVAL_MS = 250;
 static constexpr uint32_t SOUND_BOOT_PROBE_WINDOW_MS = 3000;
+static constexpr uint32_t SOUND_HEALTH_CHECK_INTERVAL_MS = 600000;
 static constexpr uint32_t SOUND_START_TIMEOUT_MS = 1800;
 static constexpr uint32_t SOUND_PLAYBACK_TIMEOUT_MS = 120000;
 
