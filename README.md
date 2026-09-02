@@ -3,7 +3,7 @@
 > [!WARNING]
 > **KI-Hinweis:** Dieses Projekt wurde maßgeblich mit Unterstützung von KI erstellt, anschließend aber praktisch getestet, überarbeitet und weiterentwickelt. Wer KI-generierten Code grundsätzlich nicht mag, darf natürlich trotzdem den Taster drücken. ;-)
 
-> **Aktueller Stand:** `3.0.1`
+> **Aktueller Stand:** `3.1.0`
 
 [Deutsch](docs/de/README.md) · [English](docs/en/README.md) · [Schwäbisch](docs/swg/README.md)
 
@@ -13,10 +13,10 @@
 
 **Du sitzt konzentriert an einer Aufgabe.**
 
-- Dann kommt ein Kollege.  
-- Dann klingelt das Telefon.  
-- Dann braucht jemand „nur ganz kurz“ etwas.  
-- Dann kommt der Chef.  
+- Dann kommt ein Kollege.
+- Dann klingelt das Telefon.
+- Dann braucht jemand „nur ganz kurz“ etwas.
+- Dann kommt der Chef.
 - Und irgendwann fragst du dich, was du eigentlich vor zwei Stunden machen wolltest.
 
 Genau dafür gibt es den **Unterbrechungszähler**.
@@ -97,9 +97,9 @@ Die wichtigste Anforderung war deshalb von Anfang an:
 
 **Ein Knopfdruck. Fertig.**
 
-Keine App öffnen.  
-Kein Formular ausfüllen.  
-Keine Kategorie auswählen.  
+Keine App öffnen.
+Kein Formular ausfüllen.
+Keine Kategorie auswählen.
 Keine Excel-Liste pflegen.
 
 Einfach drücken und weiterarbeiten.
@@ -110,31 +110,31 @@ Den Rest macht das Gerät.
 
 ## Was kann das Gerät?
 
-- **Ereignisse per Taster oder potentialfreiem Kontakt erfassen**  
+- **Ereignisse per Taster oder potentialfreiem Kontakt erfassen**
   Einfach, schnell und ohne jedes Mal einen Verwaltungsakt daraus zu machen.
 
-- **Lokale Weboberfläche ohne Cloud**  
+- **Lokale Weboberfläche ohne Cloud**
   Sehr wichtig. Nicht alles muss erst einmal über drei Rechenzentren geschickt werden, nur damit man einen Knopf zählen kann. ;-)
 
-- **Tagesansicht, Verlauf, Details und Heatmaps**  
-  Damit man schnell sieht, wann besonders viel los war – oder wann offenbar alle anderen Mittagspause hatten.
+- **Tagesansicht, Verlauf, Details und umschaltbare Heatmaps**
+  Die Heatmaps zeigen wahlweise die **Anzahl der Unterbrechungen** oder den **durchschnittlichen abgeschlossenen Abstand bis zur nächsten Unterbrechung am selben Tag**. Der letzte Druck eines Tages zählt beim Durchschnitt bewusst nicht mit – ohne nächsten Druck gibt es schließlich noch keinen abgeschlossenen Abstand.
 
-- **CSV-Export und Langzeit-Ringspeicher**  
+- **CSV-Export und Langzeit-Ringspeicher**
   Falls aus „Ich werde ständig unterbrochen“ irgendwann „Zeig mir die Daten“ wird.
 
-- **DS3231-RTC**  
+- **DS3231-RTC**
   Damit das Gerät auch ohne WLAN weiß, wie spät es ist. Revolutionäre Technik.
 
-- **Optionales SH1106-OLED mit 128 × 64 Pixeln**  
-  Technisch nicht zwingend notwendig, sieht aber sofort mindestens 37 % professioneller aus.
+- **Optionales SH1106-OLED mit 128 × 64 Pixeln**
+  Technisch nicht zwingend notwendig, sieht aber sofort mindestens 37 % professioneller aus. Das Display kann persistent ein- und ausgeschaltet werden; beim echten Geräteboot bleibt das Startbild mindestens zwei Sekunden sichtbar.
 
-- **Fallback-WLAN für lokalen Zugriff**  
+- **Fallback-WLAN für lokalen Zugriff**
   Wer keine Cloud möchte, sollte das Gerät schließlich trotzdem noch erreichen können. Der Fallback-AP ist mit `Unterbrechungszähler` geschützt.
 
-- **Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch und Oberschwäbisch in der Oberfläche**  
+- **Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch und Oberschwäbisch in der Oberfläche**
   Die README-Dokumentation gibt es bewusst nur in Deutsch, Englisch und Schwäbisch. Internationalisierung muss schließlich irgendwo anfangen.
 
-- **MagSafe-Ring für Akku oder Halterungen**  
+- **MagSafe-Ring für Akku oder Halterungen**
   Weil Klettband zwar funktioniert, aber Magnete einfach mehr nach Zukunft aussehen.
 
 ## 3.0.0 ist ein harter Schnitt
@@ -153,6 +153,41 @@ Die bisherigen 1.x/2.x-Stände waren Entwicklungs- und Teststände. **3.0.0 ist 
 | DY-SV17F CON3/BUSY | GPIO39 / VN |
 
 Für CON3/BUSY ist ein externer ca. **10-kΩ-Pull-up an V33 des DY-SV17F** erforderlich. CON1 und CON2 liegen für den UART-Modus auf GND. Details: [Hardware / Wiring](docs/de/HARDWARE.md).
+
+## DY-SV17F: Sounddateien aufspielen
+
+Das **DY-SV17F** besitzt **32 Mbit / 4 MByte internen Flash-Speicher** und kann **MP3** und **WAV** direkt wiedergeben. Das Modul bietet außerdem einen integrierten **5-W-Class-D-Verstärker**, an den ein **4-Ω-Lautsprecher mit etwa 3–5 W** direkt angeschlossen werden kann. Es unterstützt IO-, Serial- und One-Line-Serial-Betrieb; dieses Projekt verwendet **Serial/UART mit 9600 Baud, 8N1**.
+
+Unterstützte Abtastraten laut Moduldaten: **8 / 11.025 / 12 / 16 / 22.05 / 24 / 32 / 44.1 / 48 kHz**. Angegeben sind außerdem ein **24-Bit-DAC**, etwa **90 dB Dynamikbereich** und **85 dB Signal-Rausch-Verhältnis**.
+
+Ein direkt nutzbares Startpaket liegt unter [`docs/sounds/`](docs/sounds/). Die aktuelle Zuordnung der mitgelieferten Dateien steht in [`docs/sounds/DATEIZUORDNUNG.txt`](docs/sounds/DATEIZUORDNUNG.txt).
+
+So kommen eigene oder die mitgelieferten Töne auf das Modul:
+
+1. DY-SV17F mit einem **echten Micro-USB-Datenkabel** an den Computer anschließen. Ein reines Ladekabel reicht nicht.
+2. Den am Rechner eingebundenen internen Speicher des DY-SV17F öffnen.
+3. Die Audiodateien **direkt ins Root-/Hauptverzeichnis** des Moduls kopieren. **Keine Unterordner verwenden.**
+4. Dateien fünfstellig mit führenden Nullen benennen: `00001.mp3`, `00002.mp3`, `00003.mp3`, …; alternativ entsprechend `00001.wav` usw. Nicht gleichzeitig unterschiedliche Dateien mit derselben Tracknummer ablegen.
+5. `00001` ist **Track 1 und ausschließlich der Boot-Ton**. `00002` und höher sind die Unterbrechungstöne. Im festen Modus spielt die Firmware den ausgewählten Track ab 2; im Rotationsmodus werden die erkannten Tracks **2…N** verwendet.
+6. Datenträger anschließend sauber auswerfen und die Micro-USB-Verbindung zum Computer trennen.
+
+Richtig:
+
+```text
+/00001.mp3
+/00002.mp3
+/00003.mp3
+```
+
+Falsch:
+
+```text
+/sounds/00001.mp3
+/mp3/00002.mp3
+```
+
+> [!IMPORTANT]
+> **Solange das DY-SV17F per Micro-USB mit dem Computer verbunden ist bzw. sein interner Speicher über USB verwendet wird, funktioniert die normale Soundausgabe nicht.** Nach dem Kopieren deshalb den Datenträger auswerfen, USB trennen und erst dann Soundtest, Boot-Ton oder Unterbrechungston prüfen.
 
 ## Schnellstart
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.0.1."""
+"""Portable release checks for Unterbrechungszaehler 3.1.0."""
 from __future__ import annotations
 
 import gzip
@@ -60,7 +60,7 @@ def main() -> None:
     partitions = (ROOT / "partitions.csv").read_text(encoding="utf-8")
 
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.0.1"' in config, "project version 3.0.1")
+    check('SOFTWARE_VERSION[] = "3.1.0"' in config, "project version 3.1.0")
     check(
         'AVAILABLE_LANGUAGES_JSON[] = "[\\\"de\\\",\\\"en\\\",\\\"it\\\",\\\"fr\\\",\\\"swg\\\",\\\"swg-alb\\\",\\\"swg-ob\\\"]"' in config,
         "declared UI languages",
@@ -72,6 +72,13 @@ def main() -> None:
     check("RAW_RECORD_SIZE = 9" in project, "9-byte raw record")
     check("DAILY_AGGREGATE_CAPACITY = 2300" in project, "daily aggregate retention")
     check("PENDING_EVENT_CAPACITY = 64" in project, "64-event fixed persistence queue")
+    check("DISPLAY_ENABLED_DEFAULT = true" in project, "persistent display master default")
+    check("DISPLAY_BOOT_SCREEN_MIN_MS = 2000" in hardware, "two-second nonblocking boot screen minimum")
+    check("displayEnabled" in JS and "project.displayEnabled" in JS, "display master switch in UI")
+    check("averageInterval" in JS and "analytics.coveragePartial" in JS, "average-interval heatmap UI")
+    interruption_api = (ROOT / "interruption_api.cpp").read_text(encoding="utf-8")
+    check("scanIntervalAnalytics" in interruption_api and "elapsedSeconds == current.deltaSeconds" in interruption_api, "retained adjacent-event interval scan")
+    check("delay(2000)" not in (ROOT / "display_views.cpp").read_text(encoding="utf-8") and "delay(2000)" not in (ROOT / "display_sh1106.cpp").read_text(encoding="utf-8"), "boot screen has no blocking two-second delay")
     check(re.search(r'\{"di1"[^\n]*13,\s*PullMode::Up,\s*false[^\n]*25,\s*true,', hardware) is not None, "DI1 GPIO13 active-edge interrupt latch")
     check("AUDIO_RX_PIN = 18" in hardware and "AUDIO_TX_PIN = 19" in hardware and "AUDIO_BUSY_PIN = 39" in hardware, "DY-SV17F pin map")
     check("0x2D0000, 0x130000" in partitions, "LittleFS custom partition")

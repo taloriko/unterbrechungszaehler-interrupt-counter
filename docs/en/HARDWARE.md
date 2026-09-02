@@ -1,4 +1,4 @@
-# Hardware – Interruption Counter 3.0.1
+# Hardware – Interruption Counter 3.1.0
 
 Target: classic **ESP32 Dev Module / ESP32-WROOM-32(E)**.
 
@@ -46,13 +46,30 @@ UART mode at power-up requires CON3 high and CON1/CON2 low. Connect CON3/BUSY to
 
 BUSY low means playback active; high means idle.
 
-## Audio tracks
+## Audio files and internal flash
 
-- Track 1: boot sound
-- Track 2 and above: interruption sounds
-- Rotate mode uses detected tracks 2…N
+The DY-SV17F decodes **MP3 and WAV** and contains **32 Mbit / 4 MB internal flash**. Its integrated **5 W Class-D amplifier** can directly drive a **4 Ω, roughly 3–5 W speaker**. Documented sample rates are **8 / 11.025 / 12 / 16 / 22.05 / 24 / 32 / 44.1 / 48 kHz**, with a 24-bit DAC, about 90 dB dynamic range and 85 dB SNR.
 
-Check licensing before publishing audio files.
+Project track mapping:
+
+- `00001.mp3` / `00001.wav`: track 1, boot sound only
+- `00002` and above: interruption sounds
+- rotate mode: detected tracks 2…N
+
+Starter pack: [`../sounds/`](../sounds/)
+File mapping: [`../sounds/DATEIZUORDNUNG.txt`](../sounds/DATEIZUORDNUNG.txt)
+
+### Copying files over Micro-USB
+
+1. Connect the DY-SV17F using a real **Micro-USB data cable**; a charge-only cable is not sufficient.
+2. Open the module's internal flash drive on the computer.
+3. Copy files **directly into the root directory**; do not use subfolders.
+4. Use five digits with leading zeroes: `00001.mp3`, `00002.mp3`, …; WAV works the same way. Do not keep two formats with the same track number at once.
+5. Safely eject the drive and disconnect Micro-USB.
+
+**Important:** normal audio playback is unavailable while the DY-SV17F is connected to the computer / its flash is being used through USB. Disconnect USB before testing boot or interruption playback.
+
+Check licensing before publishing your own audio files.
 
 All modules need a common ground. ESP32 GPIO is 3.3-V logic; never feed 5-V signals directly into ESP32 inputs.
 

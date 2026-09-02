@@ -11,6 +11,7 @@ namespace {
 bool sound = ProjectConfig::INTERRUPTION_SOUND_DEFAULT;
 uint16_t track = ProjectConfig::INTERRUPTION_SOUND_TRACK_DEFAULT;
 SoundMode soundModeValue = ProjectConfig::INTERRUPTION_SOUND_MODE_DEFAULT;
+bool displayEnabledValue = ProjectConfig::DISPLAY_ENABLED_DEFAULT;
 bool flash = ProjectConfig::DISPLAY_FLASH_DEFAULT;
 DisplayMode mode = ProjectConfig::DISPLAY_MODE_DEFAULT;
 uint8_t brightness = ProjectConfig::DISPLAY_BRIGHTNESS_DEFAULT_PERCENT;
@@ -64,6 +65,7 @@ void begin() {
   track = prefs.getUShort("sndtrack", ProjectConfig::INTERRUPTION_SOUND_TRACK_DEFAULT);
   if (track < 2) track = ProjectConfig::INTERRUPTION_SOUND_TRACK_DEFAULT;
   soundModeValue = sanitizedSoundMode(prefs.getUChar("sndmode", static_cast<uint8_t>(ProjectConfig::INTERRUPTION_SOUND_MODE_DEFAULT)));
+  displayEnabledValue = prefs.getBool("dispen", ProjectConfig::DISPLAY_ENABLED_DEFAULT);
   flash = prefs.getBool("dispflash", ProjectConfig::DISPLAY_FLASH_DEFAULT);
   mode = sanitizedMode(prefs.getUChar("dispmode", static_cast<uint8_t>(ProjectConfig::DISPLAY_MODE_DEFAULT)));
   brightness = prefs.getUChar("dispbright", ProjectConfig::DISPLAY_BRIGHTNESS_DEFAULT_PERCENT);
@@ -76,9 +78,9 @@ void begin() {
   if (dimBrightness > 100) dimBrightness = ProjectConfig::DISPLAY_DIM_BRIGHTNESS_DEFAULT_PERCENT;
   prefs.end();
 
-  SerialLog::infof("PROJECT", "Feedback settings | sound=%s | sound-mode=%s | track=%u | display-flash=%s | display-mode=%s",
+  SerialLog::infof("PROJECT", "Feedback settings | sound=%s | sound-mode=%s | track=%u | display=%s | display-flash=%s | display-mode=%s",
                    sound ? "ON" : "OFF", soundModeName(), static_cast<unsigned int>(track),
-                   flash ? "ON" : "OFF", displayModeName());
+                   displayEnabledValue ? "ON" : "OFF", flash ? "ON" : "OFF", displayModeName());
   SerialLog::infof("PROJECT", "Display settings | brightness=%u%% | dim-after=%u min | dim-brightness=%u%%",
                    static_cast<unsigned int>(brightness), static_cast<unsigned int>(dimAfterMinutes),
                    static_cast<unsigned int>(dimBrightness));
@@ -129,6 +131,16 @@ bool setSoundMode(SoundMode value) {
   if (!persistUChar("sndmode", static_cast<uint8_t>(value))) return false;
   soundModeValue = value;
   SerialLog::infof("PROJECT", "Interruption sound mode changed | %s", soundModeName());
+  return true;
+}
+
+bool displayEnabled() { return displayEnabledValue; }
+
+bool setDisplayEnabled(bool enabled) {
+  if (displayEnabledValue == enabled) return true;
+  if (!persistBool("dispen", enabled)) return false;
+  displayEnabledValue = enabled;
+  SerialLog::infof("PROJECT", "Display master switch changed | %s", displayEnabledValue ? "ON" : "OFF");
   return true;
 }
 

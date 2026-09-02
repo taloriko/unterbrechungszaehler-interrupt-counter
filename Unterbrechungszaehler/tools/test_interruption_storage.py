@@ -108,6 +108,17 @@ def build_deltas(events: list[Event]) -> list[int]:
     return result
 
 
+def completed_intervals(events: list[Event]) -> list[tuple[Event, int]]:
+    result: list[tuple[Event, int]] = []
+    for previous, current in zip(events, events[1:]):
+        if day_index(previous.when) != day_index(current.when):
+            continue
+        elapsed = int(current.when.timestamp() - previous.when.timestamp())
+        if elapsed > 0:
+            result.append((previous, elapsed))
+    return result
+
+
 def aggregate(events: list[Event]) -> dict[int, list[int]]:
     days: dict[int, list[int]] = {}
     for event in events:
@@ -251,6 +262,58 @@ def test_heatmap_views_from_daily_aggregates() -> None:
     assert sum(sum(row) for row in month_week_for(2027)) == 0
 
 
+
+def test_average_interval_semantics() -> None:
+    events = [
+        Event(datetime(2026, 9, 2, 8, 0, tzinfo=TZ)),
+        Event(datetime(2026, 9, 2, 8, 15, tzinfo=TZ)),
+        Event(datetime(2026, 9, 2, 10, 0, tzinfo=TZ)),
+    ]
+    samples = completed_intervals(events)
+    assert [seconds for _, seconds in samples] == [900, 6300]
+    assert [start.when.hour for start, _ in samples] == [8, 8]
+    assert round(sum(seconds for _, seconds in samples) / len(samples)) == 3600
+    # The last press at 10:00 has no following same-day press and therefore no sample.
+    assert all(start.when.hour != 10 for start, _ in samples)
+
+    # Never bridge midnight.
+    midnight = [
+        Event(datetime(2026, 9, 2, 23, 50, tzinfo=TZ)),
+        Event(datetime(2026, 9, 3, 0, 10, tzinfo=TZ)),
+    ]
+    assert completed_intervals(midnight) == []
+
+    # One press on a day yields no completed interval.
+    assert completed_intervals([Event(datetime(2026, 9, 4, 9, 0, tzinfo=TZ))]) == []
+
+    # Weighted average over all samples, not an average of daily averages.
+    weighted = [
+        Event(datetime(2026, 9, 7, 8, 0, tzinfo=TZ)),
+        Event(datetime(2026, 9, 7, 8, 10, tzinfo=TZ)),
+        Event(datetime(2026, 9, 8, 8, 0, tzinfo=TZ)),
+        Event(datetime(2026, 9, 8, 8, 30, tzinfo=TZ)),
+    ]
+    values = [seconds for _, seconds in completed_intervals(weighted)]
+    assert values == [600, 1800]
+    assert sum(values) // len(values) == 1200
+
+    # DST spring-forward still uses real elapsed epoch seconds.
+    before = Event(datetime(2026, 3, 29, 1, 30, tzinfo=TZ))
+    after = Event((before.when.astimezone(timezone.utc) + timedelta(hours=1)).astimezone(TZ))
+    dst = completed_intervals([before, after])
+    assert len(dst) == 1 and dst[0][1] == 3600
+
+
+def test_average_interval_ring_coverage_rule() -> None:
+    def complete(raw_count: int, capacity: int, oldest_sequence: int, oldest_day: int, selected_start: int) -> bool:
+        overwritten = capacity > 0 and raw_count >= capacity and oldest_sequence > 1
+        return not overwritten or oldest_day <= selected_start
+
+    assert complete(50_000, RAW_CAPACITY, 1, 2000, 1000)
+    assert complete(RAW_CAPACITY, RAW_CAPACITY, 1, 2000, 1000)
+    assert not complete(RAW_CAPACITY, RAW_CAPACITY, 5001, 2500, 2400)
+    assert complete(RAW_CAPACITY, RAW_CAPACITY, 5001, 2500, 2500)
+
 def test_pending_queue_overflow_keeps_live_count_visible() -> None:
     capacity = 64
     queued = 0
@@ -393,6 +456,8 @@ def main() -> None:
         test_delta_and_aggregate,
         test_dst_calendar_behavior,
         test_heatmap_views_from_daily_aggregates,
+        test_average_interval_semantics,
+        test_average_interval_ring_coverage_rule,
         test_pending_queue_overflow_keeps_live_count_visible,
         test_transactional_retry_no_duplicate,
         test_backward_clock_delta_is_unknown,

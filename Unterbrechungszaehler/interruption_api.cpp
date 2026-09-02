@@ -58,6 +58,7 @@ void appendProjectPreferencesObjectInternal(String &out) {
   fieldUInt(out, "soundTrack", ProjectPreferences::soundTrack());
   fieldString(out, "soundMode", ProjectPreferences::soundModeName());
   fieldUInt(out, "soundTrackCount", AudioDySv17f::musicCount());
+  fieldBool(out, "displayEnabled", ProjectPreferences::displayEnabled());
   fieldBool(out, "displayFlashEnabled", ProjectPreferences::displayFlashEnabled());
   fieldString(out, "displayMode", ProjectPreferences::displayModeName());
   fieldUInt(out, "displayBrightness", ProjectPreferences::displayBrightnessPercent());
@@ -242,6 +243,7 @@ bool visitYearMonth(const InterruptionAggregates::DailyRecord &record, void *con
 }
 
 struct AnalyticsBundleContext {
+  bool averageInterval = false;
   bool hourlyWeekMode = false;
   uint16_t hourlyYear = 0;
   uint8_t hourlyWeek = 0;
@@ -253,6 +255,17 @@ struct AnalyticsBundleContext {
   uint32_t hourly[7U * 24U]{};
   uint32_t monthWeek[12U * 53U]{};
   uint32_t yearMonth[5U * 12U]{};
+  uint64_t hourlyIntervalSum[7U * 24U]{};
+  uint32_t hourlyIntervalSamples[7U * 24U]{};
+  uint64_t monthWeekIntervalSum[12U * 53U]{};
+  uint32_t monthWeekIntervalSamples[12U * 53U]{};
+  uint64_t yearMonthIntervalSum[5U * 12U]{};
+  uint32_t yearMonthIntervalSamples[5U * 12U]{};
+  bool oldestRawAbsoluteValid = false;
+  uint16_t oldestRawDayIndex = 0;
+  uint16_t newestRawDayIndex = 0;
+  uint32_t oldestRawEpochSeconds = 0;
+  uint32_t newestRawEpochSeconds = 0;
   uint16_t scanCounter = 0;
 };
 
@@ -300,6 +313,129 @@ bool visitAnalyticsBundle(const InterruptionAggregates::DailyRecord &record, voi
     const size_t index = static_cast<size_t>(year - ctx.yearMonthStart) * 12U +
                          static_cast<size_t>(month - 1U);
     ctx.yearMonth[index] += record.total;
+  }
+  return true;
+}
+
+
+void appendIntervalValues(String &out, const uint64_t *sums, const uint32_t *samples, size_t count) {
+  out += '[';
+  for (size_t i = 0; i < count; ++i) {
+    if (i != 0) out += ',';
+    const uint32_t average = samples[i] == 0
+                                 ? 0
+                                 : static_cast<uint32_t>((sums[i] + samples[i] / 2U) / samples[i]);
+    JsonUtils::appendUInt(out, average);
+  }
+  out += ']';
+}
+
+bool isoWeekStartDayIndex(uint16_t year, uint8_t week, uint16_t &dayIndexOut) {
+  uint16_t jan4 = 0;
+  if (!ProjectTime::dateToDayIndex(year, 1, 4, jan4)) return false;
+  const int32_t weekOneMonday = static_cast<int32_t>(jan4) - ProjectTime::weekdayFromDayIndex(jan4);
+  const int32_t selected = weekOneMonday + static_cast<int32_t>(week - 1U) * 7;
+  if (selected < 0 || selected > 65535) return false;
+  dayIndexOut = static_cast<uint16_t>(selected);
+  return true;
+}
+
+bool intervalCoverageComplete(const AnalyticsBundleContext &ctx, uint16_t selectedStartDayIndex) {
+  const uint32_t rawCount = InterruptionStore::count();
+  const uint32_t rawCapacity = InterruptionStore::capacity();
+  const bool oldestWasOverwritten = rawCapacity > 0U && rawCount >= rawCapacity && InterruptionStore::oldestSequence() > 1U;
+  if (!oldestWasOverwritten) return true;
+  return ctx.oldestRawAbsoluteValid && ctx.oldestRawDayIndex <= selectedStartDayIndex;
+}
+
+void appendIntervalCoverage(String &out, const AnalyticsBundleContext &ctx, bool complete) {
+  out += '{';
+  fieldBool(out, "complete", complete);
+  fieldUInt(out, "retainedRawCount", InterruptionStore::count());
+  if (ctx.oldestRawAbsoluteValid) {
+    fieldUInt(out, "oldestEpochSeconds", ctx.oldestRawEpochSeconds);
+    fieldUInt(out, "newestEpochSeconds", ctx.newestRawEpochSeconds, false);
+  } else {
+    removeTrailingComma(out);
+  }
+  out += '}';
+}
+
+void addIntervalSample(AnalyticsBundleContext &ctx,
+                       const ProjectTime::LocalDateTime &start,
+                       uint32_t elapsedSeconds) {
+  bool includeHourly = false;
+  if (ctx.hourlyWeekMode) {
+    includeHourly = start.isoYear == ctx.hourlyYear && start.isoWeek == ctx.hourlyWeek;
+  } else {
+    includeHourly = start.dayIndex >= ctx.hourlyFrom && start.dayIndex <= ctx.hourlyTo;
+  }
+  if (includeHourly) {
+    const size_t index = static_cast<size_t>(start.weekday) * 24U + start.hour;
+    ctx.hourlyIntervalSum[index] += elapsedSeconds;
+    ++ctx.hourlyIntervalSamples[index];
+  }
+
+  if (start.year == ctx.monthWeekYear && start.month >= 1U && start.month <= 12U &&
+      start.isoWeek >= 1U && start.isoWeek <= 53U) {
+    const size_t index = static_cast<size_t>(start.month - 1U) * 53U + static_cast<size_t>(start.isoWeek - 1U);
+    ctx.monthWeekIntervalSum[index] += elapsedSeconds;
+    ++ctx.monthWeekIntervalSamples[index];
+  }
+
+  if (start.year >= ctx.yearMonthStart && start.year <= ctx.yearMonthEnd && start.month >= 1U && start.month <= 12U) {
+    const size_t index = static_cast<size_t>(start.year - ctx.yearMonthStart) * 12U + static_cast<size_t>(start.month - 1U);
+    ctx.yearMonthIntervalSum[index] += elapsedSeconds;
+    ++ctx.yearMonthIntervalSamples[index];
+  }
+}
+
+bool scanIntervalAnalytics(AnalyticsBundleContext &ctx) {
+  const uint64_t first = InterruptionStore::oldestSequence();
+  const uint64_t last = InterruptionStore::newestSequence();
+  if (first == 0U || last == 0U || first > last) return true;
+
+  bool previousUsable = false;
+  InterruptionTypes::RawEvent previous;
+  ProjectTime::LocalDateTime previousLocal;
+
+  for (uint64_t sequence = first; sequence <= last; ++sequence) {
+    servicePhysicalInputDuringRead(ctx.scanCounter);
+
+    InterruptionTypes::RawEvent current;
+    if (!InterruptionStore::readSequence(sequence, current)) {
+      previousUsable = false;  // Never bridge a missing/corrupt retained record.
+      continue;
+    }
+
+    ProjectTime::LocalDateTime currentLocal;
+    const bool currentUsable = current.absoluteValid &&
+                               ProjectTime::fromEpochSeconds(current.timeValueSeconds, currentLocal);
+    if (currentUsable) {
+      if (!ctx.oldestRawAbsoluteValid) {
+        ctx.oldestRawAbsoluteValid = true;
+        ctx.oldestRawDayIndex = currentLocal.dayIndex;
+        ctx.oldestRawEpochSeconds = current.timeValueSeconds;
+      }
+      ctx.newestRawDayIndex = currentLocal.dayIndex;
+      ctx.newestRawEpochSeconds = current.timeValueSeconds;
+    }
+
+    if (previousUsable && currentUsable && previousLocal.dayIndex == currentLocal.dayIndex &&
+        current.deltaSeconds > 0U && current.deltaSeconds < InterruptionTypes::DELTA_UNKNOWN &&
+        current.timeValueSeconds > previous.timeValueSeconds) {
+      const uint32_t elapsedSeconds = current.timeValueSeconds - previous.timeValueSeconds;
+      // deltaSeconds is generated from the same absolute timestamps. Requiring
+      // equality also proves that the current event actually follows this
+      // retained predecessor instead of an older calendar anchor.
+      if (elapsedSeconds == current.deltaSeconds) {
+        addIntervalSample(ctx, previousLocal, elapsedSeconds);
+      }
+    }
+
+    previous = current;
+    previousLocal = currentLocal;
+    previousUsable = currentUsable;
   }
   return true;
 }
@@ -355,7 +491,8 @@ String buildStorageJson() {
   return out;
 }
 
-String buildAnalyticsBundleJson(const char *hourlyMode,
+String buildAnalyticsBundleJson(const char *metric,
+                                const char *hourlyMode,
                                 uint16_t hourlyYear,
                                 uint8_t hourlyWeek,
                                 const char *fromDate,
@@ -365,12 +502,21 @@ String buildAnalyticsBundleJson(const char *hourlyMode,
   validRequest = false;
   if (monthWeekYear < 2020 || monthWeekYear > 2099) return String();
 
+  const bool averageInterval = metric && strcmp(metric, "averageInterval") == 0;
+  const bool countMetric = !metric || !*metric || strcmp(metric, "count") == 0;
+  if (!averageInterval && !countMetric) return String();
+
   static AnalyticsBundleContext ctx;
-  ctx = AnalyticsBundleContext{};
+  memset(&ctx, 0, sizeof(ctx));
+  ctx.averageInterval = averageInterval;
   ctx.monthWeekYear = monthWeekYear;
 
+  uint16_t hourlyCoverageStart = 0;
   if (hourlyMode && strcmp(hourlyMode, "week") == 0) {
-    if (hourlyYear < 2020 || hourlyYear > 2099 || hourlyWeek < 1 || hourlyWeek > 53) return String();
+    if (hourlyYear < 2020 || hourlyYear > 2099 || hourlyWeek < 1 || hourlyWeek > 53 ||
+        !isoWeekStartDayIndex(hourlyYear, hourlyWeek, hourlyCoverageStart)) {
+      return String();
+    }
     ctx.hourlyWeekMode = true;
     ctx.hourlyYear = hourlyYear;
     ctx.hourlyWeek = hourlyWeek;
@@ -380,6 +526,7 @@ String buildAnalyticsBundleJson(const char *hourlyMode,
         ctx.hourlyFrom > ctx.hourlyTo) {
       return String();
     }
+    hourlyCoverageStart = ctx.hourlyFrom;
   } else {
     return String();
   }
@@ -398,11 +545,20 @@ String buildAnalyticsBundleJson(const char *hourlyMode,
   ctx.yearMonthEnd = endYear;
   ctx.yearMonthStart = endYear >= 4 ? static_cast<uint16_t>(endYear - 4U) : endYear;
 
-  if (!InterruptionAggregates::forEach(visitAnalyticsBundle, &ctx)) return String();
+  uint16_t monthWeekCoverageStart = 0;
+  uint16_t yearMonthCoverageStart = 0;
+  if (!ProjectTime::dateToDayIndex(monthWeekYear, 1, 1, monthWeekCoverageStart) ||
+      !ProjectTime::dateToDayIndex(ctx.yearMonthStart, 1, 1, yearMonthCoverageStart)) {
+    return String();
+  }
+
+  const bool scanOk = averageInterval ? scanIntervalAnalytics(ctx)
+                                      : InterruptionAggregates::forEach(visitAnalyticsBundle, &ctx);
+  if (!scanOk) return String();
   validRequest = true;
 
   String out;
-  out.reserve(9000);
+  out.reserve(18000);
   out += '{';
   fieldBool(out, "ok", true);
 
@@ -413,36 +569,56 @@ String buildAnalyticsBundleJson(const char *hourlyMode,
   JsonUtils::appendKey(out, "hourly");
   out += '{';
   fieldBool(out, "ok", true);
+  fieldString(out, "metric", averageInterval ? "averageInterval" : "count");
+  fieldString(out, "unit", averageInterval ? "seconds" : "count");
   fieldUInt(out, "rows", 7);
   fieldUInt(out, "cols", 24);
   fieldInt(out, "currentRow", local.valid ? local.weekday : -1);
   fieldInt(out, "currentCol", local.valid ? local.hour : -1);
   JsonUtils::appendKey(out, "values");
-  appendValues(out, ctx.hourly, 7U * 24U);
+  if (averageInterval) appendIntervalValues(out, ctx.hourlyIntervalSum, ctx.hourlyIntervalSamples, 7U * 24U);
+  else appendValues(out, ctx.hourly, 7U * 24U);
+  if (averageInterval) {
+    out += ',';
+    JsonUtils::appendKey(out, "samples");
+    appendValues(out, ctx.hourlyIntervalSamples, 7U * 24U);
+    out += ',';
+    JsonUtils::appendKey(out, "coverage");
+    appendIntervalCoverage(out, ctx, intervalCoverageComplete(ctx, hourlyCoverageStart));
+  }
   out += '}';
   out += ',';
 
   JsonUtils::appendKey(out, "monthWeek");
   out += '{';
   fieldBool(out, "ok", true);
+  fieldString(out, "metric", averageInterval ? "averageInterval" : "count");
+  fieldString(out, "unit", averageInterval ? "seconds" : "count");
   fieldUInt(out, "rows", 12);
   fieldUInt(out, "cols", 53);
   fieldUInt(out, "year", monthWeekYear);
   const bool currentMonthWeekYear = local.valid && local.year == monthWeekYear;
-  fieldInt(out,
-           "currentRow",
-           currentMonthWeekYear ? static_cast<int32_t>(local.month - 1U) : -1);
-  fieldInt(out,
-           "currentCol",
-           currentMonthWeekYear ? static_cast<int32_t>(local.isoWeek - 1U) : -1);
+  fieldInt(out, "currentRow", currentMonthWeekYear ? static_cast<int32_t>(local.month - 1U) : -1);
+  fieldInt(out, "currentCol", currentMonthWeekYear ? static_cast<int32_t>(local.isoWeek - 1U) : -1);
   JsonUtils::appendKey(out, "values");
-  appendValues(out, ctx.monthWeek, 12U * 53U);
+  if (averageInterval) appendIntervalValues(out, ctx.monthWeekIntervalSum, ctx.monthWeekIntervalSamples, 12U * 53U);
+  else appendValues(out, ctx.monthWeek, 12U * 53U);
+  if (averageInterval) {
+    out += ',';
+    JsonUtils::appendKey(out, "samples");
+    appendValues(out, ctx.monthWeekIntervalSamples, 12U * 53U);
+    out += ',';
+    JsonUtils::appendKey(out, "coverage");
+    appendIntervalCoverage(out, ctx, intervalCoverageComplete(ctx, monthWeekCoverageStart));
+  }
   out += '}';
   out += ',';
 
   JsonUtils::appendKey(out, "yearMonth");
   out += '{';
   fieldBool(out, "ok", true);
+  fieldString(out, "metric", averageInterval ? "averageInterval" : "count");
+  fieldString(out, "unit", averageInterval ? "seconds" : "count");
   fieldUInt(out, "rows", 5);
   fieldUInt(out, "cols", 12);
   fieldUInt(out, "startYear", ctx.yearMonthStart);
@@ -454,7 +630,16 @@ String buildAnalyticsBundleJson(const char *hourlyMode,
                : -1);
   fieldInt(out, "currentCol", local.valid ? static_cast<int32_t>(local.month - 1U) : -1);
   JsonUtils::appendKey(out, "values");
-  appendValues(out, ctx.yearMonth, 5U * 12U);
+  if (averageInterval) appendIntervalValues(out, ctx.yearMonthIntervalSum, ctx.yearMonthIntervalSamples, 5U * 12U);
+  else appendValues(out, ctx.yearMonth, 5U * 12U);
+  if (averageInterval) {
+    out += ',';
+    JsonUtils::appendKey(out, "samples");
+    appendValues(out, ctx.yearMonthIntervalSamples, 5U * 12U);
+    out += ',';
+    JsonUtils::appendKey(out, "coverage");
+    appendIntervalCoverage(out, ctx, intervalCoverageComplete(ctx, yearMonthCoverageStart));
+  }
   out += '}';
 
   out += '}';

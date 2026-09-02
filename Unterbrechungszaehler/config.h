@@ -8,7 +8,7 @@ namespace AppConfig {
 
 constexpr char PROJECT_NAME[] = "Unterbrechungszähler";
 constexpr char PROJECT_ICON[] = "interrupt";  // Must match an icon id in ui-src/index.html.
-constexpr char SOFTWARE_VERSION[] = "3.0.1";
+constexpr char SOFTWARE_VERSION[] = "3.1.0";
 constexpr char FIRMWARE_NAME[] = "Unterbrechungszaehler";
 constexpr char BOARD_NAME[] = "ESP32 Dev Module";
 constexpr char FOOTER_COMMENT[] = "Gemacht, aus dem Schmerz herraus...";

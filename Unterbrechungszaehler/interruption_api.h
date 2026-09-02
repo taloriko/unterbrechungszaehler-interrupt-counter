@@ -10,7 +10,8 @@ void appendProjectPreferencesObject(String &out);
 String buildProjectPreferencesJson(bool ok = true);
 String buildSummaryJson(bool ok = true);
 String buildStorageJson();
-String buildAnalyticsBundleJson(const char *hourlyMode,
+String buildAnalyticsBundleJson(const char *metric,
+                                const char *hourlyMode,
                                 uint16_t hourlyYear,
                                 uint8_t hourlyWeek,
                                 const char *fromDate,

@@ -26,6 +26,8 @@ constexpr uint16_t DISPLAY_WIDTH = 128;
 constexpr uint16_t DISPLAY_HEIGHT = 64;
 constexpr uint8_t DISPLAY_COLUMN_OFFSET = 2;
 constexpr bool DISPLAY_BOOT_SCREEN_ENABLED = true;
+constexpr uint32_t DISPLAY_BOOT_SCREEN_MIN_MS = 2000;
+constexpr uint32_t DISPLAY_TEST_SCREEN_MS = 1500;
 
 // DY-SV17F uses UART control mode at 9600 8N1.
 // ESP32 UART signals are routed through the GPIO matrix, so UART2 is placed on
