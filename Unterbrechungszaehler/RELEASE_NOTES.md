@@ -1,57 +1,33 @@
-# Release Notes – Unterbrechungszähler 0.2.0
+# Release Notes – Unterbrechungszähler 3.0.0
 
-Erster projektspezifischer Stand auf **ESP32 UI Base FINAL 1.6.0**.
+3.0.0 ist der neue Ausgangspunkt des Projekts. Frühere 1.x/2.x-Stände waren Entwicklungs- und Testversionen; es gibt keine zugesicherte Migration.
 
 ## Enthalten
 
-- physischer Unterbrechungstaster auf DI1 / GPIO13
-- großer Web-Unterbrechungsbutton
-- unmittelbarer RAM-Home-Zähler und letzte Unterbrechung
-- Zeitstempel mit TimeSource aus dem zentralen TimeService
-- Europe/Berlin-Tages-/Stunden-/ISO-KW-Zuordnung
-- Abstand zum vorherigen Ereignis desselben lokalen Tages
-- LittleFS-Raw-Ringspeicher für 100.000 Events
-- transaktionale Metadaten und Recoverypfade
-- 2.300 Tagesaggregate für langfristige Statistiken
-- CSV-Streamingdownload
-- Heatmap Wochentag × Stunde
-- Heatmap Monat × Kalenderwoche
-- Heatmap letzte fünf Jahre × Monate
-- sichtbare aktuelle Zeile/Spalte als Orientierung
-- DY-SV17F-Unterbrechungston, separat abschaltbar
-- SH1106-Projektansicht mit Heute-Zähler, letzter Unterbrechung, Zeit-/WLANstatus und kurzem Ereignisflash
-- 64er feste Pending-Persistenzqueue
-- DI1 Interrupt-Latch für menschliche Tastendrücke während längerer synchroner HTTP-Ausgaben
-- kombinierter Analytics-Endpunkt: normale Auswertungsansicht mit einem HTTP-Request und einem Tagesring-Durchlauf
-- eigene 4-MiB-Partitionstabelle mit zwei OTA-Slots und 1,1875 MiB LittleFS
+- Unterbrechungstaster auf DI1/GPIO13 und Webbutton
+- Live-Tageszähler und letzte Unterbrechung
+- Europe/Berlin-Kalenderauswertung
+- 100.000er Raw-Ringspeicher
+- 2.300 Tagesaggregate
+- CSV-Streamingexport
+- drei Heatmap-Ansichten
+- SH1106-Projektansichten und Displayflash
+- DY-SV17F Boot-/Unterbrechungstöne
+- fester oder rotierender Unterbrechungstrack
+- NVS-gespeicherte Sound-/Displayeinstellungen
+- DS3231/NTP/Browser-Zeitquellen
+- OTA mit eigener 4-MiB-Partitionstabelle
+- UI in Deutsch, Englisch und Schwäbisch
 
-## Validierung
+## Hardware 3.0.0
 
-- 14/14 Storage-/Recovery-/Heatmap-Hosttests: PASS
-- 100.000er Ring-Wrap: PASS
-- 305 identische i18n-Schlüssel je Sprache: PASS
-- JavaScript-Syntax: PASS
-- Webbundle/ETag/gzip: PASS
-- 24 C++-/INO-Einheiten mit strengen Warnungen als Fehler: PASS gegen lokale API-Teststubs
+- DI1 GPIO13
+- I2C GPIO21/22
+- DY-SV17F UART GPIO18/19
+- DY-SV17F BUSY GPIO39 mit externem Pull-up
 
-## Noch auf realem Zielboard zu bestätigen
+## Release-Gates
 
-- Build/Link gegen den tatsächlich installierten Arduino-ESP32-Core
-- Firmwaregröße < 1.441.792 Byte pro OTA-App-Slot
-- Upload und Custom-Partition
-- reale LittleFS-Persistenz über Neustart/OTA
-- physischer Taster, OLED und DY-SV17F im Dauerbetrieb
+Portable Hostchecks und der echte Arduino-ESP32-Build laufen über GitHub Actions. Der Release wird erst nach erfolgreichem Build auf `main` erzeugt.
 
-Details: `TEST_REPORT.md`, `PROJECT_ARCHITECTURE.md`, `STORAGE_FORMAT.md`, `HARDWARE_WIRING.md`.
-
-
-## 0.2.0 Änderungen
-
-- Kalenderwochen-Heatmap: Spaltenköpfe nur noch `1…53`, ohne wiederholtes `KW`.
-- Filterrefresh repariert: Jahr, KW und Von/Bis aktualisieren die betroffene Heatmap unmittelbar.
-- Neue Home-Kachel **Feedback & Display**.
-- Display-Flash bei Unterbrechung separat ein-/ausschaltbar.
-- OLED-Modi: Standard, nur heutige Zahl, nur letzte Unterbrechung.
-- OLED-Helligkeit, Dimmer-Timeout und gedimmte Helligkeit persistent konfigurierbar.
-- Unterbrechungston: fester Track ab 2 oder **Wechselnd** über Track 2…N. Track 1 bleibt Boot-Ton.
-- Alle neuen Geräteeinstellungen werden sofort angewendet und in NVS gespeichert.
+Reale Hardwaretests bleiben zusätzlich erforderlich; Details stehen in `TEST_REPORT.md`.

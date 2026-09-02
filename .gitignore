@@ -1,0 +1,17 @@
+# Local credentials / machine-specific config
+Unterbrechungszaehler/config.local.h
+
+# Build output
+build/
+*.bin
+*.elf
+*.map
+
+# Python helper artefacts
+__pycache__/
+*.pyc
+
+# Editor / OS
+.vscode/
+.DS_Store
+Thumbs.db

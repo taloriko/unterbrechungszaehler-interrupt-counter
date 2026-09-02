@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for the Unterbrechungszaehler project.
-
-The script intentionally uses only the Python standard library. It validates
-source-level invariants that do not require the Arduino toolchain; the real
-ESP32 compile remains a separate target-hardware check.
-"""
+"""Portable release checks for Unterbrechungszaehler 3.0.0."""
 from __future__ import annotations
 
 import gzip
@@ -65,12 +60,14 @@ def main() -> None:
     partitions = (ROOT / "partitions.csv").read_text(encoding="utf-8")
 
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "0.2.0"' in config, "project version 0.2.0")
+    check('SOFTWARE_VERSION[] = "3.0.0"' in config, "project version 3.0.0")
+    check('AVAILABLE_LANGUAGES_JSON[] = "[\\\"de\\\",\\\"en\\\",\\\"swg\\\"]"' in config, "declared UI languages")
     check("RAW_EVENT_CAPACITY = 100000" in project, "100,000 raw-event capacity")
     check("RAW_RECORD_SIZE = 9" in project, "9-byte raw record")
     check("DAILY_AGGREGATE_CAPACITY = 2300" in project, "daily aggregate retention")
     check("PENDING_EVENT_CAPACITY = 64" in project, "64-event fixed persistence queue")
-    check(re.search(r'\{"di1"[^\n]*25,\s*true,', hardware) is not None, "DI1 active-edge interrupt latch")
+    check(re.search(r'\{"di1"[^\n]*13,\s*PullMode::Up,\s*false[^\n]*25,\s*true,', hardware) is not None, "DI1 GPIO13 active-edge interrupt latch")
+    check("AUDIO_RX_PIN = 18" in hardware and "AUDIO_TX_PIN = 19" in hardware and "AUDIO_BUSY_PIN = 39" in hardware, "DY-SV17F pin map")
     check("0x2D0000, 0x130000" in partitions, "LittleFS custom partition")
 
     de = translation_keys("de", "en")

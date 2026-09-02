@@ -1,0 +1,82 @@
+name: Firmware build
+
+on:
+  push:
+    branches:
+      - main
+      - "release/**"
+  pull_request:
+    paths:
+      - "Unterbrechungszaehler/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/release.yml"
+      - "CHANGELOG.md"
+
+jobs:
+  release-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Portable release checks
+        run: python3 Unterbrechungszaehler/tools/release_check.py
+      - name: Verify generated web assets
+        run: |
+          python3 Unterbrechungszaehler/tools/build_web.py
+          git diff --exit-code -- Unterbrechungszaehler/web_assets.h
+
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read firmware version
+        id: version
+        shell: bash
+        run: |
+          version=$(sed -n 's/.*SOFTWARE_VERSION\[\] = "\([^"]*\)".*/\1/p' Unterbrechungszaehler/config.h)
+          if [ -z "$version" ]; then
+            echo "Firmware version not found" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+      - name: Install ESP32 core
+        run: |
+          arduino-cli config init
+          arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core install esp32:esp32@3.3.11 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+      - name: Compile firmware
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p build
+          arduino-cli compile --fqbn esp32:esp32:esp32 --output-dir build Unterbrechungszaehler 2>&1 | tee build/compile.log
+          size_line=$(grep -m1 "Sketch uses" build/compile.log || true)
+          used=$(printf '%s\n' "$size_line" | sed -n 's/.*Sketch uses \([0-9][0-9]*\) bytes.*/\1/p')
+          maximum=$(printf '%s\n' "$size_line" | sed -n 's/.*Maximum is \([0-9][0-9]*\) bytes.*/\1/p')
+          if [ -z "$used" ] || [ -z "$maximum" ]; then
+            echo "Firmware size could not be read from compiler output." >&2
+            exit 1
+          fi
+          reserve=$((maximum - used))
+          echo "Firmware: ${used}/${maximum} bytes, reserve: ${reserve} bytes"
+          if [ "$reserve" -lt 65536 ]; then
+            echo "Less than 64 KiB application-slot reserve; release blocked." >&2
+            exit 1
+          fi
+          test -f build/Unterbrechungszaehler.ino.bin
+          cp build/Unterbrechungszaehler.ino.bin "build/Unterbrechungszaehler-${VERSION}-OTA.bin"
+      - name: Upload OTA firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: unterbrechungszaehler-${{ steps.version.outputs.version }}-ota
+          path: build/Unterbrechungszaehler-${{ steps.version.outputs.version }}-OTA.bin
+          if-no-files-found: error
