@@ -40,6 +40,7 @@ static constexpr uint32_t WIFI_RETRY_MS = 10000;
 static constexpr uint32_t DISPLAY_BOOT_MS = 15000;
 static constexpr uint32_t DIAGNOSTIC_INTERVAL_MS = 60000;
 static constexpr uint32_t WATCHDOG_TIMEOUT_MS = 12000;
+static constexpr uint32_t TASK_WATCHDOG_TIMEOUT_MS = 60000;
 static constexpr uint32_t MODULE_WARN_MS = 1000;
 static constexpr uint32_t RTC_CHECK_INTERVAL_MS = 60000;
 static constexpr uint32_t RTC_HEALTH_TIMEOUT_MS = 90000;
