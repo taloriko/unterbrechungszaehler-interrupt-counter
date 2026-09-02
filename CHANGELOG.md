@@ -30,7 +30,8 @@ Version 3.0.0 ist der neue stabile Ausgangspunkt des Unterbrechungszählers. Fr�
 - Auswertung mit Wochentag/Stunde, Monat/Kalenderwoche und 5-Jahres-Monatsansicht
 - responsive Heatmaps ohne externe Chartbibliothek
 - Live-Aktualisierung nur bei sichtbarem Home/Auswertung
-- UI in Deutsch, Englisch und Schwäbisch
+- UI in Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch und Oberschwäbisch
+- README-Dokumentation in Deutsch, Englisch und Schwäbisch
 
 ### Sound
 
