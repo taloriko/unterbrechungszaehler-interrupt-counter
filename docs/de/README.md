@@ -15,7 +15,9 @@ Version 3.0.0 ist der neue Ausgangspunkt des Projekts. Frühere 1.x/2.x-Stände 
 - DY-SV17F Soundmodul
 - OTA-Update
 - persistente Sound-/Displayeinstellungen
-- UI in Deutsch, Englisch und Schwäbisch
+- UI in Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch und Oberschwäbisch
+
+Die ausführliche README-Dokumentation wird bewusst nur in Deutsch, Englisch und Schwäbisch gepflegt.
 
 ## Hardware
 
@@ -33,4 +35,4 @@ Siehe [SOFTWARE.md](SOFTWARE.md).
 - [Zeitarchitektur](../../Unterbrechungszaehler/TIME_ARCHITECTURE.md)
 - [Testbericht](../../Unterbrechungszaehler/TEST_REPORT.md)
 
-[English](../en/README.md) · [Projektstartseite](../../README.md)
+[English](../en/README.md) · [Schwäbisch](../swg/README.md) · [Projektstartseite](../../README.md)
