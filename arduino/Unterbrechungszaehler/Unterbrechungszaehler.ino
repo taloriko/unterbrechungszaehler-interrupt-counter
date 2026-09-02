@@ -7,6 +7,7 @@
 #include "AutarkService.h"
 #include "Config.h"
 #include "CounterService.h"
+#include "DeviceApiService.h"
 #include "DisplayService.h"
 #include "InputService.h"
 #include "LedService.h"
@@ -38,6 +39,7 @@ NetworkService network;
 DisplayService display;
 AnalyticsService analytics;
 WebService web;
+DeviceApiService deviceApi;
 SoundService sound;
 WatchdogService watchdog;
 
@@ -223,6 +225,7 @@ void setup() {
                 static_cast<unsigned long>(millis() - analyticsStarted));
 
   web.begin(&storage, &timeService, &network, &counter, &autark, &rtc, &display, &analytics, &sound, &watchdog);
+  deviceApi.begin(&web.httpServer(), &rtc, &timeService, &display, &sound, &watchdog);
 
   if (input.autarkSwitchOn() && storage.autarkReady()) {
     autark.enter();
@@ -235,7 +238,9 @@ void setup() {
   }
 
   watchdog.heartbeat(WatchdogService::Storage, storage.recentReady());
-  if (rtc.present()) watchdog.heartbeat(WatchdogService::Rtc, rtc.communicationOk());
+  // Die RTC-Ausfuehrungsdiagnose beschreibt den Softwarepfad. Ob die optionale
+  // Hardware vorhanden ist, wird getrennt ueber den Modulstatus dargestellt.
+  watchdog.heartbeat(WatchdogService::Rtc, true);
   watchdog.heartbeat(WatchdogService::Analytics, analyticsReadyAtBoot);
   updateModuleStatuses();
 
@@ -259,8 +264,10 @@ void loop() {
 
   if (rtc.checkDue()) {
     watchdog.beginModule(WatchdogService::Rtc);
-    const bool rtcOk = rtc.tick();
-    watchdog.endModule(WatchdogService::Rtc, rtcOk);
+    rtc.tick();
+    // Ein nicht angeschlossener DS3231 ist kein haengender Softwarepfad.
+    // Hardwarezustand und Kommunikation stehen separat im Modulstatus.
+    watchdog.endModule(WatchdogService::Rtc, true);
   }
 
   watchdog.beginModule(WatchdogService::Autark);
@@ -269,7 +276,7 @@ void loop() {
 
   // Sound wird bewusst vor Display und Web bedient. Ein gespeichertes Ereignis
   // startet den Ton bereits im Counter-/Autark-Service; tick() verarbeitet nur
-  // noch UART-Antworten und Wiedergabestatus.
+  // noch UART-Antworten, Hardwarepruefungen und Wiedergabestatus.
   watchdog.beginModule(WatchdogService::Sound);
   sound.tick();
   watchdog.endModule(WatchdogService::Sound);
