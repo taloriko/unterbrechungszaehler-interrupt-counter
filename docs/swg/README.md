@@ -129,7 +129,7 @@ Dr Rest macht s Gerät.
   Braucha tut ma s net zwingend, aber s sieht sofort mindestens 37 % professioneller aus.
 
 - **Fallback-WLAN für lokalen Zugriff**  
-  Wenn ma koi Cloud will, sollt ma s Gerät trotzdem no erreicha könna.
+  Wenn ma koi Cloud will, sollt ma s Gerät trotzdem no erreicha könna. Dr Fallback-AP isch mit `Unterbrechungszähler` gschützt.
 
 - **Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch ond Oberschwäbisch in dr Oberfläche**  
   D README-Dokumentation gibt s absichtlich bloß auf Deutsch, Englisch ond Schwäbisch. Internationalisierung muss ja irgendwo anfanga.

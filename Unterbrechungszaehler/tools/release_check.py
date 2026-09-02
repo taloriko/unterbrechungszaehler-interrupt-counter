@@ -65,6 +65,9 @@ def main() -> None:
         'AVAILABLE_LANGUAGES_JSON[] = "[\\\"de\\\",\\\"en\\\",\\\"it\\\",\\\"fr\\\",\\\"swg\\\",\\\"swg-alb\\\",\\\"swg-ob\\\"]"' in config,
         "declared UI languages",
     )
+    check('FALLBACK_AP_PASSWORD[] = "Unterbrechungszähler"' in config, "password-protected fallback AP")
+    check("ota.apWarning" not in JS and "ota.unavailable" not in JS, "obsolete OTA/AP notices removed")
+    check("path: 'ota.usedPercent'" in JS and "type: 'meter'" in JS, "OTA storage utilisation meter")
     check("RAW_EVENT_CAPACITY = 100000" in project, "100,000 raw-event capacity")
     check("RAW_RECORD_SIZE = 9" in project, "9-byte raw record")
     check("DAILY_AGGREGATE_CAPACITY = 2300" in project, "daily aggregate retention")

@@ -129,7 +129,7 @@ Den Rest macht das Gerät.
   Technisch nicht zwingend notwendig, sieht aber sofort mindestens 37 % professioneller aus.
 
 - **Fallback-WLAN für lokalen Zugriff**  
-  Wer keine Cloud möchte, sollte das Gerät schließlich trotzdem noch erreichen können.
+  Wer keine Cloud möchte, sollte das Gerät schließlich trotzdem noch erreichen können. Der Fallback-AP ist mit `Unterbrechungszähler` geschützt.
 
 - **Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch und Oberschwäbisch in der Oberfläche**  
   Die README-Dokumentation gibt es bewusst nur in Deutsch, Englisch und Schwäbisch. Internationalisierung muss schließlich irgendwo anfangen.
