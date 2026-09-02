@@ -51,6 +51,12 @@ jobs:
         run: cp arduino/Unterbrechungszaehler/Secrets.example.h arduino/Unterbrechungszaehler/Secrets.h
       - name: Generate compressed web UI
         run: python tools/generate_webui_gzip.py
+      - name: Upload generated web UI source
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-webui-${{ steps.version.outputs.version }}
+          path: arduino/Unterbrechungszaehler/WebUiGzip.h
+          if-no-files-found: error
       - name: Compile firmware
         env:
           VERSION: ${{ steps.version.outputs.version }}
