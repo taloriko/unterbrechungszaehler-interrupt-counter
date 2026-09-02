@@ -1,4 +1,4 @@
-# Projektarchitektur – Unterbrechungszähler 0.2.0
+# Projektarchitektur – Unterbrechungszähler 3.1.0
 
 Basis: **ESP32 UI Base FINAL 1.6.0**. Die Basis bleibt Infrastruktur; die Bedeutung „Unterbrechung“ beginnt ausschließlich in der Projektschicht.
 
@@ -91,7 +91,9 @@ Das bleibt bewusst eine austauschbare Transportentscheidung: Die Projektlogik h�
 
 ## Auswertung
 
-Die drei Heatmaps lesen den Tagesaggregatring, nicht den Raw-Ring. Beim initialen/automatischen Auswertungsrefresh werden Storageinfo und alle drei Matrizen über **einen kombinierten Endpunkt** geliefert; bei gültiger Systemzeit werden alle drei Heatmaps dabei in einem gemeinsamen Tagesring-Durchlauf aufgebaut. Nur gezielte Filterbuttons verwenden die kleineren Einzelendpunkte. Lange Aggregatbesuche bedienen alle 32 Records zusätzlich den generischen Hardwareinputpfad und `serviceUrgent()` und geben mit `delay(0)` an den Scheduler zurück. Damit kann ein physischer Tastendruck auch während einer größeren Statistikantwort zeitnah erfasst/feedbacket werden.
+Die drei Heatmaps besitzen zwei Metriken. **Anzahl** liest weiterhin den Tagesaggregatring. **Ø Abstand** wird dagegen nur auf Anforderung aus den retained Rohereignissen aufgebaut, weil dort absolute Zeit und `deltaSeconds` vorhanden sind. Dabei werden ausschließlich unmittelbar aufeinanderfolgende retained Events mit gültiger absoluter Zeit, demselben lokalen Kalendertag und plausibler positiver Differenz verwendet. Der Messwert wird der Start-Unterbrechung zugeordnet; dadurch hat der letzte Druck jedes Tages automatisch kein Sample. Ein fehlendes/überschriebenes Vorgängerevent wird nie überbrückt.
+
+Beim kombinierten Analytics-Endpunkt werden für Ø Abstand Summe und Samplezahl je Zelle in einem Raw-Ring-Durchlauf aufgebaut; der JSON-Payload liefert Durchschnitt, Samplezahl und Coverage. Ist der gewählte Zeitraum älter als die retained Rohdaten, kennzeichnet die UI die Abdeckung als unvollständig statt fehlende Werte als Null auszugeben. Lange Statistikbesuche bedienen weiterhin periodisch den generischen Hardwareinputpfad und `serviceUrgent()` und geben mit `delay(0)` an den Scheduler zurück.
 
 Die 53-KW-Matrix wird auch auf mittleren Breiten transponiert, damit nicht 53 winzige Spalten entstehen.
 
@@ -112,10 +114,10 @@ Der eingebaute synchrone Arduino-`WebServer` kann während eines tatsächlichen 
 
 ## Projekt-GPIO-Profil
 
-Nur **DI1/GPIO13** ist für 0.2.0 aktiviert. DI2–DI4 und DO1–DO4 bleiben im generischen Basismodell definiert, sind aber deaktiviert. Dadurch verursachen sie weder Scanning noch Ausgangskonfiguration und ihre Pins stehen späteren Projektmodulen frei.
+Nur **DI1/GPIO13** ist im Projektprofil 3.1.0 aktiviert. DI2–DI4 und DO1–DO4 bleiben im generischen Basismodell definiert, sind aber deaktiviert. Dadurch verursachen sie weder Scanning noch Ausgangskonfiguration und ihre Pins stehen späteren Projektmodulen frei.
 
-## Projektpräferenzen 0.2.0
+## Projektpräferenzen 3.1.0
 
-`ProjectPreferences` ist die einzige persistente Quelle für Unterbrechungston und OLED-Projektanzeige. Die Home-UI schreibt jeweils genau ein Feld über `/api/interruptions/preferences`; es gibt keinen globalen Speichern-Button. `DisplayViews` liest nur diese Präferenzen und `InterruptionService` entscheidet beim Feedback zwischen festem Track und der ressourcenschonenden Rotation 2…N. Track 1 bleibt dem Bootpfad vorbehalten.
+`ProjectPreferences` ist die einzige persistente Quelle für Unterbrechungston und OLED-Projektanzeige einschließlich Display-Master-Schalter. Die Home-UI schreibt jeweils genau ein Feld über `/api/interruptions/preferences`; es gibt keinen globalen Speichern-Button. `DisplayViews` liest nur diese Präferenzen und `InterruptionService` entscheidet beim Feedback zwischen festem Track und der ressourcenschonenden Rotation 2…N. Track 1 bleibt dem Bootpfad vorbehalten.
 
 Die Heatmap-Filter verändern nur die jeweils betroffene Matrix. Das Frontend benachrichtigt nach einem Filterrequest gezielt die passende Bindung (`analytics.hourly` bzw. `analytics.monthWeek`), statt die ganze Auswertungsseite neu aufzubauen.

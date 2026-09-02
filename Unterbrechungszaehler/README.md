@@ -1,6 +1,6 @@
-# Unterbrechungszähler 3.0.1 – technische Übersicht
+# Unterbrechungszähler 3.1.0 – technische Übersicht
 
-Dies ist der Sketchordner der Version **3.0.1** für ein klassisches ESP32 Dev Module / ESP32-WROOM-32.
+Dies ist der Sketchordner der Version **3.1.0** für ein klassisches ESP32 Dev Module / ESP32-WROOM-32.
 
 ## Ereigniserfassung
 
@@ -22,7 +22,7 @@ Details: [`STORAGE_FORMAT.md`](STORAGE_FORMAT.md)
 - Monat × ISO-Kalenderwoche
 - letzte fünf Kalenderjahre × Monat
 
-Statistiken lesen Tagesaggregate und nicht bei jeder Ansicht den vollständigen Raw-Ring.
+Die Anzahl-Heatmaps lesen weiterhin die kompakten Tagesaggregate. Die neue Metrik **Ø Abstand** wird nur auf Anforderung aus den noch vorhandenen Rohereignissen berechnet: Ein gültiger Abstand wird der Start-Unterbrechung zugeordnet; der letzte Druck eines Kalendertages bleibt ausgeschlossen und über Mitternacht wird nie ein Intervall gebildet.
 
 ## Hardware
 
@@ -35,7 +35,7 @@ Details: [`HARDWARE_WIRING.md`](HARDWARE_WIRING.md)
 
 ## Sound / Display
 
-Track 1 ist Boot-Ton. Unterbrechungen verwenden einen festen Track ab 2 oder rotieren über erkannte Tracks 2…N. Sound, Displayflash, Anzeigeart, Helligkeit und Dimmer werden persistent gespeichert.
+Track 1 ist Boot-Ton. Unterbrechungen verwenden einen festen Track ab 2 oder rotieren über erkannte Tracks 2…N. Sound, Display-Master, Displayflash, Anzeigeart, Helligkeit und Dimmer werden persistent gespeichert. Das OLED-Bootbild bleibt mindestens 2 Sekunden sichtbar, ohne den Projektloop zu blockieren. Die Sounddateien und USB-Kopieranleitung stehen in [`../docs/de/HARDWARE.md`](../docs/de/HARDWARE.md).
 
 ## Zeit
 

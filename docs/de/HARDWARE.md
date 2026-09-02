@@ -1,4 +1,4 @@
-# Hardware – Unterbrechungszähler 3.0.1
+# Hardware – Unterbrechungszähler 3.1.0
 
 Zielplattform ist ein klassisches **ESP32 Dev Module / ESP32-WROOM-32(E)**.
 
@@ -75,13 +75,38 @@ GPIO39 hat keinen internen Pull-up. V33 ist der 3,3-V-Ausgang des DY-SV17F und d
 
 BUSY: LOW = Wiedergabe aktiv, HIGH = idle.
 
-## Sounddateien
+## Sounddateien und interner Flash
 
-- Track 1: Boot-Ton
-- Track 2 und höher: Unterbrechungstöne
-- Im Rotationsmodus werden erkannte Tracks 2…N verwendet.
+Das DY-SV17F dekodiert **MP3 und WAV** und besitzt **32 Mbit / 4 MByte internen Flash**. Der integrierte **5-W-Class-D-Verstärker** kann einen **4-Ω-Lautsprecher mit etwa 3–5 W** direkt treiben. Unterstützte Abtastraten: **8 / 11.025 / 12 / 16 / 22.05 / 24 / 32 / 44.1 / 48 kHz**. Angegeben sind außerdem 24-Bit-DAC, ca. 90 dB Dynamikbereich und 85 dB Signal-Rausch-Verhältnis.
 
-Die konkrete Dateibenennung auf dem Datenträger richtet sich nach dem vom DY-SV17F unterstützten Dateisystem/Sortierverhalten. Vor dem öffentlichen Verteilen eigener Audiodateien deren Lizenz/Herkunft prüfen.
+Das Projekt verwendet folgende Trackbelegung:
+
+- `00001.mp3` bzw. `00001.wav`: Track 1, ausschließlich Boot-Ton
+- `00002` und höher: Unterbrechungstöne
+- Rotationsmodus: erkannte Tracks 2…N
+
+Startpaket: [`../sounds/`](../sounds/)
+Dateizuordnung: [`../sounds/DATEIZUORDNUNG.txt`](../sounds/DATEIZUORDNUNG.txt)
+
+### Dateien per Micro-USB übertragen
+
+1. DY-SV17F mit einem **Micro-USB-Datenkabel** mit dem Computer verbinden. Ein Ladekabel ohne Datenleitungen funktioniert dafür nicht.
+2. Den internen Speicher am Computer öffnen.
+3. Dateien **direkt ins Root-/Hauptverzeichnis** kopieren. Keine Unterordner anlegen.
+4. Fünfstellig mit führenden Nullen benennen: `00001.mp3`, `00002.mp3`, …; WAV entsprechend. Keine zwei Formate mit derselben Tracknummer gleichzeitig verwenden.
+5. Datenträger sauber auswerfen und Micro-USB trennen.
+
+```text
+richtig: /00001.mp3
+         /00002.mp3
+
+falsch:  /sounds/00001.mp3
+         /mp3/00002.mp3
+```
+
+**Wichtig:** Solange der DY-SV17F per Micro-USB mit dem Computer verbunden ist bzw. sein Flash über USB benutzt wird, steht die normale Soundausgabe nicht zur Verfügung. Erst USB trennen, dann Boot-/Unterbrechungston oder Hardwaretest prüfen.
+
+Vor dem öffentlichen Verteilen eigener Audiodateien deren Lizenz/Herkunft prüfen.
 
 ## Versorgung
 

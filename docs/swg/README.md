@@ -1,9 +1,9 @@
-# Unterbrechungszähler 3.0.1 – Schwäbisch
+# Unterbrechungszähler 3.1.0 – Schwäbisch
 
 > [!WARNING]
 > **KI-Hinweis:** Des Projekt isch mit ordentlich KI-Unterstützung entstanden, danach aber in echt getestet, verbessert ond weitergebaut worda. Wenn du KI-generierten Code grundsätzlich net leiden kasch, darfst trotzdem dr Knopf drucka. ;-)
 
-> **Aktueller Stand:** `3.0.0`
+> **Aktueller Stand:** `3.1.0`
 
 [Deutsch](../../README.md) · [English](../en/README.md) · [Projektstartseite](../../README.md)
 
@@ -13,10 +13,10 @@
 
 **Du sitzsch konzentriert an dr Arbeit.**
 
-- Dann kommt a Kollege.  
-- Dann klingelt s Telefon.  
-- Dann braucht oiner „bloß ganz kurz“ ebbes.  
-- Dann kommt dr Chef.  
+- Dann kommt a Kollege.
+- Dann klingelt s Telefon.
+- Dann braucht oiner „bloß ganz kurz“ ebbes.
+- Dann kommt dr Chef.
 - Ond irgendwann fragsch di, was du vor zwoi Stunda eigentlich no macha wolltsch.
 
 Genau dafür gibt s dr **Unterbrechungszähler**.
@@ -97,9 +97,9 @@ D wichtigste Anforderung war deshalb von Anfang an:
 
 **Oin Knopfdruck. Fertig.**
 
-Koine App aufmacha.  
-Koi Formular ausfülla.  
-Koine Kategorie auswähla.  
+Koine App aufmacha.
+Koi Formular ausfülla.
+Koine Kategorie auswähla.
 Koine Excel-Lischte pflega.
 
 Einfach drucka ond weiter schaffa.
@@ -110,31 +110,31 @@ Dr Rest macht s Gerät.
 
 ## Was kann s Gerät?
 
-- **Ereignisse per Taster oder potentialfreiem Kontakt erfassa**  
+- **Ereignisse per Taster oder potentialfreiem Kontakt erfassa**
   Schnell, simpel ond ohne jedes Mal an Verwaltungsakt draus zu macha.
 
-- **Lokale Weboberfläche ohne Cloud**  
+- **Lokale Weboberfläche ohne Cloud**
   Sehr wichtig. Net alles muss erst über drei Rechenzentren laufa, bloß damit ma an Knopf zähla kann. ;-)
 
-- **Tagesansicht, Verlauf, Details ond Heatmaps**  
-  Damit ma schnell sieht, wann besonders viel los war – oder wann offenbar alle andere Mittag gmacht hend.
+- **Tagesansicht, Verlauf, Details ond umschaltbare Heatmaps**
+  D Heatmaps zeiget entweder d **Anzahl von de Unterbrechunga** oder dr **durchschnittlich abgeschlossene Abstand bis zur nächste Unterbrechung am selba Tag**. Dr letzte Druck vom Tag zählt beim Durchschnitt net mit – ohne nächste Druck isch dr Abstand halt no net fertig.
 
-- **CSV-Export ond Langzeit-Ringspeicher**  
+- **CSV-Export ond Langzeit-Ringspeicher**
   Für dr Moment, wenn aus „I werd ständig unterbrocha“ plötzlich „Zeig mir d Daten“ wird.
 
-- **DS3231-RTC**  
+- **DS3231-RTC**
   Damit s Gerät au ohne WLAN weiß, wie spät s isch. Revolutionäre Technik.
 
-- **Optionales SH1106-OLED mit 128 × 64 Pixel**  
-  Braucha tut ma s net zwingend, aber s sieht sofort mindestens 37 % professioneller aus.
+- **Optionales SH1106-OLED mit 128 × 64 Pixel**
+  Braucha tut ma s net zwingend, aber s sieht sofort mindestens 37 % professioneller aus. S Display kann dauerhaft ei- oder ausgschaltet werda; beim echte Boot bleibt s Startbild mindestens zwoi Sekunda sichtbar.
 
-- **Fallback-WLAN für lokalen Zugriff**  
+- **Fallback-WLAN für lokalen Zugriff**
   Wenn ma koi Cloud will, sollt ma s Gerät trotzdem no erreicha könna. Dr Fallback-AP isch mit `Unterbrechungszähler` gschützt.
 
-- **Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch ond Oberschwäbisch in dr Oberfläche**  
+- **Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch ond Oberschwäbisch in dr Oberfläche**
   D README-Dokumentation gibt s absichtlich bloß auf Deutsch, Englisch ond Schwäbisch. Internationalisierung muss ja irgendwo anfanga.
 
-- **MagSafe-Ring für Akku oder Halterunga**  
+- **MagSafe-Ring für Akku oder Halterunga**
   Klettband funktioniert zwar, aber Magnete sehet halt mehr nach Zukunft aus.
 
 ## 3.0.0 isch a harter Schnitt
@@ -153,6 +153,20 @@ D bisherigen 1.x/2.x-Stände warad Entwicklungs- ond Teststände. **3.0.0 isch d
 | DY-SV17F CON3/BUSY | GPIO39 / VN |
 
 Für CON3/BUSY braucht s an externen ca. **10-kΩ-Pull-up an V33 vom DY-SV17F**. CON1 ond CON2 lieget für dr UART-Modus auf GND. Details: [Hardware / Wiring](../../Unterbrechungszaehler/HARDWARE_WIRING.md).
+
+## DY-SV17F: Tön aufs Modul kopiera
+
+S **DY-SV17F** hot **32 Mbit / 4 MByte internen Flash** für **MP3** ond **WAV**. Im Projekt läuft s Modul seriell über **UART mit 9600 Baud, 8N1**. S fertige Startpaket liegt unter [`../sounds/`](../sounds/), d Zuordnung steht in [`../sounds/DATEIZUORDNUNG.txt`](../sounds/DATEIZUORDNUNG.txt).
+
+1. S Modul mit em **echte Micro-USB-Datenkabel** an Rechner hänga – a reines Ladekabel langt net.
+2. Dr interne Speicher vom DY-SV17F am Rechner aufmacha.
+3. D Dateien **direkt ins Hauptverzeichnis/Root** kopiera, net in Unterordner.
+4. Fünfstellig benenna: `00001.mp3`, `00002.mp3`, `00003.mp3`, …; WAV geht entsprechend genauso.
+5. `00001` isch bloß dr **Boot-Ton**. Ab `00002` send d Unterbrechungstön; Rotation nimmt Track **2…N**.
+6. Speicher sauber auswerfa ond Micro-USB abzieha, bevor dr Ton getestet wird.
+
+> [!IMPORTANT]
+> **Solang s DY-SV17F per Micro-USB am Rechner hängt beziehungsweise dr Speicher über USB benutzt wird, kommt koi normale Soundausgabe.** Also erscht auswerfa, USB abzieha ond dann testa.
 
 ## Schnellstart
 

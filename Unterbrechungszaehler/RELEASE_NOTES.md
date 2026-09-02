@@ -1,3 +1,23 @@
+# Release Notes – Unterbrechungszähler 3.1.0
+
+3.1.0 erweitert die Auswertung und Displaysteuerung, ohne das bestehende Raw-Record-Format oder die 100.000er Ringspeicherkapazität zu ändern.
+
+## Neu
+
+- Heatmap-Metrik **Anzahl** oder **Ø Abstand**
+- abgeschlossene Intervalle werden der Start-Unterbrechung zugeordnet
+- letzter Tagesdruck sowie Intervalle über Mitternacht werden nicht verwendet
+- Ø-Abstand basiert auf retained Rohereignissen und weist unvollständige Coverage aus
+- Display persistent ein-/ausschaltbar
+- Bootscreen mindestens zwei Sekunden sichtbar, ohne `delay(2000)`
+- DY-SV17F-Soundpaket und Micro-USB-Kopieranleitung dokumentiert
+
+## Datenmodell
+
+Das 9-Byte-Raw-Format und der 64-Byte-Tagesaggregate-Record bleiben unverändert. Anzahl-Heatmaps verwenden die Tagesaggregate; Ø-Abstand scannt nur bei Bedarf den retained Raw-Ring und bildet `sum(intervalSeconds) / sampleCount` je Zelle.
+
+---
+
 # Release Notes – Unterbrechungszähler 3.0.1
 
 3.0.1 ist ein Patch-Release auf Basis von 3.0.0.

@@ -1,9 +1,9 @@
-# Interruption Counter 3.0.1
+# Interruption Counter 3.1.0
 
 > [!WARNING]
 > **AI notice:** This project was created with substantial support from AI, then tested in practice, revised and developed further. If you fundamentally dislike AI-generated code, you are of course still allowed to press the button. ;-)
 
-> **Current version:** `3.0.0`
+> **Current version:** `3.1.0`
 
 [Deutsch](../../README.md) · [Schwäbisch](../swg/README.md) · [Project home](../../README.md)
 
@@ -13,10 +13,10 @@
 
 **You are sitting at your desk, focused on a task.**
 
-- Then a colleague shows up.  
-- Then the phone rings.  
-- Then somebody needs “just one quick thing”.  
-- Then the boss appears.  
+- Then a colleague shows up.
+- Then the phone rings.
+- Then somebody needs “just one quick thing”.
+- Then the boss appears.
 - And at some point you start wondering what you were actually trying to do two hours ago.
 
 That is exactly what the **Interruption Counter** is for.
@@ -97,9 +97,9 @@ The most important requirement from the very beginning was therefore:
 
 **One button press. Done.**
 
-No opening an app.  
-No filling out a form.  
-No choosing a category.  
+No opening an app.
+No filling out a form.
+No choosing a category.
 No maintaining an Excel sheet.
 
 Just press the button and keep working.
@@ -110,31 +110,31 @@ The device handles the rest.
 
 ## What can the device do?
 
-- **Capture events using a push button or potential-free contact**  
+- **Capture events using a push button or potential-free contact**
   Simple, fast and without turning every interruption into an administrative procedure.
 
-- **Local web interface without a cloud dependency**  
+- **Local web interface without a cloud dependency**
   Very important. Not everything needs to travel through three data centres just so somebody can count a button press. ;-)
 
-- **Daily view, history, details and heatmaps**  
-  So you can quickly see when things were particularly busy – or when apparently everybody else was on lunch break.
+- **Daily view, history, details and switchable heatmaps**
+  Heatmaps can show either the **number of interruptions** or the **average completed interval until the next interruption on the same day**. The final press of a day is deliberately excluded because, without another press, that interval is still open.
 
-- **CSV export and long-term ring storage**  
+- **CSV export and long-term ring storage**
   For the moment when “I keep getting interrupted” turns into “Show me the data”.
 
-- **DS3231 RTC**  
+- **DS3231 RTC**
   So the device still knows what time it is without Wi-Fi. Revolutionary technology.
 
-- **Optional SH1106 OLED with 128 × 64 pixels**  
-  Technically not essential, but it instantly looks at least 37% more professional.
+- **Optional SH1106 OLED with 128 × 64 pixels**
+  Technically not essential, but it instantly looks at least 37% more professional. The display can be persistently enabled or disabled; the real boot screen remains visible for at least two seconds.
 
-- **Fallback Wi-Fi for local access**  
+- **Fallback Wi-Fi for local access**
   If you do not want a cloud, you should still be able to reach the device somehow. The fallback AP is protected with the password `Unterbrechungszähler`.
 
-- **German, English, Italian, French, Swabian, Alb-Swabian and Upper Swabian in the user interface**  
+- **German, English, Italian, French, Swabian, Alb-Swabian and Upper Swabian in the user interface**
   The README documentation intentionally remains available in German, English and Swabian only. Internationalisation has to start somewhere.
 
-- **MagSafe ring for a battery pack or mounting accessories**  
+- **MagSafe ring for a battery pack or mounting accessories**
   Because Velcro works, but magnets simply look more like the future.
 
 ## 3.0.0 is a hard cut
@@ -153,6 +153,39 @@ The previous 1.x/2.x versions were development and test builds. **3.0.0 is the n
 | DY-SV17F CON3/BUSY | GPIO39 / VN |
 
 CON3/BUSY requires an external approx. **10 kΩ pull-up to the DY-SV17F V33 pin**. CON1 and CON2 are tied to GND for UART mode. Details: [Hardware / Wiring](HARDWARE.md).
+
+## DY-SV17F: copying audio files
+
+The **DY-SV17F** provides **32 Mbit / 4 MB of internal flash** and decodes **MP3** and **WAV**. Its integrated **5 W Class-D amplifier** can directly drive a **4 Ω, roughly 3–5 W speaker**. The module supports IO, Serial and One-Line Serial modes; this project uses **Serial/UART at 9600 baud, 8N1**.
+
+Documented sample rates are **8 / 11.025 / 12 / 16 / 22.05 / 24 / 32 / 44.1 / 48 kHz**, with a **24-bit DAC**, about **90 dB dynamic range** and **85 dB signal-to-noise ratio**.
+
+A ready-to-copy starter pack is available in [`../sounds/`](../sounds/); the included file mapping is listed in [`../sounds/DATEIZUORDNUNG.txt`](../sounds/DATEIZUORDNUNG.txt).
+
+1. Connect the DY-SV17F to the computer with a real **Micro-USB data cable**. A charge-only cable is not sufficient.
+2. Open the module's internal flash drive on the computer.
+3. Copy the audio files **directly to the root directory**. Do **not** use folders.
+4. Use five-digit names with leading zeroes: `00001.mp3`, `00002.mp3`, `00003.mp3`, … or the corresponding `.wav` names. Do not keep two different files with the same track number.
+5. `00001` is **track 1 and reserved exclusively for the boot sound**. `00002` and above are interruption sounds. Fixed mode uses the configured track >= 2; rotate mode uses detected tracks **2…N**.
+6. Safely eject the drive and disconnect Micro-USB before testing playback.
+
+Correct:
+
+```text
+/00001.mp3
+/00002.mp3
+/00003.mp3
+```
+
+Wrong:
+
+```text
+/sounds/00001.mp3
+/mp3/00002.mp3
+```
+
+> [!IMPORTANT]
+> **Normal audio playback does not work while the DY-SV17F is connected to the computer by Micro-USB / its flash is in USB storage use.** Eject the drive and disconnect USB before testing the sound output.
 
 ## Quick start
 

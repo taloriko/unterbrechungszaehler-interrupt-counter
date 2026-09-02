@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.1.0
+
+- Heatmaps zwischen **Anzahl** und **Ø Abstand bis zur nächsten Unterbrechung** umschaltbar
+- Ø-Abstand ausschließlich aus gültigen, unmittelbar aufeinanderfolgenden retained Rohereignissen desselben lokalen Tages
+- letzter Druck eines Tages und Übergänge über Mitternacht bewusst aus der Durchschnittsberechnung ausgeschlossen
+- Samplezahl und Raw-Ring-Coverage für die Ø-Abstandsansicht; kurze Abstände werden in der Heatmap stärker gewichtet
+- persistenter Display-Master-Schalter analog zur Soundeinstellung
+- SH1106-Bootbild mindestens 2 Sekunden sichtbar, nicht blockierend; Display-Aus wird danach respektiert
+- manueller Displaytest kehrt zuverlässig zur Benutzeranzeige bzw. zu Display-Aus zurück
+- DY-SV17F-Micro-USB-/Root-Verzeichnis-/Dateibenennungsdokumentation ergänzt
+- Sound-Startpaket unter `docs/sounds/` dokumentiert
+- Hosttests auf 16 Szenarien erweitert; Webbundle und Releasechecks für 3.1.0 aktualisiert
+
 ## 3.0.1
 
 Patch-Release für die OTA-Oberfläche und den Fallback-Access-Point. Die 3.0.0-Baseline bleibt unverändert; 3.0.1 korrigiert und verbessert ausschließlich den aktuellen 3.x-Stand.

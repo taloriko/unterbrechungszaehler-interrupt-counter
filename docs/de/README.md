@@ -1,4 +1,4 @@
-# Unterbrechungszähler 3.0.1
+# Unterbrechungszähler 3.1.0
 
 Version 3.0.0 ist der neue Ausgangspunkt des Projekts. Frühere 1.x/2.x-Stände waren Entwicklungs- und Testversionen und werden nicht als Migrationsziel behandelt.
 
@@ -6,13 +6,13 @@ Version 3.0.0 ist der neue Ausgangspunkt des Projekts. Frühere 1.x/2.x-Stände 
 
 - Unterbrechung per Taster auf GPIO13 / DI1 oder Webbutton
 - lokale Weboberfläche
-- Tageszähler, letzte Unterbrechung und Heatmaps
+- Tageszähler, letzte Unterbrechung und Heatmaps: Anzahl oder Ø abgeschlossener Abstand
 - CSV-Export
 - 100.000 Rohereignisse im binären Ringspeicher
 - 2.300 Tagesaggregate
 - DS3231 RTC
-- SH1106 OLED
-- DY-SV17F Soundmodul
+- SH1106 OLED mit persistentem Ein/Aus-Schalter und mindestens 2 s Bootbild
+- DY-SV17F Soundmodul; Startpaket und USB-Kopieranleitung siehe [HARDWARE.md](HARDWARE.md)
 - OTA-Update
 - persistente Sound-/Displayeinstellungen
 - UI in Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch und Oberschwäbisch
