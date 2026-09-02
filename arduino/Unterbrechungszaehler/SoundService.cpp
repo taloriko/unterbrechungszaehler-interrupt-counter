@@ -17,17 +17,19 @@ uint8_t checksum(const uint8_t* data, uint8_t length) {
 void SoundService::begin() {
   loadSettings();
 
-  // Ein offener UART-RX kann Stoerimpulse liefern. Deshalb gilt das Modul erst
-  // nach mehreren direkt auf unsere Abfragen folgenden, gueltigen Antworten als
-  // erkannt. Ein initialisierter UART allein ist kein Hardware-Nachweis.
+  // Der UART wird beim Boot kurz aktiv geprueft. Danach gibt es im Leerlauf
+  // bewusst keine zyklischen Statusabfragen. Erst bei einer Wiedergabe wird
+  // wieder gepollt, damit Start und Abschluss bestaetigt werden koennen.
   pinMode(UicConfig::SOUND_RX_PIN, INPUT_PULLUP);
   serial_.begin(UicConfig::SOUND_BAUD, SERIAL_8N1, UicConfig::SOUND_RX_PIN, UicConfig::SOUND_TX_PIN);
   while (serial_.available()) serial_.read();
 
   hardwareState_ = SoundHardwareState::Probing;
   confirmationCount_ = 0;
-  lastProbeAt_ = millis() - UicConfig::SOUND_REPROBE_MS;
-  Serial.printf("[SOUND] UART RX=%u TX=%u gestartet | DY-SV17F wird aktiv geprueft\n",
+  bootProbeActive_ = true;
+  bootProbeStartedAt_ = millis();
+  lastQueryAt_ = 0;
+  Serial.printf("[SOUND] UART RX=%u TX=%u gestartet | DY-SV17F Boot-Pruefung\n",
                 UicConfig::SOUND_RX_PIN, UicConfig::SOUND_TX_PIN);
 }
 
@@ -37,15 +39,21 @@ void SoundService::tick() {
 
   if (queryPending_ && now - lastQueryAt_ > UicConfig::SOUND_RESPONSE_TIMEOUT_MS) {
     queryPending_ = false;
-    if (!present()) confirmationCount_ = 0;
   }
 
-  if (!present()) {
-    if (!queryPending_ && now - lastProbeAt_ >= UicConfig::SOUND_REPROBE_MS) {
-      lastProbeAt_ = now;
+  if (bootProbeActive_) {
+    if (present()) {
+      bootProbeActive_ = false;
+      Serial.println("[SOUND] Boot-Pruefung abgeschlossen");
+    } else if (now - bootProbeStartedAt_ >= UicConfig::SOUND_BOOT_PROBE_WINDOW_MS) {
+      bootProbeActive_ = false;
+      hardwareState_ = SoundHardwareState::Lost;
+      confirmationCount_ = 0;
+      queryPending_ = false;
+      Serial.println("[SOUND] DY-SV17F beim Boot nicht erkannt");
+    } else if (!queryPending_ && now - lastQueryAt_ >= UicConfig::SOUND_BOOT_PROBE_INTERVAL_MS) {
       queryState();
     }
-    return;
   }
 
   if (playback_ == Playback::AwaitingStart &&
@@ -56,10 +64,10 @@ void SoundService::tick() {
     failPlayback(true, "playback_timeout");
   }
 
-  const uint32_t interval = busy() ? UicConfig::SOUND_QUERY_INTERVAL_MS : UicConfig::SOUND_IDLE_QUERY_INTERVAL_MS;
-  if (!queryPending_ && now - lastQueryAt_ >= interval) queryState();
-
-  if (lastResponseAt_ && now - lastResponseAt_ > UicConfig::SOUND_LOST_TIMEOUT_MS) loseHardware();
+  // Nur eine aktive Wiedergabe braucht laufende Statusabfragen.
+  if (busy() && !queryPending_ && now - lastQueryAt_ >= UicConfig::SOUND_QUERY_INTERVAL_MS) {
+    queryState();
+  }
 }
 
 bool SoundService::requestPlay() {
@@ -67,7 +75,19 @@ bool SoundService::requestPlay() {
 }
 
 bool SoundService::requestPlay(uint16_t track) {
-  if (!enabled_ || !present() || track == 0 || busy()) return false;
+  if (!enabled_ || track == 0 || busy()) return false;
+
+  // Auch wenn das Modul beim Boot nicht erkannt wurde, darf ein spaeteres
+  // Ereignis einen neuen Versuch ausloesen. UART-Senden ist dabei harmlos;
+  // die anschliessenden Statusabfragen entscheiden, ob die Wiedergabe lief.
+  if (!present()) {
+    hardwareState_ = SoundHardwareState::Probing;
+    confirmationCount_ = 0;
+  }
+
+  while (serial_.available()) serial_.read();
+  rxLen_ = 0;
+  queryPending_ = false;
 
   setVolume();
   setSingleStopMode();
@@ -83,19 +103,8 @@ bool SoundService::requestPlay(uint16_t track) {
 }
 
 bool SoundService::test() {
-  if (!present() || track_ == 0 || busy()) return false;
-
-  setVolume();
-  setSingleStopMode();
-  playSpecified(track_);
-
-  sentCount_++;
-  playback_ = Playback::AwaitingStart;
-  playState_ = 0xFF;
-  playbackStartedAt_ = millis();
-  lastPlaybackError_ = "-";
-  lastQueryAt_ = 0;
-  return true;
+  if (track_ == 0 || busy()) return false;
+  return requestPlay(track_);
 }
 
 bool SoundService::setSettings(bool enabled, uint8_t volume, uint16_t track) {
@@ -139,8 +148,7 @@ void SoundService::setSingleStopMode() {
 }
 
 void SoundService::playSpecified(uint16_t track) {
-  // DY-SV17F UART-Protokoll: 0x07 = "Play specified music". 0x16 waere ein
-  // Interlude-Befehl und ist fuer den normalen Ereigniston nicht passend.
+  // DY-SV17F UART-Protokoll: 0x07 = "Play specified music".
   const uint8_t data[2] = {
     static_cast<uint8_t>(track >> 8),
     static_cast<uint8_t>(track & 0xFF)
@@ -172,8 +180,6 @@ void SoundService::parseSerial() {
 }
 
 void SoundService::handleFrame(const uint8_t* frame, uint8_t length) {
-  // Der DY-SV17F sendet nicht selbststaendig. Deshalb akzeptieren wir nur die
-  // exakt erwartete Antwort auf eine unmittelbar zuvor gesendete Statusabfrage.
   if (!queryPending_ || millis() - lastQueryAt_ > UicConfig::SOUND_RESPONSE_TIMEOUT_MS) return;
   if (length != 5 || frame[0] != 0xAA || frame[1] != 0x01 || frame[2] != 0x01) return;
 
@@ -197,6 +203,13 @@ void SoundService::registerValidStatus(uint8_t state) {
       hardwareState_ = SoundHardwareState::Ready;
       Serial.printf("[SOUND] DY-SV17F nach %u Statusantworten bestaetigt\n",
                     static_cast<unsigned>(confirmationCount_));
+    }
+
+    // Falls die dritte Bestaetigung bereits PLAY meldet, kann die Wiedergabe
+    // direkt als gestartet gelten; wir brauchen keine zusaetzliche Abfrage.
+    if (present() && playback_ == Playback::AwaitingStart && state == 0x01) {
+      playback_ = Playback::Playing;
+      Serial.println("[SOUND] Wiedergabe durch PLAY-Status bestaetigt");
     }
     return;
   }
@@ -228,34 +241,30 @@ void SoundService::failPlayback(bool timeout, const char* reason) {
   failedCount_++;
   if (timeout) timeoutCount_++;
   lastPlaybackError_ = reason ? reason : "playback_error";
+  queryPending_ = false;
+  if (!present()) {
+    hardwareState_ = SoundHardwareState::Lost;
+    confirmationCount_ = 0;
+  }
   Serial.printf("[SOUND] Wiedergabe fehlgeschlagen: %s | fehler=%lu timeout=%lu\n",
                 lastPlaybackError_,
                 static_cast<unsigned long>(failedCount_),
                 static_cast<unsigned long>(timeoutCount_));
 }
 
-void SoundService::loseHardware() {
-  if (busy()) failPlayback(true, "hardware_lost");
-  hardwareState_ = SoundHardwareState::Lost;
-  confirmationCount_ = 0;
-  queryPending_ = false;
-  playState_ = 0xFF;
-  Serial.println("[SOUND] DY-SV17F nicht mehr erreichbar - erneute Hardwarepruefung aktiv");
-}
-
 ModuleState SoundService::moduleState() const {
   if (!enabled_) return ModuleState::Disabled;
-  if (!present()) return hardwareState_ == SoundHardwareState::Lost ? ModuleState::NotDetected : ModuleState::Initializing;
   if (busy()) return ModuleState::Busy;
+  if (!present()) return hardwareState_ == SoundHardwareState::Lost ? ModuleState::NotDetected : ModuleState::Initializing;
   return ModuleState::Ready;
 }
 
 const char* SoundService::statusDetail() const {
   if (!enabled_) return "sound_disabled";
-  if (!present()) return hardwareState_ == SoundHardwareState::Lost ? "hardware_lost" : "probing";
   if (busy()) return playback_ == Playback::AwaitingStart ? "waiting_for_play" : "playing";
+  if (!present()) return hardwareState_ == SoundHardwareState::Lost ? "hardware_missing" : "probing";
   if (lastPlaybackError_ && lastPlaybackError_[0] != '-') return lastPlaybackError_;
-  return "uart_ok";
+  return "ready_idle";
 }
 
 void SoundService::loadSettings() {
