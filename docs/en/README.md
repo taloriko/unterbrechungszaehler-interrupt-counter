@@ -131,8 +131,8 @@ The device handles the rest.
 - **Fallback Wi-Fi for local access**  
   If you do not want a cloud, you should still be able to reach the device somehow.
 
-- **German, English, Italian, French and Swabian in the user interface**  
-  Internationalisation has to start somewhere.
+- **German, English, Italian, French, Swabian, Alb-Swabian and Upper Swabian in the user interface**  
+  The README documentation intentionally remains available in German, English and Swabian only. Internationalisation has to start somewhere.
 
 - **MagSafe ring for a battery pack or mounting accessories**  
   Because Velcro works, but magnets simply look more like the future.
@@ -205,7 +205,7 @@ Software can work **and** still have a little personality.
 
 I like Swabian and also wanted to hide a small Easter egg somewhere.
 
-So the user interface is available in Swabian as well.
+So the user interface is available in Swabian – and now also in Alb-Swabian and Upper Swabian variants.
 
 Whether that accelerates the international adoption of the project or massively gets in the way remains to be seen.
 
