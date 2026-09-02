@@ -43,6 +43,7 @@ public:
   void heartbeat(Module module, bool ok = true);
   void setStatus(Module module, ModuleState state, const char* detail = "-");
   void feed();
+  void resetMaximums();
 
   bool executionHealthy(Module module) const;
   bool healthy(Module module) const;
