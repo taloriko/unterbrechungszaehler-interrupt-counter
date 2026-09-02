@@ -28,7 +28,7 @@ jobs:
         id: version
         shell: bash
         run: |
-          version=$(sed -n 's/.*APP_VERSION\[\] = "\([^"]*\)".*/\1/p' arduino/Unterbrechungszaehler/Config.h)
+          version=$(sed -n 's/.*SOFTWARE_VERSION\[\] = "\([^"]*\)".*/\1/p' Unterbrechungszaehler/config.h)
           if [ -z "$version" ]; then
             echo "Firmware version not found" >&2
             exit 1
@@ -73,9 +73,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p release-artifact
-          gh run download "$RUN_ID" \
-            --name "unterbrechungszaehler-${VERSION}-ota" \
-            --dir release-artifact
+          gh run download "$RUN_ID" --name "unterbrechungszaehler-${VERSION}-ota" --dir release-artifact
           test -f "release-artifact/Unterbrechungszaehler-${VERSION}-OTA.bin"
 
       - name: Create GitHub release

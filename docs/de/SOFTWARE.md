@@ -1,78 +1,72 @@
-# Software
+# Software, Build und Flashen – 3.0.0
 
-Die Firmware befindet sich unter:
+## Voraussetzungen
 
-```text
-arduino/Unterbrechungszaehler/
+- Arduino IDE oder Arduino CLI
+- Boardpaket `esp32 by Espressif Systems`
+- Zielboard: **ESP32 Dev Module**
+
+Der Sketch liegt direkt in:
+
+`Unterbrechungszaehler/`
+
+Die Datei `partitions.csv` liegt im selben Sketchordner und definiert zwei OTA-App-Slots plus LittleFS.
+
+## WLAN
+
+In `Unterbrechungszaehler/config.h` stehen absichtlich nur Platzhalter:
+
+```cpp
+WIFI_SSID
+WIWI_PASSWORD
 ```
 
-Hauptdatei:
+Diese Werte lokal ersetzen. Reale Zugangsdaten nicht committen.
 
-```text
-Unterbrechungszaehler.ino
+## Weboberfläche bauen
+
+Nach Änderungen an `ui-src/index.html`, `ui-src/app.css` oder `ui-src/app.js`:
+
+```bash
+python3 Unterbrechungszaehler/tools/build_web.py
 ```
 
-## Konfiguration
+Dadurch wird `Unterbrechungszaehler/web_assets.h` reproduzierbar neu erzeugt.
 
-Allgemeine Hardware- und Speicherparameter liegen in `Config.h`.
+## Portable Releasechecks
 
-Für die WLAN-Zugangsdaten:
-
-1. `Secrets.example.h` nach `Secrets.h` kopieren.
-2. SSID und Passwort in `Secrets.h` eintragen.
-3. `Secrets.h` nicht veröffentlichen; die Datei ist über `.gitignore` ausgeschlossen.
-
-## Zeitquellen
-
-Die Firmware verwendet folgende Priorität:
-
-1. NTP
-2. optionale DS3231-RTC
-3. Browserzeit als einmaliger Fallback
-4. relative Session-Zeit im Autarkbetrieb
-
-Normale Ereignisse werden nur mit gültiger absoluter Zeit gespeichert.
-
-## Speicherung
-
-- normaler Ringspeicher: 10.000 Ereignisse
-- Langzeit-Ringspeicher: 100.000 Ereignisse
-- Autark-Ringspeicher: 10.000 Datensätze
-- Statistik-Cache für Heatmaps
-
-Die Daten liegen im LittleFS des ESP32. Große Datenmengen werden blockweise verarbeitet.
-
-## Netzwerk
-
-Normaler Zugriff:
-
-```text
-http://unterbrechungen.local
+```bash
+python3 Unterbrechungszaehler/tools/release_check.py
 ```
 
-Wenn das konfigurierte WLAN nicht erreichbar ist, stellt der ESP32 einen lokalen Access Point bereit:
+Der Check prüft unter anderem Version, Übersetzungsparität, Projekt-API, Storage-Simulation, JavaScript-Syntax und das deterministische gzip-Webbundle.
 
-```text
-SSID: Unterbrechungszaehler
-IP:   192.168.4.1
-URL:  http://192.168.4.1
-```
+## Kompilieren
 
-Nach erfolgreicher Verbindung mit dem normalen WLAN wird der Fallback-Access-Point abgeschaltet.
+Arduino IDE:
 
-## Optionale Hardware
+1. `Unterbrechungszaehler/Unterbrechungszaehler.ino` öffnen.
+2. Board **ESP32 Dev Module** wählen.
+3. Kompilieren.
+4. Prüfen, dass das Firmwareimage in den OTA-App-Slot von 1.441.792 Byte passt.
+5. Flashen.
 
-- DS3231 RTC: `0x68`
-- SH1106 OLED 128 × 64: `0x3C` oder `0x3D`
+GitHub Actions kompiliert den Release zusätzlich mit einem festgelegten ESP32-Core und veröffentlicht nur nach erfolgreichem Build die OTA-BIN.
 
-Beide Module werden beim Start erkannt. Fehlende optionale Hardware verhindert die grundlegende Ereigniserfassung nicht.
+## OTA
 
-## Weboberfläche
+Version 3.0.0 verwendet eine eigene Partitionstabelle. Ein normaler OTA-Vorgang schreibt in die inaktive App-Partition und soll NVS/LittleFS nicht löschen.
 
-Die Weboberfläche stellt Tagesansicht, Verlauf, Detailansicht, Heatmaps, Exporte, Gerätestatus und Einstellungen bereit.
+Da 3.0.0 ein harter Schnitt gegenüber den alten Testständen ist, wird **kein direktes OTA-Upgrade von 2.x zugesichert**.
 
-Sprachpakete werden zentral in `WebUiBehavior.h` registriert. Alle registrierten Sprachen verwenden denselben Schlüsselsatz und werden durch `tools/check_translations.py` geprüft.
+## Nach dem Flash
 
-## Architektur
+- Serial Monitor: 115200 Baud
+- DI1/GPIO13 einmal drücken
+- Home-Zähler prüfen
+- OLED-Feedback prüfen
+- Sound prüfen
+- RTC/NTP prüfen
+- CSV und Heatmaps mit echten Events testen
 
-Die technische Modulstruktur ist unter [Software-Architektur](SOFTWARE-ARCHITEKTUR.md) beschrieben.
+Die noch erforderlichen Zielhardwaretests stehen in `Unterbrechungszaehler/TEST_REPORT.md`.

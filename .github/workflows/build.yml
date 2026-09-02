@@ -4,27 +4,31 @@ on:
   push:
     branches:
       - main
-      - "reboot/**"
-      - "feature/**"
-      - "features/**"
+      - "release/**"
   pull_request:
     paths:
-      - "arduino/Unterbrechungszaehler/**"
-      - "tools/check_translations.py"
-      - "tools/generate_webui_gzip.py"
+      - "Unterbrechungszaehler/**"
       - ".github/workflows/build.yml"
       - ".github/workflows/release.yml"
+      - "CHANGELOG.md"
 
 jobs:
-  translations:
+  release-checks:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - name: Check translations
-        run: python tools/check_translations.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Portable release checks
+        run: python3 Unterbrechungszaehler/tools/release_check.py
+      - name: Verify generated web assets
+        run: |
+          python3 Unterbrechungszaehler/tools/build_web.py
+          git diff --exit-code -- Unterbrechungszaehler/web_assets.h
 
   compile:
     runs-on: ubuntu-latest
@@ -34,7 +38,7 @@ jobs:
         id: version
         shell: bash
         run: |
-          version=$(sed -n 's/.*APP_VERSION\[\] = "\([^"]*\)".*/\1/p' arduino/Unterbrechungszaehler/Config.h)
+          version=$(sed -n 's/.*SOFTWARE_VERSION\[\] = "\([^"]*\)".*/\1/p' Unterbrechungszaehler/config.h)
           if [ -z "$version" ]; then
             echo "Firmware version not found" >&2
             exit 1
@@ -47,36 +51,28 @@ jobs:
           arduino-cli config init
           arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
           arduino-cli core install esp32:esp32@3.3.11 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
-      - name: Create test secrets
-        run: cp arduino/Unterbrechungszaehler/Secrets.example.h arduino/Unterbrechungszaehler/Secrets.h
-      - name: Verify compressed web UI
-        run: |
-          python tools/generate_webui_gzip.py
-          if ! git diff --quiet -- arduino/Unterbrechungszaehler/WebUiGzip.h; then
-            echo "WebUiGzip.h ist nicht aktuell. Bitte Generator ausfuehren und Ergebnis committen." >&2
-            git diff --stat -- arduino/Unterbrechungszaehler/WebUiGzip.h
-            exit 1
-          fi
       - name: Compile firmware
         env:
           VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
         run: |
           set -o pipefail
           mkdir -p build
-          arduino-cli compile --fqbn esp32:esp32:esp32 --output-dir build arduino/Unterbrechungszaehler 2>&1 | tee build/compile.log
+          arduino-cli compile --fqbn esp32:esp32:esp32 --output-dir build Unterbrechungszaehler 2>&1 | tee build/compile.log
           size_line=$(grep -m1 "Sketch uses" build/compile.log || true)
           used=$(printf '%s\n' "$size_line" | sed -n 's/.*Sketch uses \([0-9][0-9]*\) bytes.*/\1/p')
           maximum=$(printf '%s\n' "$size_line" | sed -n 's/.*Maximum is \([0-9][0-9]*\) bytes.*/\1/p')
           if [ -z "$used" ] || [ -z "$maximum" ]; then
-            echo "Firmwaregroesse konnte nicht aus dem Compiler-Log gelesen werden." >&2
+            echo "Firmware size could not be read from compiler output." >&2
             exit 1
           fi
           reserve=$((maximum - used))
-          echo "Firmware: ${used}/${maximum} Bytes, Reserve: ${reserve} Bytes"
+          echo "Firmware: ${used}/${maximum} bytes, reserve: ${reserve} bytes"
           if [ "$reserve" -lt 65536 ]; then
-            echo "Zu wenig Flash-Reserve fuer einen belastbaren OTA-Release (mindestens 65536 Bytes erforderlich)." >&2
+            echo "Less than 64 KiB application-slot reserve; release blocked." >&2
             exit 1
           fi
+          test -f build/Unterbrechungszaehler.ino.bin
           cp build/Unterbrechungszaehler.ino.bin "build/Unterbrechungszaehler-${VERSION}-OTA.bin"
       - name: Upload OTA firmware
         uses: actions/upload-artifact@v4

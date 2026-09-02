@@ -1,9 +1,11 @@
-# Local credentials
-arduino/Unterbrechungszaehler/Secrets.h
+# Local credentials / machine-specific config
+Unterbrechungszaehler/config.local.h
 
 # Build output
 build/
 *.bin
+*.elf
+*.map
 
 # Python helper artefacts
 __pycache__/

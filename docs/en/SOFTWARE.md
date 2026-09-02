@@ -1,78 +1,51 @@
-# Software
+# Software, Build and Flashing – 3.0.0
 
-Firmware location:
+## Requirements
 
-```text
-arduino/Unterbrechungszaehler/
+- Arduino IDE or Arduino CLI
+- `esp32 by Espressif Systems`
+- board: **ESP32 Dev Module**
+
+The sketch lives in `Unterbrechungszaehler/`. Its custom `partitions.csv` is stored in the same folder.
+
+## Wi-Fi
+
+`Unterbrechungszaehler/config.h` intentionally contains placeholder credentials. Replace them locally and never commit real credentials.
+
+## Build the web UI
+
+After editing `ui-src/index.html`, `ui-src/app.css` or `ui-src/app.js`:
+
+```bash
+python3 Unterbrechungszaehler/tools/build_web.py
 ```
 
-Main sketch:
+This regenerates `Unterbrechungszaehler/web_assets.h` deterministically.
 
-```text
-Unterbrechungszaehler.ino
+## Portable release checks
+
+```bash
+python3 Unterbrechungszaehler/tools/release_check.py
 ```
 
-## Configuration
+The checker validates version metadata, translation parity, project API routes, storage simulations, JavaScript syntax and the generated gzip bundle.
 
-General hardware and storage parameters are defined in `Config.h`.
+## Compile / flash
 
-For Wi-Fi credentials:
+1. Open `Unterbrechungszaehler/Unterbrechungszaehler.ino`.
+2. Select **ESP32 Dev Module**.
+3. Compile.
+4. Verify that the firmware fits the 1,441,792-byte OTA app slot.
+5. Flash and open Serial Monitor at 115200 baud.
 
-1. Copy `Secrets.example.h` to `Secrets.h`.
-2. Enter SSID and password in `Secrets.h`.
-3. Do not publish `Secrets.h`; it is excluded through `.gitignore`.
+GitHub Actions performs an additional release build with a pinned ESP32 core and publishes the OTA binary only after a successful build on `main`.
 
-## Time sources
+## OTA
 
-Priority:
+3.0.0 uses a custom partition table with two OTA application slots and LittleFS. A normal OTA update writes the inactive application slot and should preserve NVS/LittleFS.
 
-1. NTP
-2. optional DS3231 RTC
-3. browser time as a one-time fallback
-4. relative session time in standalone mode
+Because 3.0.0 is a hard reset from the old test builds, a direct OTA upgrade from 2.x is **not guaranteed**.
 
-Normal events are stored only when a valid absolute time is available.
+## Hardware verification after flashing
 
-## Storage
-
-- normal ring buffer: 10,000 events
-- long-term ring buffer: 100,000 events
-- standalone ring buffer: 10,000 records
-- statistics cache for heatmaps
-
-Data is stored in LittleFS. Large data sets are processed in blocks.
-
-## Network
-
-Normal access:
-
-```text
-http://unterbrechungen.local
-```
-
-When the configured Wi-Fi is unavailable, the ESP32 provides a local access point:
-
-```text
-SSID: Unterbrechungszaehler
-IP:   192.168.4.1
-URL:  http://192.168.4.1
-```
-
-The fallback access point is disabled after the normal Wi-Fi connection is established.
-
-## Optional hardware
-
-- DS3231 RTC: `0x68`
-- SH1106 OLED 128 × 64: `0x3C` or `0x3D`
-
-Both modules are detected during startup. Missing optional hardware does not prevent basic event recording.
-
-## Web interface
-
-The web interface provides daily view, history, details, heatmaps, exports, device status and settings.
-
-Language packs are registered centrally in `WebUiBehavior.h`. Every registered language uses the same key set and is validated by `tools/check_translations.py`.
-
-## Architecture
-
-See the [software architecture](../de/SOFTWARE-ARCHITEKTUR.md) for the module structure.
+Test DI1/GPIO13, OLED, audio, RTC/NTP, CSV export and all heatmaps with real events. Remaining target-hardware tests are listed in `Unterbrechungszaehler/TEST_REPORT.md`.

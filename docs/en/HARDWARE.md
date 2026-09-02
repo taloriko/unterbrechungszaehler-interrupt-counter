@@ -1,40 +1,59 @@
-# Hardware
+# Hardware – Interruption Counter 3.0.0
 
-Required hardware:
+Target: classic **ESP32 Dev Module / ESP32-WROOM-32(E)**.
 
-- **ESP32 Dev Module / ESP32-WROOM-32D**
-- **dry-contact push button**, e.g. Eaton M22
-- **optional dry-contact slide switch** for standalone mode
-- **optional DS3231 RTC module with AT24C32**
-  - I2C address `0x68`
-  - operate at **3.3 V**
-  - automatically detected during boot
-  - check the module charging circuit; a normal CR2032 must not be charged
-- **optional 1.3 inch SH1106 OLED, 128 × 64, I2C**
-  - address `0x3C` or `0x3D`
-  - operate at **3.3 V**
-  - automatically detected during boot
-- **USB data cable** for flashing
-- **5 V power supply**
-  - minimum **1 A**
-  - **2 A recommended**
-- **optional battery or USB power bank**
-- **optional MagSafe-style adhesive magnetic ring** for enclosure mounting
+Version 3.0.0 is a hardware reset compared with the old test builds. Do not reuse a 2.x wiring diagram.
 
-## I2C
+## Pin map
 
-RTC and OLED share:
+| Function | ESP32 GPIO | Note |
+|---|---:|---|
+| Interruption button / DI1 | 13 | `INPUT_PULLUP`, active-low, switch to GND |
+| I2C SDA – DS3231 + SH1106 | 21 | shared I2C bus |
+| I2C SCL – DS3231 + SH1106 | 22 | shared I2C bus |
+| DY-SV17F TXD/IO0 | 18 | DY TX → ESP RX |
+| DY-SV17F RXD/IO1 | 19 | ESP TX → DY RX |
+| DY-SV17F CON3/BUSY | 39 / VN | input-only, external pull-up required |
 
-- `GPIO21` = SDA
-- `GPIO22` = SCL
-- `3.3 V` and `GND`
+DI2–DI4 and DO1–DO4 are disabled in the current project profile.
 
-Missing optional modules do not prevent basic event recording.
+## Button
 
-## Enclosure
+```text
+ESP32 GPIO13 / DI1 ---- button ---- GND
+```
 
-The enclosure can use a MagSafe-style adhesive magnetic ring for removable magnetic mounting.
+Only the press edge counts. The input uses pull-up, debounce and a minimal falling-edge latch.
 
-See [3D printing / enclosure](../../hardware/3d/README.md).
+## DS3231 + SH1106
 
-No print-ready STL/3MF file is currently included in the repository.
+Both modules share GPIO21/22. RTC address is `0x68`; the 128×64 OLED defaults to `0x3C`.
+
+Make sure breakout-board I2C pull-ups do not pull SDA/SCL to 5 V.
+
+## DY-SV17F
+
+UART2: **9600 baud, 8N1**.
+
+```text
+DY-SV17F TXD/IO0 ---- GPIO18
+DY-SV17F RXD/IO1 ---- GPIO19
+DY-SV17F GND -------- ESP32 GND
+DY-SV17F V5 --------- stable 5-V supply
+```
+
+UART mode at power-up requires CON3 high and CON1/CON2 low. Connect CON3/BUSY to GPIO39 and add an external ~10 kΩ pull-up to the module's V33 output. GPIO39 has no internal pull-up.
+
+BUSY low means playback active; high means idle.
+
+## Audio tracks
+
+- Track 1: boot sound
+- Track 2 and above: interruption sounds
+- Rotate mode uses detected tracks 2…N
+
+Check licensing before publishing audio files.
+
+All modules need a common ground. ESP32 GPIO is 3.3-V logic; never feed 5-V signals directly into ESP32 inputs.
+
+Full technical wiring: [`../../Unterbrechungszaehler/HARDWARE_WIRING.md`](../../Unterbrechungszaehler/HARDWARE_WIRING.md).
