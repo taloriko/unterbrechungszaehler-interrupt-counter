@@ -507,7 +507,7 @@ String buildAnalyticsBundleJson(const char *metric,
   if (!averageInterval && !countMetric) return String();
 
   static AnalyticsBundleContext ctx;
-  ctx = AnalyticsBundleContext{};
+  memset(&ctx, 0, sizeof(ctx));
   ctx.averageInterval = averageInterval;
   ctx.monthWeekYear = monthWeekYear;
 

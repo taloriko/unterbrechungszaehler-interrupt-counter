@@ -26,6 +26,7 @@ ProjectPreferences::DisplayMode lastMode = ProjectPreferences::DisplayMode::Stan
 int16_t lastContrast = -1;
 bool dimmed = false;
 bool displayPowerOn = true;
+bool manualTestWasActive = false;
 
 bool due(uint32_t now, uint32_t deadline) { return static_cast<int32_t>(now - deadline) >= 0; }
 
@@ -224,8 +225,14 @@ void update(const InterruptionTypes::Summary &summary) {
     return;
   }
   if (DisplaySh1106::manualTestActive()) {
+    manualTestWasActive = true;
     displayPowerOn = true;
     return;
+  }
+  if (manualTestWasActive) {
+    manualTestWasActive = false;
+    renderRequested = true;
+    lastContrast = -1;
   }
 
   if (!ProjectPreferences::displayEnabled()) {
