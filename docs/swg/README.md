@@ -1,4 +1,4 @@
-# Unterbrechungszähler 3.0.0 – Schwäbisch
+# Unterbrechungszähler 3.0.1 – Schwäbisch
 
 > [!WARNING]
 > **KI-Hinweis:** Des Projekt isch mit ordentlich KI-Unterstützung entstanden, danach aber in echt getestet, verbessert ond weitergebaut worda. Wenn du KI-generierten Code grundsätzlich net leiden kasch, darfst trotzdem dr Knopf drucka. ;-)

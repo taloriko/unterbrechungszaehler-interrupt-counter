@@ -1,3 +1,18 @@
+# Release Notes – Unterbrechungszähler 3.0.1
+
+3.0.1 ist ein Patch-Release auf Basis von 3.0.0.
+
+## Änderungen gegenüber 3.0.0
+
+- passwortgeschützter Fallback-AP mit `Unterbrechungszähler`
+- alte statische OTA-/AP-Warnungen aus der normalen Oberfläche entfernt
+- echte OTA-Fehlerdiagnose bleibt für tatsächliche Updatefehler erhalten
+- OTA-Speicher zusätzlich als segmentierter Auslastungsbalken
+- `ota.usedPercent` in der Geräte-API
+- aktualisierte Releasechecks und Dokumentation
+
+---
+
 # Release Notes – Unterbrechungszähler 3.0.0
 
 3.0.0 ist der neue Ausgangspunkt des Projekts. Frühere 1.x/2.x-Stände waren Entwicklungs- und Testversionen; es gibt keine zugesicherte Migration.
