@@ -43,7 +43,7 @@ constexpr bool RTC_SYNC_FROM_NTP_ENABLED = true;
 constexpr bool BROWSER_TIME_FALLBACK_ENABLED = true;
 
 constexpr char FALLBACK_LANGUAGE[] = "en";
-constexpr char AVAILABLE_LANGUAGES_JSON[] = "[\"de\",\"en\",\"swg\"]";
+constexpr char AVAILABLE_LANGUAGES_JSON[] = "[\"de\",\"en\",\"it\",\"fr\",\"swg\",\"swg-alb\",\"swg-ob\"]";
 constexpr char DEFAULT_THEME[] = "system";
 
 // The generated asset ETag guarantees that a firmware with a changed web UI
