@@ -100,7 +100,7 @@ bool startFallbackAccessPoint() {
   // If credentials exist, AP+STA keeps automatic station reconnection alive.
   // Without credentials, AP-only avoids running an unused station interface.
   WiFi.mode(credentialsAvailable ? WIFI_AP_STA : WIFI_AP);
-  const bool started = WiFi.softAP(apName, nullptr);
+  const bool started = WiFi.softAP(apName, AppConfig::FALLBACK_AP_PASSWORD);
   lastFallbackAttemptMs = millis();
 
   if (!started) {
@@ -112,7 +112,7 @@ bool startFallbackAccessPoint() {
   apActive = true;
   startupInterfaceAvailable = true;
   const String apIp = WiFi.softAPIP().toString();
-  SerialLog::warningf("WIFI", "Fallback AP active | SSID=%s | open network | IP=%s",
+  SerialLog::warningf("WIFI", "Fallback AP active | SSID=%s | password protected | IP=%s",
                       apName, apIp.c_str());
   return true;
 }

@@ -22,6 +22,7 @@ constexpr char GITHUB_PROJECT_URL[] = "https://github.com/taloriko/unterbrechung
 // one place and are never written to flash by the web UI.
 constexpr char WIFI_SSID[] = "WIFI_SSID";
 constexpr char WIFI_PASSWORD[] = "WIWI_PASSWORD";
+constexpr char FALLBACK_AP_PASSWORD[] = "Unterbrechungszähler";
 constexpr uint32_t WIFI_CONNECT_TIMEOUT_MS = 15000;
 constexpr uint32_t WIFI_STATUS_LOG_INTERVAL_MS = 15000;
 constexpr uint32_t WIFI_STATE_CHECK_INTERVAL_MS = 500;

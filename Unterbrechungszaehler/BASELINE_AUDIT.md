@@ -190,7 +190,7 @@ Damit erzeugt normales UI-Bedienen keine laufenden ESP32-NVS-Schreibzyklen.
 
 Aktuell absichtlich Entwicklungsbasis:
 
-- offener Fallback-AP
+- passwortgeschützter Fallback-AP
 - OTA ohne Authentifizierung
 - kein Login
 

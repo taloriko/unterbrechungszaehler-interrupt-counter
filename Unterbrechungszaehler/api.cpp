@@ -283,7 +283,13 @@ String buildDeviceJson() {
   appendBoolField(out, "supported", OtaModule::supported());
   appendUIntField(out, "currentBytes", OtaModule::currentFirmwareBytes());
   appendUIntField(out, "maxBytes", OtaModule::maxFirmwareBytes());
-  appendUIntField(out, "headroomBytes", OtaModule::projectHeadroomBytes(), false);
+  appendUIntField(out, "headroomBytes", OtaModule::projectHeadroomBytes());
+const uint32_t otaMaxBytes = OtaModule::maxFirmwareBytes();
+const uint32_t otaCurrentBytes = OtaModule::currentFirmwareBytes();
+const uint32_t otaUsedPercent = otaMaxBytes == 0
+    ? 0
+    : static_cast<uint32_t>((static_cast<uint64_t>(otaCurrentBytes) * 100ULL) / otaMaxBytes);
+appendUIntField(out, "usedPercent", otaUsedPercent, false);
   out += '}';
 
   out += '}';

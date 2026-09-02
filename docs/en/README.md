@@ -129,7 +129,7 @@ The device handles the rest.
   Technically not essential, but it instantly looks at least 37% more professional.
 
 - **Fallback Wi-Fi for local access**  
-  If you do not want a cloud, you should still be able to reach the device somehow.
+  If you do not want a cloud, you should still be able to reach the device somehow. The fallback AP is protected with the password `Unterbrechungszähler`.
 
 - **German, English, Italian, French, Swabian, Alb-Swabian and Upper Swabian in the user interface**  
   The README documentation intentionally remains available in German, English and Swabian only. Internationalisation has to start somewhere.
