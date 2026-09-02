@@ -30,7 +30,7 @@ Damit ist es nicht mehr nur ein Gefühl wie:
 Sondern du kannst tatsächlich sehen, **wie oft und wann du unterbrochen wurdest**.
 
 > [!WARNING]
->Ob das deinen Chef anschließend interessiert, ist natürlich eine völlig andere wissenschaftliche Fragestellung. ;-)
+> Ob das deinen Chef anschließend interessiert, ist natürlich eine völlig andere wissenschaftliche Fragestellung. ;-)
 
 ## Kann das Ding noch mehr?
 
@@ -131,11 +131,11 @@ Den Rest macht das Gerät.
 - **Fallback-WLAN für lokalen Zugriff**  
   Wer keine Cloud möchte, sollte das Gerät schließlich trotzdem noch erreichen können.
 
-- **Deutsch, Englisch, Italjenisch, Französisch und Schwäbisch in der Oberfläche**  
-  Internationalisierung muss schließlich irgendwo anfangen.
+- **Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch und Oberschwäbisch in der Oberfläche**  
+  Die README-Dokumentation gibt es bewusst nur in Deutsch, Englisch und Schwäbisch. Internationalisierung muss schließlich irgendwo anfangen.
 
 - **MagSafe-Ring für Akku oder Halterungen**  
-  Weil Klettband zwar funktioniert, aber Magnete einfach mehr nach Zukunft aussehen
+  Weil Klettband zwar funktioniert, aber Magnete einfach mehr nach Zukunft aussehen.
 
 ## 3.0.0 ist ein harter Schnitt
 
@@ -199,7 +199,6 @@ Die finalen Screenshots werden separat ergänzt. Vorgesehene Dateien unter `docs
 
 ![Gerät](docs/images/3.0.0/de/de-geraet-4.png)
 
-  
 ## Warum Schwäbisch?
 
 Weil technische Projekte nicht immer komplett ernst sein müssen.
@@ -208,10 +207,9 @@ Software darf funktionieren **und** trotzdem ein bisschen Persönlichkeit haben.
 
 Ich mag Schwäbisch und wollte außerdem irgendwo ein kleines Easter Egg einbauen.
 
-Also gibt es die Oberfläche auch auf Schwäbisch.
+Also gibt es die Oberfläche auch auf Schwäbisch – inzwischen sogar zusätzlich als Alb-Schwäbisch und Oberschwäbisch.
 
 Ob das die internationale Verbreitung des Projekts beschleunigt oder massiv behindert, wird die Zukunft zeigen.
-
 
 ## Lizenz
 
