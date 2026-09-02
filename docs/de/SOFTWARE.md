@@ -1,4 +1,4 @@
-# Software, Build und Flashen – 3.0.0
+# Software, Build und Flashen – 3.0.1
 
 ## Voraussetzungen
 

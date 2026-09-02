@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.0.1
+
+Patch-Release für die OTA-Oberfläche und den Fallback-Access-Point. Die 3.0.0-Baseline bleibt unverändert; 3.0.1 korrigiert und verbessert ausschließlich den aktuellen 3.x-Stand.
+
+### Änderungen
+
+- Fallback-AP ist mit dem festen Passwort `Unterbrechungszähler` geschützt
+- irreführender Hinweis auf einen offenen Fallback-AP vollständig aus der OTA-Oberfläche und allen UI-Sprachpaketen entfernt
+- statischer Hinweis auf eine fehlende zweite OTA-App-Partition aus der normalen OTA-Karte entfernt; echte OTA-Fehlerdiagnose bei einem tatsächlichen Partitionsfehler bleibt erhalten
+- OTA-Speicherwerte bleiben als Byte-Angaben sichtbar und werden zusätzlich als segmentierter Auslastungsbalken dargestellt
+- Geräte-API liefert dafür `ota.usedPercent`
+- Releasechecks prüfen AP-Schutz, entfernte Alt-Hinweise und den OTA-Auslastungsbalken
+- Dokumentation für Deutsch, Englisch und Schwäbisch auf den passwortgeschützten Fallback-AP und den aktuellen Stand 3.0.1 aktualisiert
+
 ## 3.0.0
 
 Version 3.0.0 ist der neue stabile Ausgangspunkt des Unterbrechungszählers. Frühere 1.x/2.x-Releases waren Entwicklungs- und Teststände; für sie wird keine Migration oder Hardwarekompatibilität zugesichert.

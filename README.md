@@ -3,7 +3,7 @@
 > [!WARNING]
 > **KI-Hinweis:** Dieses Projekt wurde maßgeblich mit Unterstützung von KI erstellt, anschließend aber praktisch getestet, überarbeitet und weiterentwickelt. Wer KI-generierten Code grundsätzlich nicht mag, darf natürlich trotzdem den Taster drücken. ;-)
 
-> **Aktueller Stand:** `3.0.0`
+> **Aktueller Stand:** `3.0.1`
 
 [Deutsch](docs/de/README.md) · [English](docs/en/README.md) · [Schwäbisch](docs/swg/README.md)
 

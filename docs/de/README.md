@@ -1,4 +1,4 @@
-# Unterbrechungszähler 3.0.0
+# Unterbrechungszähler 3.0.1
 
 Version 3.0.0 ist der neue Ausgangspunkt des Projekts. Frühere 1.x/2.x-Stände waren Entwicklungs- und Testversionen und werden nicht als Migrationsziel behandelt.
 
