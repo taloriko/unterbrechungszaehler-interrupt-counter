@@ -18,6 +18,7 @@ public:
   const String& primaryNtp() const { return primaryNtp_; }
 
   bool setFromBrowser(uint32_t epoch);
+  bool setFromRtc();
   bool setPrimaryNtp(const String& host);
   bool validNtpHost(const String& host) const;
   void notifyNtpSynchronized();
