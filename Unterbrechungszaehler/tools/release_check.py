@@ -61,7 +61,10 @@ def main() -> None:
 
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
     check('SOFTWARE_VERSION[] = "3.0.0"' in config, "project version 3.0.0")
-    check('AVAILABLE_LANGUAGES_JSON[] = "[\\\"de\\\",\\\"en\\\",\\\"swg\\\"]"' in config, "declared UI languages")
+    check(
+        'AVAILABLE_LANGUAGES_JSON[] = "[\\\"de\\\",\\\"en\\\",\\\"it\\\",\\\"fr\\\",\\\"swg\\\",\\\"swg-alb\\\",\\\"swg-ob\\\"]"' in config,
+        "declared UI languages",
+    )
     check("RAW_EVENT_CAPACITY = 100000" in project, "100,000 raw-event capacity")
     check("RAW_RECORD_SIZE = 9" in project, "9-byte raw record")
     check("DAILY_AGGREGATE_CAPACITY = 2300" in project, "daily aggregate retention")
@@ -73,7 +76,14 @@ def main() -> None:
     de = translation_keys("de", "en")
     en = translation_keys("en", "swg")
     swg = translation_keys("swg", None)
-    check(de == en == swg, f"i18n key parity ({len(de)} keys/language)")
+    check(de == en == swg, f"base i18n key parity ({len(de)} keys/language)")
+    check(
+        "I18N.it = {" in JS
+        and "I18N.fr = {" in JS
+        and "I18N['swg-alb'] = {" in JS
+        and "I18N['swg-ob'] = {" in JS,
+        "additional bundled UI languages",
+    )
 
     positions = [JS.find(f"{{ id: '{name}'") for name in ("device", "wifi", "memory", "time", "hardware", "ota")]
     check(all(position >= 0 for position in positions) and positions == sorted(positions), "device card order")
