@@ -177,12 +177,28 @@ Für CON3/BUSY ist ein externer ca. **10-kΩ-Pull-up an V33 des DY-SV17F** erfor
 
 Die finalen Screenshots werden separat ergänzt. Vorgesehene Dateien unter `docs/images/`:
 
-- `images/3.0.0/de/de-home-1.png` – Home mit Tageszähler und Feedback/Display
-- `de-auswertung.png` – Auswertung mit Heatmap
-- `de-geraet.png` – Geräte-/Hardwarestatus
-- `de-einstellungen.png` – Sprache und Darstellung
-- `en-home.png` – English Home
-- `en-analytics.png` – English Analytics
+![Home mit Tageszähler und Feedback/Display](docs/images/3.0.0/de/de-home-1.png)
+
+![Home mit Tageszähler und Feedback/Display](docs/images/3.0.0/de/de-home-2.png)
+
+![Auswertung mit Heatmap/Display](docs/images/3.0.0/de/de-auswertung-1.png)
+
+![Auswertung mit Heatmap/Display](docs/images/3.0.0/de/de-auswertung-2.png)
+
+![Auswertung mit Heatmap/Display](docs/images/3.0.0/de/de-auswertung-3.png)
+
+![Auswertung mit Heatmap/Display](docs/images/3.0.0/de/de-auswertung-4.png)
+
+![Einstellungen](docs/images/3.0.0/de/de-einstellungen-1.png)
+
+![Gerät](docs/images/3.0.0/de/de-geraet-1.png)
+
+![Gerät](docs/images/3.0.0/de/de-geraet-2.png)
+
+![Gerät](docs/images/3.0.0/de/de-geraet-3.png)
+
+![Gerät](docs/images/3.0.0/de/de-geraet-4.png)
+
   
 ## Warum Schwäbisch?
 
