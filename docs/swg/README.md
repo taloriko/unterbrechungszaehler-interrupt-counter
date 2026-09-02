@@ -131,8 +131,8 @@ Dr Rest macht s Gerät.
 - **Fallback-WLAN für lokalen Zugriff**  
   Wenn ma koi Cloud will, sollt ma s Gerät trotzdem no erreicha könna.
 
-- **Deutsch, Englisch, Italienisch, Französisch ond Schwäbisch in dr Oberfläche**  
-  Internationalisierung muss ja irgendwo anfanga.
+- **Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch ond Oberschwäbisch in dr Oberfläche**  
+  D README-Dokumentation gibt s absichtlich bloß auf Deutsch, Englisch ond Schwäbisch. Internationalisierung muss ja irgendwo anfanga.
 
 - **MagSafe-Ring für Akku oder Halterunga**  
   Klettband funktioniert zwar, aber Magnete sehet halt mehr nach Zukunft aus.
@@ -205,7 +205,7 @@ Software darf funktioniera **ond** trotzdem a bissle Persönlichkeit hend.
 
 I mag Schwäbisch ond wollt außerdem irgendwo a kleines Easter Egg einbaua.
 
-Drum gibt s d Oberfläche au auf Schwäbisch.
+Drum gibt s d Oberfläche au auf Schwäbisch – ond inzwischen sogar zusätzlich als Alb-Schwäbisch ond Oberschwäbisch.
 
 Ob des d internationale Verbreitung vom Projekt beschleunigt oder massiv behindert, wird d Zukunft zeiga.
 
