@@ -17,18 +17,13 @@ uint8_t checksum(const uint8_t* data, uint8_t length) {
 void SoundService::begin() {
   loadSettings();
 
-  // Der UART wird beim Boot kurz aktiv geprueft. Danach gibt es im Leerlauf
-  // bewusst keine zyklischen Statusabfragen. Erst bei einer Wiedergabe wird
-  // wieder gepollt, damit Start und Abschluss bestaetigt werden koennen.
   pinMode(UicConfig::SOUND_RX_PIN, INPUT_PULLUP);
   serial_.begin(UicConfig::SOUND_BAUD, SERIAL_8N1, UicConfig::SOUND_RX_PIN, UicConfig::SOUND_TX_PIN);
   while (serial_.available()) serial_.read();
 
   hardwareState_ = SoundHardwareState::Probing;
   confirmationCount_ = 0;
-  bootProbeActive_ = true;
-  bootProbeStartedAt_ = millis();
-  lastQueryAt_ = 0;
+  startHardwareProbe(true);
   Serial.printf("[SOUND] UART RX=%u TX=%u gestartet | DY-SV17F Boot-Pruefung\n",
                 UicConfig::SOUND_RX_PIN, UicConfig::SOUND_TX_PIN);
 }
@@ -41,19 +36,15 @@ void SoundService::tick() {
     queryPending_ = false;
   }
 
-  if (bootProbeActive_) {
-    if (present()) {
-      bootProbeActive_ = false;
-      Serial.println("[SOUND] Boot-Pruefung abgeschlossen");
-    } else if (now - bootProbeStartedAt_ >= UicConfig::SOUND_BOOT_PROBE_WINDOW_MS) {
-      bootProbeActive_ = false;
-      hardwareState_ = SoundHardwareState::Lost;
-      confirmationCount_ = 0;
-      queryPending_ = false;
-      Serial.println("[SOUND] DY-SV17F beim Boot nicht erkannt");
+  if (hardwareProbeActive_) {
+    if (now - hardwareProbeStartedAt_ >= UicConfig::SOUND_BOOT_PROBE_WINDOW_MS) {
+      finishHardwareProbe(false);
     } else if (!queryPending_ && now - lastQueryAt_ >= UicConfig::SOUND_BOOT_PROBE_INTERVAL_MS) {
       queryState();
     }
+  } else if (!busy() && lastHardwareCheckAt_ != 0 &&
+             now - lastHardwareCheckAt_ >= UicConfig::SOUND_HEALTH_CHECK_INTERVAL_MS) {
+    startHardwareProbe(false);
   }
 
   if (playback_ == Playback::AwaitingStart &&
@@ -64,7 +55,6 @@ void SoundService::tick() {
     failPlayback(true, "playback_timeout");
   }
 
-  // Nur eine aktive Wiedergabe braucht laufende Statusabfragen.
   if (busy() && !queryPending_ && now - lastQueryAt_ >= UicConfig::SOUND_QUERY_INTERVAL_MS) {
     queryState();
   }
@@ -77,14 +67,9 @@ bool SoundService::requestPlay() {
 bool SoundService::requestPlay(uint16_t track) {
   if (!enabled_ || track == 0 || busy()) return false;
 
-  // Auch wenn das Modul beim Boot nicht erkannt wurde, darf ein spaeteres
-  // Ereignis einen neuen Versuch ausloesen. UART-Senden ist dabei harmlos;
-  // die anschliessenden Statusabfragen entscheiden, ob die Wiedergabe lief.
-  if (!present()) {
-    hardwareState_ = SoundHardwareState::Probing;
-    confirmationCount_ = 0;
-  }
-
+  // Eine laufende Wartungspruefung wird von der echten Wiedergabe abgeloest.
+  hardwareProbeActive_ = false;
+  hardwareProbeResponses_ = 0;
   while (serial_.available()) serial_.read();
   rxLen_ = 0;
   queryPending_ = false;
@@ -97,6 +82,7 @@ bool SoundService::requestPlay(uint16_t track) {
   playback_ = Playback::AwaitingStart;
   playState_ = 0xFF;
   playbackStartedAt_ = millis();
+  playbackResponseSeen_ = false;
   lastPlaybackError_ = "-";
   lastQueryAt_ = 0;
   return true;
@@ -115,6 +101,17 @@ bool SoundService::setSettings(bool enabled, uint8_t volume, uint16_t track) {
   return saveSettings();
 }
 
+bool SoundService::requestHardwareCheck() {
+  if (busy() || hardwareProbeActive_) return false;
+  startHardwareProbe(false);
+  return true;
+}
+
+uint32_t SoundService::hardwareCheckAgeMs() const {
+  if (lastHardwareCheckAt_ == 0) return 0xFFFFFFFFUL;
+  return millis() - lastHardwareCheckAt_;
+}
+
 void SoundService::sendFrame(uint8_t command, const uint8_t* payload, uint8_t payloadLength) {
   uint8_t frame[20] = {0};
   const uint8_t length = static_cast<uint8_t>(4 + payloadLength);
@@ -128,8 +125,6 @@ void SoundService::sendFrame(uint8_t command, const uint8_t* payload, uint8_t pa
 }
 
 void SoundService::queryState() {
-  // Altlasten werden vor einer neuen Anfrage verworfen. Akzeptiert wird nur ein
-  // vollstaendiges Statusframe innerhalb des Antwortfensters dieser Anfrage.
   while (serial_.available()) serial_.read();
   rxLen_ = 0;
   sendFrame(0x01);
@@ -148,7 +143,6 @@ void SoundService::setSingleStopMode() {
 }
 
 void SoundService::playSpecified(uint16_t track) {
-  // DY-SV17F UART-Protokoll: 0x07 = "Play specified music".
   const uint8_t data[2] = {
     static_cast<uint8_t>(track >> 8),
     static_cast<uint8_t>(track & 0xFF)
@@ -193,29 +187,23 @@ void SoundService::handleFrame(const uint8_t* frame, uint8_t length) {
   playState_ = state;
   lastResponseAt_ = millis();
   responseCount_++;
-  registerValidStatus(state);
-}
 
-void SoundService::registerValidStatus(uint8_t state) {
-  if (!present()) {
-    if (confirmationCount_ < 0xFF) confirmationCount_++;
-    if (confirmationCount_ >= UicConfig::SOUND_REQUIRED_CONFIRMATIONS) {
-      hardwareState_ = SoundHardwareState::Ready;
-      Serial.printf("[SOUND] DY-SV17F nach %u Statusantworten bestaetigt\n",
-                    static_cast<unsigned>(confirmationCount_));
-    }
-
-    // Falls die dritte Bestaetigung bereits PLAY meldet, kann die Wiedergabe
-    // direkt als gestartet gelten; wir brauchen keine zusaetzliche Abfrage.
-    if (present() && playback_ == Playback::AwaitingStart && state == 0x01) {
-      playback_ = Playback::Playing;
-      Serial.println("[SOUND] Wiedergabe durch PLAY-Status bestaetigt");
-    }
+  if (hardwareProbeActive_ && !busy()) {
+    if (hardwareProbeResponses_ < 0xFF) hardwareProbeResponses_++;
+    if (hardwareProbeResponses_ >= hardwareProbeRequired_) finishHardwareProbe(true);
     return;
   }
 
-  confirmationCount_ = UicConfig::SOUND_REQUIRED_CONFIRMATIONS;
+  if (busy()) {
+    playbackResponseSeen_ = true;
+    hardwareState_ = SoundHardwareState::Ready;
+    confirmationCount_ = UicConfig::SOUND_REQUIRED_CONFIRMATIONS;
+    lastHardwareCheckAt_ = millis();
+    registerPlaybackStatus(state);
+  }
+}
 
+void SoundService::registerPlaybackStatus(uint8_t state) {
   if (playback_ == Playback::AwaitingStart) {
     if (state == 0x01) {
       playback_ = Playback::Playing;
@@ -235,6 +223,43 @@ void SoundService::registerValidStatus(uint8_t state) {
   }
 }
 
+void SoundService::startHardwareProbe(bool bootProbe) {
+  if (busy()) return;
+
+  hardwareProbeActive_ = true;
+  hardwareProbeStartedAt_ = millis();
+  hardwareProbeResponses_ = 0;
+  hardwareProbeRequired_ = (bootProbe || !present()) ? UicConfig::SOUND_REQUIRED_CONFIRMATIONS : 1;
+  queryPending_ = false;
+  lastQueryAt_ = 0;
+
+  // Ein bereits bestaetigtes Modul bleibt waehrend der kurzen Nachpruefung
+  // weiterhin als erkannt sichtbar. Erst ein wirklich fehlgeschlagener Check
+  // aendert den gespeicherten Hardwarezustand.
+  if (!present()) {
+    hardwareState_ = SoundHardwareState::Probing;
+    confirmationCount_ = 0;
+  }
+}
+
+void SoundService::finishHardwareProbe(bool detected) {
+  hardwareProbeActive_ = false;
+  queryPending_ = false;
+  lastHardwareCheckAt_ = millis();
+
+  if (detected) {
+    hardwareState_ = SoundHardwareState::Ready;
+    confirmationCount_ = UicConfig::SOUND_REQUIRED_CONFIRMATIONS;
+    Serial.printf("[SOUND] DY-SV17F Hardware bestaetigt | Antworten=%u\n",
+                  static_cast<unsigned>(hardwareProbeResponses_));
+  } else {
+    hardwareState_ = SoundHardwareState::Lost;
+    confirmationCount_ = 0;
+    playState_ = 0xFF;
+    Serial.println("[SOUND] DY-SV17F bei Hardwarepruefung nicht erreichbar");
+  }
+}
+
 void SoundService::failPlayback(bool timeout, const char* reason) {
   if (!busy()) return;
   playback_ = Playback::Idle;
@@ -242,10 +267,16 @@ void SoundService::failPlayback(bool timeout, const char* reason) {
   if (timeout) timeoutCount_++;
   lastPlaybackError_ = reason ? reason : "playback_error";
   queryPending_ = false;
-  if (!present()) {
+  lastHardwareCheckAt_ = millis();
+
+  // Nur wenn waehrend der gesamten Wiedergabepruefung gar keine gueltige
+  // Antwort kam, gilt die Hardware als nicht mehr erkannt.
+  if (!playbackResponseSeen_) {
     hardwareState_ = SoundHardwareState::Lost;
     confirmationCount_ = 0;
+    playState_ = 0xFF;
   }
+
   Serial.printf("[SOUND] Wiedergabe fehlgeschlagen: %s | fehler=%lu timeout=%lu\n",
                 lastPlaybackError_,
                 static_cast<unsigned long>(failedCount_),
@@ -262,7 +293,8 @@ ModuleState SoundService::moduleState() const {
 const char* SoundService::statusDetail() const {
   if (!enabled_) return "sound_disabled";
   if (busy()) return playback_ == Playback::AwaitingStart ? "waiting_for_play" : "playing";
-  if (!present()) return hardwareState_ == SoundHardwareState::Lost ? "hardware_missing" : "probing";
+  if (hardwareProbeActive_) return present() ? "health_check" : "probing";
+  if (!present()) return "hardware_missing";
   if (lastPlaybackError_ && lastPlaybackError_[0] != '-') return lastPlaybackError_;
   return "ready_idle";
 }
