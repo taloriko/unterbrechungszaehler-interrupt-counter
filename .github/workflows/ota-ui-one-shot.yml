@@ -1,0 +1,220 @@
+name: One-shot OTA UI maintenance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/ota-ui-one-shot.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Apply OTA and fallback-AP cleanup
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          ROOT = Path('.')
+
+          def read(path):
+              return (ROOT / path).read_text(encoding='utf-8')
+
+          def write(path, text):
+              (ROOT / path).write_text(text, encoding='utf-8')
+
+          def replace_once(path, old, new):
+              text = read(path)
+              if old not in text:
+                  raise SystemExit(f'Expected text not found in {path}: {old[:120]!r}')
+              write(path, text.replace(old, new, 1))
+
+          # 1) Secure the fallback AP with the requested fixed password.
+          config_path = 'Unterbrechungszaehler/config.h'
+          config = read(config_path)
+          marker = 'constexpr char WIFI_PASSWORD[] = "WIWI_PASSWORD";\n'
+          if 'FALLBACK_AP_PASSWORD' not in config:
+              if marker not in config:
+                  raise SystemExit('Wi-Fi config marker not found')
+              config = config.replace(
+                  marker,
+                  marker + 'constexpr char FALLBACK_AP_PASSWORD[] = "Unterbrechungszähler";\n',
+                  1,
+              )
+          write(config_path, config)
+
+          wifi_path = 'Unterbrechungszaehler/wifi_module.cpp'
+          wifi = read(wifi_path)
+          if 'WiFi.softAP(apName, nullptr);' not in wifi:
+              raise SystemExit('Open fallback AP call not found')
+          wifi = wifi.replace(
+              'WiFi.softAP(apName, nullptr);',
+              'WiFi.softAP(apName, AppConfig::FALLBACK_AP_PASSWORD);',
+              1,
+          )
+          old_log = '''  SerialLog::warningf("WIFI", "Fallback AP active | SSID=%s | open network | IP=%s",\n                      apName, apIp.c_str());'''
+          new_log = '''  SerialLog::warningf("WIFI", "Fallback AP active | SSID=%s | password protected | IP=%s",\n                      apName, apIp.c_str());'''
+          if old_log not in wifi:
+              raise SystemExit('Fallback AP log marker not found')
+          wifi = wifi.replace(old_log, new_log, 1)
+          write(wifi_path, wifi)
+
+          # 2) Publish a real OTA utilisation percentage for the existing meter UI.
+          api_path = 'Unterbrechungszaehler/api.cpp'
+          api = read(api_path)
+          old_ota = '''  JsonUtils::appendKey(out, "ota");
+          out += '{';
+          appendBoolField(out, "supported", OtaModule::supported());
+          appendUIntField(out, "currentBytes", OtaModule::currentFirmwareBytes());
+          appendUIntField(out, "maxBytes", OtaModule::maxFirmwareBytes());
+          appendUIntField(out, "headroomBytes", OtaModule::projectHeadroomBytes(), false);
+          out += '}';'''
+          new_ota = '''  const uint32_t otaCurrentBytes = OtaModule::currentFirmwareBytes();
+          const uint32_t otaMaxBytes = OtaModule::maxFirmwareBytes();
+          const uint32_t otaHeadroomBytes = OtaModule::projectHeadroomBytes();
+          const uint32_t otaUsedPercent = otaMaxBytes == 0
+              ? 0
+              : static_cast<uint32_t>((static_cast<uint64_t>(otaCurrentBytes) * 100ULL) / otaMaxBytes);
+
+          JsonUtils::appendKey(out, "ota");
+          out += '{';
+          appendBoolField(out, "supported", OtaModule::supported());
+          appendUIntField(out, "currentBytes", otaCurrentBytes);
+          appendUIntField(out, "maxBytes", otaMaxBytes);
+          appendUIntField(out, "headroomBytes", otaHeadroomBytes);
+          appendUIntField(out, "usedPercent", otaUsedPercent, false);
+          out += '}';'''
+          if old_ota not in api:
+              raise SystemExit('OTA API block not found')
+          api = api.replace(old_ota, new_ota, 1)
+          write(api_path, api)
+
+          # 3) Remove the obsolete static AP/partition warnings from every bundled language.
+          app_path = 'Unterbrechungszaehler/ui-src/app.js'
+          app = read(app_path)
+
+          app, base_removed = re.subn(
+              r"^[ \t]*'ota\.unavailable':\s*'(?:\\.|[^'])*',\s*'ota\.apWarning':\s*'(?:\\.|[^'])*',[ \t]*\n",
+              '',
+              app,
+              flags=re.MULTILINE,
+          )
+          app, extra_removed = re.subn(
+              r'^[ \t]*"ota\.(?:unavailable|apWarning)":\s*"(?:\\.|[^"])*",[ \t]*\n',
+              '',
+              app,
+              flags=re.MULTILINE,
+          )
+          if base_removed != 3 or extra_removed != 4:
+              raise SystemExit(f'Unexpected OTA translation removal count: base={base_removed}, extra={extra_removed}')
+          if 'ota.apWarning' in app or 'ota.unavailable' in app:
+              raise SystemExit('Obsolete OTA/AP translation keys still present')
+
+          old_card = '''          { id: 'ota', titleKey: 'card.ota', descriptionKey: 'card.ota.desc', icon: 'upload', width: 'full', components: [
+            { type: 'kv', items: [
+              { labelKey: 'label.firmwareImage', path: 'ota.currentBytes', format: 'bytes' },
+              { labelKey: 'label.otaCapacity', path: 'ota.maxBytes', format: 'bytes' },
+              { labelKey: 'label.projectReserve', path: 'ota.headroomBytes', format: 'bytes' }
+            ] },
+            { type: 'notice', kind: 'warning', textKey: 'ota.apWarning', visibleWhen: { path: 'wifi.apActive', equals: true } },
+            { type: 'upload', id: 'firmware', endpoint: '/api/ota', fieldName: 'firmware', accept: '.bin,application/octet-stream', labelKey: 'ota.file', hintKey: 'ota.hint', buttonKey: 'action.otaUpload', maxPath: 'ota.maxBytes', visibleWhen: { path: 'ota.supported', equals: true } },
+            { type: 'notice', kind: 'warning', textKey: 'ota.unavailable', visibleWhen: { path: 'ota.supported', equals: false } }
+          ] }'''
+          new_card = '''          { id: 'ota', titleKey: 'card.ota', descriptionKey: 'card.ota.desc', icon: 'upload', width: 'full', components: [
+            { type: 'kv', items: [
+              { labelKey: 'label.firmwareImage', path: 'ota.currentBytes', format: 'bytes' },
+              { labelKey: 'label.otaCapacity', path: 'ota.maxBytes', format: 'bytes' },
+              { labelKey: 'label.projectReserve', path: 'ota.headroomBytes', format: 'bytes' }
+            ] },
+            { type: 'meter', labelKey: 'label.otaCapacity', path: 'ota.usedPercent', policy: 'heapUsed', format: 'percent' },
+            { type: 'upload', id: 'firmware', endpoint: '/api/ota', fieldName: 'firmware', accept: '.bin,application/octet-stream', labelKey: 'ota.file', hintKey: 'ota.hint', buttonKey: 'action.otaUpload', maxPath: 'ota.maxBytes', visibleWhen: { path: 'ota.supported', equals: true } }
+          ] }'''
+          if old_card not in app:
+              raise SystemExit('OTA card block not found')
+          app = app.replace(old_card, new_card, 1)
+
+          old_state = "ota: { supported: null, currentBytes: 0, maxBytes: 0, headroomBytes: 0 },"
+          new_state = "ota: { supported: null, currentBytes: 0, maxBytes: 0, headroomBytes: 0, usedPercent: 0 },"
+          if old_state not in app:
+              raise SystemExit('OTA state block not found')
+          app = app.replace(old_state, new_state, 1)
+          write(app_path, app)
+
+          # 4) Keep release checks aligned with the intended behaviour.
+          check_path = 'Unterbrechungszaehler/tools/release_check.py'
+          checks = read(check_path)
+          marker = '    check("RAW_EVENT_CAPACITY = 100000" in project, "100,000 raw-event capacity")\n'
+          additions = '''    check('FALLBACK_AP_PASSWORD[] = "Unterbrechungszähler"' in config, "password-protected fallback AP")
+              check("ota.apWarning" not in JS and "ota.unavailable" not in JS, "obsolete OTA/AP notices removed")
+              check("path: 'ota.usedPercent'" in JS and "type: 'meter'" in JS, "OTA storage utilisation meter")
+          '''
+          if additions.strip() not in checks:
+              if marker not in checks:
+                  raise SystemExit('Release-check insertion marker not found')
+              checks = checks.replace(marker, additions + marker, 1)
+          write(check_path, checks)
+
+          # 5) Update documentation wording without exposing the AP as an open network.
+          audit_path = 'Unterbrechungszaehler/BASELINE_AUDIT.md'
+          audit = read(audit_path)
+          audit = audit.replace('- offener Fallback-AP', '- passwortgeschützter Fallback-AP')
+          write(audit_path, audit)
+
+          replacements = {
+              'README.md': (
+                  'Wer keine Cloud möchte, sollte das Gerät schließlich trotzdem noch erreichen können.',
+                  'Wer keine Cloud möchte, sollte das Gerät schließlich trotzdem noch erreichen können. Der Fallback-AP ist mit `Unterbrechungszähler` geschützt.'
+              ),
+              'docs/en/README.md': (
+                  'If you do not want a cloud, you should still be able to reach the device somehow.',
+                  'If you do not want a cloud, you should still be able to reach the device somehow. The fallback AP is protected with the password `Unterbrechungszähler`.'
+              ),
+              'docs/swg/README.md': (
+                  'Wenn ma koi Cloud will, sollt ma s Gerät trotzdem no erreicha könna.',
+                  'Wenn ma koi Cloud will, sollt ma s Gerät trotzdem no erreicha könna. Dr Fallback-AP isch mit `Unterbrechungszähler` gschützt.'
+              ),
+          }
+          for path, (old, new) in replacements.items():
+              text = read(path)
+              if old not in text:
+                  raise SystemExit(f'Documentation marker not found in {path}')
+              write(path, text.replace(old, new, 1))
+
+          # The workflow is intentionally one-shot and removes itself in the resulting commit.
+          workflow = ROOT / '.github/workflows/ota-ui-one-shot.yml'
+          workflow.unlink()
+          PY
+
+      - name: Regenerate embedded Web UI
+        run: python Unterbrechungszaehler/tools/build_web.py
+
+      - name: Verify source and generated UI
+        run: python Unterbrechungszaehler/tools/release_check.py
+
+      - name: Commit maintenance result
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Secure fallback AP and simplify OTA UI"
+          git push origin HEAD:main
