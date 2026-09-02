@@ -69,6 +69,13 @@ void WatchdogService::feed() {
   esp_task_wdt_reset();
 }
 
+void WatchdogService::resetMaximums() {
+  for (uint8_t i = 0; i < Count; i++) {
+    states_[i].maxDurationUs = 0;
+  }
+  Serial.println("[WATCHDOG] Laufzeit-Maxima zurueckgesetzt");
+}
+
 uint32_t WatchdogService::ageMs(Module module) const {
   if (module >= Count) return 0xFFFFFFFFUL;
   const State& s = states_[module];
