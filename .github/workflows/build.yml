@@ -15,6 +15,9 @@ on:
       - ".github/workflows/build.yml"
       - ".github/workflows/release.yml"
 
+permissions:
+  contents: write
+
 jobs:
   translations:
     runs-on: ubuntu-latest
@@ -51,12 +54,16 @@ jobs:
         run: cp arduino/Unterbrechungszaehler/Secrets.example.h arduino/Unterbrechungszaehler/Secrets.h
       - name: Generate compressed web UI
         run: python tools/generate_webui_gzip.py
-      - name: Upload generated web UI source
-        uses: actions/upload-artifact@v4
-        with:
-          name: generated-webui-${{ steps.version.outputs.version }}
-          path: arduino/Unterbrechungszaehler/WebUiGzip.h
-          if-no-files-found: error
+      - name: Sync generated web UI into clean branch
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add arduino/Unterbrechungszaehler/WebUiGzip.h
+          if ! git diff --cached --quiet; then
+            git commit -m "Sync generated WebUiGzip for 2.1.4"
+            git push origin HEAD:${GITHUB_REF_NAME}
+          fi
       - name: Compile firmware
         env:
           VERSION: ${{ steps.version.outputs.version }}
