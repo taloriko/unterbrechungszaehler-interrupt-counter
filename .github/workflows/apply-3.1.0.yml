@@ -35,21 +35,23 @@ jobs:
 
           path = Path('Unterbrechungszaehler/tools/apply_3_1_0.py')
           text = path.read_text(encoding='utf-8')
-          old = '''    if len(positions) != 1:
-              raise AssertionError(f"translation key {key!r} not unique in {start_token}: {len(positions)}")
-          pos, quoted = positions[0]
-          '''
-          new = '''    if len(positions) == 0:
-              line_end = text.find("\\n", start)
-              if line_end < 0:
-                  raise AssertionError(f"translation block line missing: {start_token}")
-              indent = "      " if start_token.startswith("    ") else "    "
-              payload = f"{indent}'{key}': '{js_escape(value, chr(39))}',\\n"
-              return text[: line_end + 1] + payload + text[line_end + 1 :]
-          if len(positions) != 1:
-              raise AssertionError(f"translation key {key!r} not unique in {start_token}: {len(positions)}")
-          pos, quoted = positions[0]
-          '''
+          old = (
+              "    if len(positions) != 1:\n"
+              "        raise AssertionError(f\"translation key {key!r} not unique in {start_token}: {len(positions)}\")\n"
+              "    pos, quoted = positions[0]\n"
+          )
+          new = (
+              "    if len(positions) == 0:\n"
+              "        line_end = text.find(\"\\n\", start)\n"
+              "        if line_end < 0:\n"
+              "            raise AssertionError(f\"translation block line missing: {start_token}\")\n"
+              "        indent = \"      \" if start_token.startswith(\"    \") else \"    \"\n"
+              "        payload = f\"{indent}'{key}': '{js_escape(value, chr(39))}',\\n\"\n"
+              "        return text[: line_end + 1] + payload + text[line_end + 1 :]\n"
+              "    if len(positions) != 1:\n"
+              "        raise AssertionError(f\"translation key {key!r} not unique in {start_token}: {len(positions)}\")\n"
+              "    pos, quoted = positions[0]\n"
+          )
           if old not in text:
               raise SystemExit('translation replacement marker not found')
           path.write_text(text.replace(old, new, 1), encoding='utf-8')
