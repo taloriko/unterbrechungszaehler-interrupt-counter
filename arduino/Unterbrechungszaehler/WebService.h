@@ -30,6 +30,7 @@ public:
   void tick(bool enabled);
   void stop();
   bool started() const { return started_; }
+  WebServer& httpServer() { return server_; }
 
 private:
   void registerRoutes();
