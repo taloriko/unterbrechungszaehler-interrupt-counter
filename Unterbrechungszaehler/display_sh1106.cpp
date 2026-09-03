@@ -19,6 +19,8 @@ uint32_t checkedAtMs = 0;
 const char *errorText = "";
 uint32_t bootScreenUntilMs = 0;
 uint32_t manualTestUntilMs = 0;
+bool rotation180 = false;
+char bootStatusText[16] = "STARTING";
 
 bool deadlinePending(uint32_t deadlineMs) {
   return deadlineMs != 0U && static_cast<int32_t>(millis() - deadlineMs) < 0;
@@ -144,6 +146,51 @@ void rect(int16_t x, int16_t y, int16_t w, int16_t h) {
   vLine(static_cast<int16_t>(x + w - 1), y, static_cast<int16_t>(y + h - 1));
 }
 
+
+void normalizeDisplayText(const char *input, char *output, size_t capacity) {
+  if (!output || capacity == 0U) return;
+  output[0] = '\0';
+  if (!input) return;
+  size_t used = 0;
+  auto append = [&](const char *ascii) {
+    if (!ascii) return;
+    while (*ascii && used + 1U < capacity) output[used++] = *ascii++;
+    output[used] = '\0';
+  };
+
+  const uint8_t *p = reinterpret_cast<const uint8_t *>(input);
+  while (*p && used + 1U < capacity) {
+    if (*p < 0x80U) {
+      output[used++] = static_cast<char>(*p++);
+      output[used] = '\0';
+      continue;
+    }
+    if (*p == 0xC3U && p[1] != 0U) {
+      const uint8_t second = p[1];
+      if (second == 0x84U || second == 0xA4U) append("AE");
+      else if (second == 0x96U || second == 0xB6U) append("OE");
+      else if (second == 0x9CU || second == 0xBCU) append("UE");
+      else if (second == 0x9FU) append("SS");
+      else if ((second >= 0x80U && second <= 0x85U) || (second >= 0xA0U && second <= 0xA5U)) append("A");
+      else if (second == 0x87U || second == 0xA7U) append("C");
+      else if ((second >= 0x88U && second <= 0x8BU) || (second >= 0xA8U && second <= 0xABU)) append("E");
+      else if ((second >= 0x8CU && second <= 0x8FU) || (second >= 0xACU && second <= 0xAFU)) append("I");
+      else if (second == 0x91U || second == 0xB1U) append("N");
+      else if ((second >= 0x92U && second <= 0x95U) || second == 0x98U ||
+               (second >= 0xB2U && second <= 0xB5U) || second == 0xB8U) append("O");
+      else if ((second >= 0x99U && second <= 0x9BU) || (second >= 0xB9U && second <= 0xBBU)) append("U");
+      else if (second == 0x9DU || second == 0xBDU || second == 0xBFU) append("Y");
+      p += 2;
+      continue;
+    }
+    // Unknown UTF-8 codepoint: skip the complete sequence instead of showing
+    // a broken glyph. The web UI remains full UTF-8; this path is OLED-only.
+    if ((*p & 0xF0U) == 0xE0U) p += 3;
+    else if ((*p & 0xF8U) == 0xF0U) p += 4;
+    else p += 2;
+  }
+}
+
 const uint8_t *glyph(char c) {
   if (c >= 'a' && c <= 'z') c = static_cast<char>(c - ('a' - 'A'));
   for (size_t i = 0; i < sizeof(FONT_CHARS) - 1; ++i) {
@@ -153,9 +200,11 @@ const uint8_t *glyph(char c) {
 }
 
 void text(int16_t x, int16_t y, const char *value) {
-  if (!value) return;
-  while (*value && x < HardwareConfig::DISPLAY_WIDTH - 5) {
-    const uint8_t *g = glyph(*value++);
+  char normalized[80];
+  normalizeDisplayText(value, normalized, sizeof(normalized));
+  const char *cursor = normalized;
+  while (*cursor && x < HardwareConfig::DISPLAY_WIDTH - 5) {
+    const uint8_t *g = glyph(*cursor++);
     for (uint8_t col = 0; col < 5; ++col) {
       for (uint8_t row = 0; row < 7; ++row) {
         if (g[col] & (1U << row)) pixel(static_cast<int16_t>(x + col), static_cast<int16_t>(y + row));
@@ -167,8 +216,11 @@ void text(int16_t x, int16_t y, const char *value) {
 
 void scaledText(int16_t x, int16_t y, const char *value, uint8_t scale) {
   if (!value || scale == 0) return;
-  while (*value && x < HardwareConfig::DISPLAY_WIDTH) {
-    const uint8_t *g = glyph(*value++);
+  char normalized[80];
+  normalizeDisplayText(value, normalized, sizeof(normalized));
+  const char *cursor = normalized;
+  while (*cursor && x < HardwareConfig::DISPLAY_WIDTH) {
+    const uint8_t *g = glyph(*cursor++);
     for (uint8_t col = 0; col < 5; ++col) {
       for (uint8_t row = 0; row < 7; ++row) {
         if (!(g[col] & (1U << row))) continue;
@@ -186,13 +238,15 @@ void scaledText(int16_t x, int16_t y, const char *value, uint8_t scale) {
 
 void centeredText(int16_t y, const char *value) {
   if (!value) return;
-  size_t len = std::strlen(value);
+  char normalized[80];
+  normalizeDisplayText(value, normalized, sizeof(normalized));
+  size_t len = std::strlen(normalized);
   if (len > 21) len = 21;
   const int16_t width = static_cast<int16_t>(len * 6 - (len ? 1 : 0));
-  int16_t x = static_cast<int16_t>((HardwareConfig::DISPLAY_WIDTH - width) / 2);
+  const int16_t x = static_cast<int16_t>((HardwareConfig::DISPLAY_WIDTH - width) / 2);
   char clipped[22]{};
-  std::memcpy(clipped, value, len);
-  clipped[len] = '\0';
+  std::memcpy(clipped, normalized, len);
+  clipped[len] = ' ';
   text(x, y, clipped);
 }
 
@@ -286,8 +340,8 @@ bool initialize() {
       command2(0xA8, 0x3F) &&
       command2(0xD3, 0x00) &&
       command(0x40) &&
-      command(0xA1) &&
-      command(0xC8) &&
+      command(rotation180 ? 0xA0 : 0xA1) &&
+      command(rotation180 ? 0xC0 : 0xC8) &&
       command2(0xDA, 0x12) &&
       command2(0x81, 0x80) &&
       command2(0xD9, 0x22) &&
@@ -324,6 +378,21 @@ bool setContrast(uint8_t contrast) {
   return ok;
 }
 
+
+bool setRotation180(bool rotated) {
+  rotation180 = rotated;
+  if (!isInitialized) return true;
+  const bool ok = command(rotation180 ? 0xA0 : 0xA1) && command(rotation180 ? 0xC0 : 0xC8);
+  if (ok) setHealth(StatusRegistry::State::Ok);
+  return ok;
+}
+
+void setBootStatusText(const char *value) {
+  normalizeDisplayText(value ? value : "STARTING", bootStatusText, sizeof(bootStatusText));
+  if (!bootStatusText[0]) strncpy(bootStatusText, "STARTING", sizeof(bootStatusText) - 1U);
+  bootStatusText[sizeof(bootStatusText) - 1U] = '\0';
+}
+
 bool showBootScreen() {
   if (!HardwareConfig::ENABLE_DISPLAY_SH1106 || !isDetected) return false;
   if (!setPower(true)) return false;
@@ -331,7 +400,7 @@ bool showBootScreen() {
   drawChipIcon(52, 1);
   centeredText(28, AppConfig::PROJECT_NAME);
   centeredText(40, AppConfig::SOFTWARE_VERSION);
-  centeredText(52, "STARTING");
+  centeredText(52, bootStatusText);
   const bool ok = flushFrame();
   if (ok) {
     bootScreenUntilMs = millis() + HardwareConfig::DISPLAY_BOOT_SCREEN_MIN_MS;
@@ -364,7 +433,7 @@ bool showTestScreen() {
   if (!setPower(true)) return false;
   clearFrame();
   rect(0, 0, HardwareConfig::DISPLAY_WIDTH, HardwareConfig::DISPLAY_HEIGHT);
-  centeredText(9, "DISPLAY TEST");
+  centeredText(9, "SH1106 TEST");
   hLine(8, 119, 20);
   centeredText(27, "SH1106");
   centeredText(39, "128X64");

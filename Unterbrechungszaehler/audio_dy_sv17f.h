@@ -34,6 +34,10 @@ bool playTrack(uint16_t trackNumber);
 bool playTestTone();
 bool stop();
 bool pause();
+// High-level project volume. Mapping to the DY-SV17F 0..30 range lives here.
+void configureVolumePercent(uint8_t percent);
+bool setVolumePercent(uint8_t percent);
+uint8_t volumePercent();
 bool setVolume(uint8_t volume);
 
 }  // namespace AudioDySv17f

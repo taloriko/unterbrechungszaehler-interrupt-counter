@@ -74,3 +74,7 @@ Check licensing before publishing your own audio files.
 All modules need a common ground. ESP32 GPIO is 3.3-V logic; never feed 5-V signals directly into ESP32 inputs.
 
 Full technical wiring: [`../../Unterbrechungszaehler/HARDWARE_WIRING.md`](../../Unterbrechungszaehler/HARDWARE_WIRING.md).
+
+## OLED settings from 3.2.0
+
+The SH1106 can be persistently rotated by 180°. Fresh defaults are 65% normal brightness and 5% dim brightness. The boot screen remains visible for at least four seconds without blocking the remaining device services.

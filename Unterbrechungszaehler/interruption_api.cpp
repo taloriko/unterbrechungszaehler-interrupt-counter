@@ -55,10 +55,14 @@ void removeTrailingComma(String &out) {
 void appendProjectPreferencesObjectInternal(String &out) {
   out += '{';
   fieldBool(out, "soundEnabled", ProjectPreferences::soundEnabled());
+  fieldUInt(out, "soundVolume", ProjectPreferences::soundVolumePercent());
   fieldUInt(out, "soundTrack", ProjectPreferences::soundTrack());
   fieldString(out, "soundMode", ProjectPreferences::soundModeName());
   fieldUInt(out, "soundTrackCount", AudioDySv17f::musicCount());
+  fieldString(out, "language", ProjectPreferences::language());
+  fieldBool(out, "languageStored", ProjectPreferences::languageStored());
   fieldBool(out, "displayEnabled", ProjectPreferences::displayEnabled());
+  fieldBool(out, "displayRotation180", ProjectPreferences::displayRotation180());
   fieldBool(out, "displayFlashEnabled", ProjectPreferences::displayFlashEnabled());
   fieldString(out, "displayMode", ProjectPreferences::displayModeName());
   fieldUInt(out, "displayBrightness", ProjectPreferences::displayBrightnessPercent());
@@ -71,6 +75,8 @@ void appendSummaryObjectInternal(String &out) {
   const auto &summary = InterruptionService::summary();
   out += '{';
   fieldUInt(out, "todayCount", summary.todayCount);
+  fieldUInt(out, "todayIntervalSamples", summary.todayIntervalSamples);
+  fieldUInt(out, "todayIntervalAverageSeconds", summary.todayIntervalSamples ? static_cast<uint32_t>(summary.todayIntervalSumSeconds / summary.todayIntervalSamples) : 0U);
   fieldUInt(out, "unassignedCount", summary.unassignedCount);
   fieldUInt64(out, "sequence", summary.liveSequence);
   fieldUInt64(out, "persistedSequence", summary.persistedSequence);

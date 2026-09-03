@@ -3,15 +3,21 @@
 #include <Preferences.h>
 #include <cstring>
 
+#include "config.h"
 #include "project_config.h"
 #include "serial_log.h"
 
 namespace ProjectPreferences {
 namespace {
+bool initialized = false;
 bool sound = ProjectConfig::INTERRUPTION_SOUND_DEFAULT;
+uint8_t soundVolume = ProjectConfig::SOUND_VOLUME_DEFAULT_PERCENT;
 uint16_t track = ProjectConfig::INTERRUPTION_SOUND_TRACK_DEFAULT;
 SoundMode soundModeValue = ProjectConfig::INTERRUPTION_SOUND_MODE_DEFAULT;
+char languageValue[12]{};
+bool languageStoredValue = false;
 bool displayEnabledValue = ProjectConfig::DISPLAY_ENABLED_DEFAULT;
+bool displayRotation180Value = ProjectConfig::DISPLAY_ROTATION_180_DEFAULT;
 bool flash = ProjectConfig::DISPLAY_FLASH_DEFAULT;
 DisplayMode mode = ProjectConfig::DISPLAY_MODE_DEFAULT;
 uint8_t brightness = ProjectConfig::DISPLAY_BRIGHTNESS_DEFAULT_PERCENT;
@@ -42,6 +48,29 @@ bool persistUShort(const char *key, uint16_t value) {
   return written > 0;
 }
 
+bool persistString(const char *key, const char *value) {
+  Preferences prefs;
+  if (!prefs.begin(ProjectConfig::PREF_NAMESPACE, false)) return false;
+  const size_t written = prefs.putString(key, value ? value : "");
+  prefs.end();
+  return written > 0;
+}
+
+bool validLanguage(const char *value) {
+  if (!value) return false;
+  static const char *const supported[] = {"de", "en", "it", "fr", "swg", "swg-alb", "swg-ob"};
+  for (const char *candidate : supported) {
+    if (strcmp(value, candidate) == 0) return true;
+  }
+  return false;
+}
+
+void copyLanguage(const char *value) {
+  const char *source = validLanguage(value) ? value : AppConfig::FALLBACK_LANGUAGE;
+  strncpy(languageValue, source, sizeof(languageValue) - 1U);
+  languageValue[sizeof(languageValue) - 1U] = '\0';
+}
+
 SoundMode sanitizedSoundMode(uint8_t raw) {
   return raw <= static_cast<uint8_t>(SoundMode::Rotate)
              ? static_cast<SoundMode>(raw)
@@ -49,23 +78,37 @@ SoundMode sanitizedSoundMode(uint8_t raw) {
 }
 
 DisplayMode sanitizedMode(uint8_t raw) {
-  return raw <= static_cast<uint8_t>(DisplayMode::LastOnly)
+  return raw <= static_cast<uint8_t>(DisplayMode::Focus)
              ? static_cast<DisplayMode>(raw)
              : ProjectConfig::DISPLAY_MODE_DEFAULT;
 }
 }  // namespace
 
 void begin() {
+  if (initialized) return;
+  initialized = true;
+  copyLanguage(AppConfig::FALLBACK_LANGUAGE);
+
   Preferences prefs;
   if (!prefs.begin(ProjectConfig::PREF_NAMESPACE, false)) {
     SerialLog::warning("PROJECT", "Project Preferences unavailable; using defaults");
     return;
   }
   sound = prefs.getBool("sound", ProjectConfig::INTERRUPTION_SOUND_DEFAULT);
+  soundVolume = prefs.getUChar("sndvol", ProjectConfig::SOUND_VOLUME_DEFAULT_PERCENT);
+  if (soundVolume > 100) soundVolume = ProjectConfig::SOUND_VOLUME_DEFAULT_PERCENT;
   track = prefs.getUShort("sndtrack", ProjectConfig::INTERRUPTION_SOUND_TRACK_DEFAULT);
   if (track < 2) track = ProjectConfig::INTERRUPTION_SOUND_TRACK_DEFAULT;
   soundModeValue = sanitizedSoundMode(prefs.getUChar("sndmode", static_cast<uint8_t>(ProjectConfig::INTERRUPTION_SOUND_MODE_DEFAULT)));
+
+  const String storedLanguage = prefs.getString("lang", "");
+  if (validLanguage(storedLanguage.c_str())) {
+    copyLanguage(storedLanguage.c_str());
+    languageStoredValue = true;
+  }
+
   displayEnabledValue = prefs.getBool("dispen", ProjectConfig::DISPLAY_ENABLED_DEFAULT);
+  displayRotation180Value = prefs.getBool("disprot", ProjectConfig::DISPLAY_ROTATION_180_DEFAULT);
   flash = prefs.getBool("dispflash", ProjectConfig::DISPLAY_FLASH_DEFAULT);
   mode = sanitizedMode(prefs.getUChar("dispmode", static_cast<uint8_t>(ProjectConfig::DISPLAY_MODE_DEFAULT)));
   brightness = prefs.getUChar("dispbright", ProjectConfig::DISPLAY_BRIGHTNESS_DEFAULT_PERCENT);
@@ -78,11 +121,12 @@ void begin() {
   if (dimBrightness > 100) dimBrightness = ProjectConfig::DISPLAY_DIM_BRIGHTNESS_DEFAULT_PERCENT;
   prefs.end();
 
-  SerialLog::infof("PROJECT", "Feedback settings | sound=%s | sound-mode=%s | track=%u | display=%s | display-flash=%s | display-mode=%s",
-                   sound ? "ON" : "OFF", soundModeName(), static_cast<unsigned int>(track),
-                   displayEnabledValue ? "ON" : "OFF", flash ? "ON" : "OFF", displayModeName());
-  SerialLog::infof("PROJECT", "Display settings | brightness=%u%% | dim-after=%u min | dim-brightness=%u%%",
-                   static_cast<unsigned int>(brightness), static_cast<unsigned int>(dimAfterMinutes),
+  SerialLog::infof("PROJECT", "Feedback settings | sound=%s | volume=%u%% | sound-mode=%s | track=%u | display=%s | rotate180=%s | display-flash=%s | display-mode=%s",
+                   sound ? "ON" : "OFF", static_cast<unsigned int>(soundVolume), soundModeName(), static_cast<unsigned int>(track),
+                   displayEnabledValue ? "ON" : "OFF", displayRotation180Value ? "YES" : "NO",
+                   flash ? "ON" : "OFF", displayModeName());
+  SerialLog::infof("PROJECT", "Display settings | language=%s | brightness=%u%% | dim-after=%u min | dim-brightness=%u%%",
+                   languageValue, static_cast<unsigned int>(brightness), static_cast<unsigned int>(dimAfterMinutes),
                    static_cast<unsigned int>(dimBrightness));
 }
 
@@ -96,11 +140,21 @@ bool setSoundEnabled(bool enabled) {
   return true;
 }
 
+uint8_t soundVolumePercent() { return soundVolume; }
+
+bool setSoundVolumePercent(uint8_t percent) {
+  if (percent > 100) return false;
+  if (soundVolume == percent) return true;
+  if (!persistUChar("sndvol", percent)) return false;
+  soundVolume = percent;
+  SerialLog::infof("PROJECT", "Sound volume changed | %u%%", static_cast<unsigned int>(soundVolume));
+  return true;
+}
+
 uint16_t soundTrack() { return track; }
 
 bool setSoundTrack(uint16_t value) {
-  // Track 1 is reserved exclusively for the boot sound.
-  if (value < 2) return false;
+  if (value < 2) return false;  // Track 1 is reserved exclusively for boot.
   if (track == value) return true;
   if (!persistUShort("sndtrack", value)) return false;
   track = value;
@@ -134,6 +188,19 @@ bool setSoundMode(SoundMode value) {
   return true;
 }
 
+const char *language() { return languageValue[0] ? languageValue : AppConfig::FALLBACK_LANGUAGE; }
+bool languageStored() { return languageStoredValue; }
+
+bool setLanguage(const char *value) {
+  if (!validLanguage(value)) return false;
+  if (languageStoredValue && strcmp(language(), value) == 0) return true;
+  if (!persistString("lang", value)) return false;
+  copyLanguage(value);
+  languageStoredValue = true;
+  SerialLog::infof("PROJECT", "Display/UI language changed | %s", languageValue);
+  return true;
+}
+
 bool displayEnabled() { return displayEnabledValue; }
 
 bool setDisplayEnabled(bool enabled) {
@@ -141,6 +208,16 @@ bool setDisplayEnabled(bool enabled) {
   if (!persistBool("dispen", enabled)) return false;
   displayEnabledValue = enabled;
   SerialLog::infof("PROJECT", "Display master switch changed | %s", displayEnabledValue ? "ON" : "OFF");
+  return true;
+}
+
+bool displayRotation180() { return displayRotation180Value; }
+
+bool setDisplayRotation180(bool rotated) {
+  if (displayRotation180Value == rotated) return true;
+  if (!persistBool("disprot", rotated)) return false;
+  displayRotation180Value = rotated;
+  SerialLog::infof("PROJECT", "Display rotation changed | 180deg=%s", rotated ? "YES" : "NO");
   return true;
 }
 
@@ -160,6 +237,8 @@ const char *displayModeName() {
   switch (mode) {
     case DisplayMode::CountOnly: return "count";
     case DisplayMode::LastOnly: return "last";
+    case DisplayMode::DayProgress: return "day-progress";
+    case DisplayMode::Focus: return "focus";
     case DisplayMode::Standard:
     default: return "standard";
   }
@@ -170,6 +249,8 @@ bool parseDisplayMode(const char *value, DisplayMode &parsed) {
   if (strcmp(value, "standard") == 0) parsed = DisplayMode::Standard;
   else if (strcmp(value, "count") == 0) parsed = DisplayMode::CountOnly;
   else if (strcmp(value, "last") == 0) parsed = DisplayMode::LastOnly;
+  else if (strcmp(value, "day-progress") == 0) parsed = DisplayMode::DayProgress;
+  else if (strcmp(value, "focus") == 0) parsed = DisplayMode::Focus;
   else return false;
   return true;
 }

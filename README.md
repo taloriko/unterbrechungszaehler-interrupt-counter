@@ -3,7 +3,7 @@
 > [!WARNING]
 > **KI-Hinweis:** Dieses Projekt wurde maßgeblich mit Unterstützung von KI erstellt, anschließend aber praktisch getestet, überarbeitet und weiterentwickelt. Wer KI-generierten Code grundsätzlich nicht mag, darf natürlich trotzdem den Taster drücken. ;-)
 
-> **Aktueller Stand:** `3.1.0`
+> **Aktueller Stand:** `3.2.0`
 
 [Deutsch](docs/de/README.md) · [English](docs/en/README.md) · [Schwäbisch](docs/swg/README.md)
 
@@ -126,7 +126,7 @@ Den Rest macht das Gerät.
   Damit das Gerät auch ohne WLAN weiß, wie spät es ist. Revolutionäre Technik.
 
 - **Optionales SH1106-OLED mit 128 × 64 Pixeln**
-  Technisch nicht zwingend notwendig, sieht aber sofort mindestens 37 % professioneller aus. Das Display kann persistent ein- und ausgeschaltet werden; beim echten Geräteboot bleibt das Startbild mindestens zwei Sekunden sichtbar.
+  Technisch nicht zwingend notwendig, sieht aber sofort mindestens 37 % professioneller aus. Das Display kann persistent ein- und ausgeschaltet sowie um 180° gedreht werden. Es folgt der gewählten UI-Sprache; nicht im kleinen OLED-Font enthaltene Umlaute/Akzente werden lesbar transliteriert. Beim echten Geräteboot bleibt das Startbild mindestens vier Sekunden sichtbar.
 
 - **Fallback-WLAN für lokalen Zugriff**
   Wer keine Cloud möchte, sollte das Gerät schließlich trotzdem noch erreichen können. Der Fallback-AP ist mit `Unterbrechungszähler` geschützt.
@@ -188,6 +188,22 @@ Falsch:
 
 > [!IMPORTANT]
 > **Solange das DY-SV17F per Micro-USB mit dem Computer verbunden ist bzw. sein interner Speicher über USB verwendet wird, funktioniert die normale Soundausgabe nicht.** Nach dem Kopieren deshalb den Datenträger auswerfen, USB trennen und erst dann Soundtest, Boot-Ton oder Unterbrechungston prüfen.
+
+Ab 3.2.0 ist die Lautstärke in der Weboberfläche von **0–100 %** einstellbar; bei einer frischen Konfiguration sind **100 %** voreingestellt. Der Standardmodus für Unterbrechungstöne ist **Wechseln/Rotation** über die erkannten Tracks 2…N. Bereits gespeicherte Einstellungen älterer 3.x-Stände werden nicht überschrieben.
+
+## Display in 3.2.0
+
+Das SH1106 folgt der in der Weboberfläche gewählten Sprache. Die Sprache wird zusätzlich auf dem ESP32 gespeichert, damit das OLED sie auch direkt nach einem Neustart kennt. Der kompakte OLED-Font bleibt bewusst klein: Umlaute und Akzente werden bei Bedarf lesbar nach ASCII umgesetzt, zum Beispiel `ä → AE`, `ö → OE`, `ü → UE`, `ß → SS` und `é → E`.
+
+Für eine frische Konfiguration gelten **65 % normale Helligkeit** und **5 % gedimmte Helligkeit**. Zusätzlich kann das komplette OLED persistent um **180°** gedreht werden. Der nicht blockierende Bootscreen bleibt mindestens **4 Sekunden** sichtbar.
+
+Die fünf Displaymodi sind:
+
+- Standard – Heute + letzte Unterbrechung
+- Nur Anzahl
+- Nur letzte Unterbrechung
+- Tagesfortschritt – Anzahl heute + Ø abgeschlossener Abstand + Tageszeit-Fortschrittsbalken
+- Fokus – groß die Zeit seit der letzten Unterbrechung + heutige Anzahl
 
 ## Schnellstart
 

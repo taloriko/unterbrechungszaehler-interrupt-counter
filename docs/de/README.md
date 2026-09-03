@@ -1,8 +1,16 @@
-# Unterbrechungszähler 3.1.0
+# Unterbrechungszähler 3.2.0
 
 Version 3.0.0 ist der neue Ausgangspunkt des Projekts. Frühere 1.x/2.x-Stände waren Entwicklungs- und Testversionen und werden nicht als Migrationsziel behandelt.
 
 ## Funktionen
+
+**Neu in 3.2.0:**
+
+- OLED folgt der gewählten UI-Sprache, inklusive kompakter Umlaut-/Akzent-Transliteration
+- fünf OLED-Modi, 180°-Drehung und mindestens 4 Sekunden Bootscreen
+- neue Display-Defaults 65 % normal / 5 % gedimmt
+- DY-SV17F-Lautstärke 0–100 %, Standard 100 %, Tonmodus standardmäßig wechselnd
+
 
 - Unterbrechung per Taster auf GPIO13 / DI1 oder Webbutton
 - lokale Weboberfläche

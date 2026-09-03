@@ -102,6 +102,51 @@ void loadLastEvent() {
   currentSummary.liveSequence = sequence;
 }
 
+void rebuildTodayIntervalsFromRetainedRaw() {
+  currentSummary.todayIntervalSumSeconds = 0;
+  currentSummary.todayIntervalSamples = 0;
+  if (!currentDayValid || !InterruptionStore::ready()) return;
+
+  const uint64_t first = InterruptionStore::oldestSequence();
+  const uint64_t last = InterruptionStore::newestSequence();
+  bool sawToday = false;
+  if (first != 0U && last >= first) {
+    for (uint64_t sequence = last;; --sequence) {
+      InterruptionTypes::RawEvent raw;
+      if (InterruptionStore::readSequence(sequence, raw) && raw.absoluteValid) {
+        ProjectTime::LocalDateTime local;
+        if (ProjectTime::fromEpochSeconds(raw.timeValueSeconds, local)) {
+          if (local.dayIndex == currentDayIndex) {
+            sawToday = true;
+            // deltaSeconds belongs to the current event and closes the interval
+            // that started at its retained predecessor. If the ring has wrapped,
+            // the oldest record's predecessor is gone and its delta is excluded.
+            if (sequence > first && raw.deltaSeconds > 0U && raw.deltaSeconds < InterruptionTypes::DELTA_UNKNOWN) {
+              currentSummary.todayIntervalSumSeconds += raw.deltaSeconds;
+              ++currentSummary.todayIntervalSamples;
+            }
+          } else if (sawToday && local.dayIndex < currentDayIndex) {
+            break;
+          }
+        }
+      }
+      if (sequence == first) break;
+    }
+  }
+
+  // Pending records are not yet in the raw ring but already represent real
+  // completed intervals and should be visible on the local display immediately.
+  for (uint8_t i = 0, idx = queueHead; i < queueCount; ++i,
+       idx = static_cast<uint8_t>((idx + 1U) % ProjectConfig::PENDING_EVENT_CAPACITY)) {
+    const auto &event = queue[idx];
+    if (event.localCalendarValid && event.localDayIndex == currentDayIndex &&
+        event.deltaSeconds > 0U && event.deltaSeconds < InterruptionTypes::DELTA_UNKNOWN) {
+      currentSummary.todayIntervalSumSeconds += event.deltaSeconds;
+      ++currentSummary.todayIntervalSamples;
+    }
+  }
+}
+
 void refreshCurrentDay(bool force) {
   const uint32_t nowMs = millis();
   if (!force && static_cast<uint32_t>(nowMs - lastDayCheckMs) < 500U) return;
@@ -113,12 +158,15 @@ void refreshCurrentDay(bool force) {
     if (currentDayValid) {
       currentDayValid = false;
       currentSummary.todayCount = 0;
+      currentSummary.todayIntervalSumSeconds = 0;
+      currentSummary.todayIntervalSamples = 0;
       bumpRevision();
       DisplayViews::requestHomeRefresh();
     }
     return;
   }
-  if (!currentDayValid || local.dayIndex != currentDayIndex || force) {
+  const bool dayChanged = !currentDayValid || local.dayIndex != currentDayIndex;
+  if (dayChanged || force) {
     currentDayValid = true;
     currentDayIndex = local.dayIndex;
     currentSummary.todayCount = InterruptionAggregates::ready() ? InterruptionAggregates::countForDay(currentDayIndex) : 0;
@@ -127,6 +175,7 @@ void refreshCurrentDay(bool force) {
     for (uint8_t i = 0, idx = queueHead; i < queueCount; ++i, idx = static_cast<uint8_t>((idx + 1U) % ProjectConfig::PENDING_EVENT_CAPACITY)) {
       if (queue[idx].localCalendarValid && queue[idx].localDayIndex == currentDayIndex) ++currentSummary.todayCount;
     }
+    if (dayChanged) rebuildTodayIntervalsFromRetainedRaw();
     if (!(anchorValid && anchorDayIndex == currentDayIndex)) anchorValid = false;
     bumpRevision();
     DisplayViews::requestHomeRefresh();
@@ -393,8 +442,14 @@ bool capture(InterruptionTypes::EventSource source) {
       currentDayValid = true;
       currentDayIndex = event.localDayIndex;
       currentSummary.todayCount = 0;
+      currentSummary.todayIntervalSumSeconds = 0;
+      currentSummary.todayIntervalSamples = 0;
     }
     ++currentSummary.todayCount;
+    if (event.deltaSeconds > 0U && event.deltaSeconds < InterruptionTypes::DELTA_UNKNOWN) {
+      currentSummary.todayIntervalSumSeconds += event.deltaSeconds;
+      ++currentSummary.todayIntervalSamples;
+    }
   } else {
     ++currentSummary.unassignedCount;
   }
@@ -421,6 +476,11 @@ bool setSoundEnabled(bool enabled) {
   bumpRevision();
   if (!enabled) audioPending = 0;
   return true;
+}
+
+bool setSoundVolumePercent(uint8_t percent) {
+  if (!ProjectPreferences::setSoundVolumePercent(percent)) return false;
+  return AudioDySv17f::setVolumePercent(percent);
 }
 
 bool soundEnabled() { return ProjectPreferences::soundEnabled(); }

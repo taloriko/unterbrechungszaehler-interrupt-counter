@@ -1,4 +1,4 @@
-# Projektarchitektur – Unterbrechungszähler 3.1.0
+# Projektarchitektur – Unterbrechungszähler 3.2.0
 
 Basis: **ESP32 UI Base FINAL 1.6.0**. Die Basis bleibt Infrastruktur; die Bedeutung „Unterbrechung“ beginnt ausschließlich in der Projektschicht.
 
@@ -114,9 +114,9 @@ Der eingebaute synchrone Arduino-`WebServer` kann während eines tatsächlichen 
 
 ## Projekt-GPIO-Profil
 
-Nur **DI1/GPIO13** ist im Projektprofil 3.1.0 aktiviert. DI2–DI4 und DO1–DO4 bleiben im generischen Basismodell definiert, sind aber deaktiviert. Dadurch verursachen sie weder Scanning noch Ausgangskonfiguration und ihre Pins stehen späteren Projektmodulen frei.
+Nur **DI1/GPIO13** ist im Projektprofil 3.2.0 aktiviert. DI2–DI4 und DO1–DO4 bleiben im generischen Basismodell definiert, sind aber deaktiviert. Dadurch verursachen sie weder Scanning noch Ausgangskonfiguration und ihre Pins stehen späteren Projektmodulen frei.
 
-## Projektpräferenzen 3.1.0
+## Projektpräferenzen 3.2.0
 
 `ProjectPreferences` ist die einzige persistente Quelle für Unterbrechungston und OLED-Projektanzeige einschließlich Display-Master-Schalter. Die Home-UI schreibt jeweils genau ein Feld über `/api/interruptions/preferences`; es gibt keinen globalen Speichern-Button. `DisplayViews` liest nur diese Präferenzen und `InterruptionService` entscheidet beim Feedback zwischen festem Track und der ressourcenschonenden Rotation 2…N. Track 1 bleibt dem Bootpfad vorbehalten.
 

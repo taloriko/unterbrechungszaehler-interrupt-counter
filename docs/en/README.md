@@ -1,4 +1,4 @@
-# Interruption Counter 3.1.0
+# Interruption Counter 3.2.0
 
 > [!WARNING]
 > **AI notice:** This project was created with substantial support from AI, then tested in practice, revised and developed further. If you fundamentally dislike AI-generated code, you are of course still allowed to press the button. ;-)
@@ -109,6 +109,14 @@ The device handles the rest.
 ---
 
 ## What can the device do?
+
+**Neu in 3.2.0:**
+
+- OLED follows the selected UI language with compact umlaut/accent transliteration
+- five OLED modes, 180° rotation and at least a four-second boot screen
+- new display defaults: 65% normal / 5% dimmed
+- DY-SV17F volume 0–100%, default 100%, rotating sounds by default
+
 
 - **Capture events using a push button or potential-free contact**
   Simple, fast and without turning every interruption into an administrative procedure.

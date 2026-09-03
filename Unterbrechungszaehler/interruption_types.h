@@ -49,6 +49,8 @@ struct RawEvent {
 
 struct Summary {
   uint32_t todayCount = 0;
+  uint64_t todayIntervalSumSeconds = 0;
+  uint32_t todayIntervalSamples = 0;
   uint32_t unassignedCount = 0;
   uint64_t liveSequence = 0;
   uint64_t persistedSequence = 0;

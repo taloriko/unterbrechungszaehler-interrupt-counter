@@ -477,6 +477,10 @@ button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible
 
 /* Project feedback/display preferences: device-side settings, persisted on ESP32. */
 .project-settings { display: grid; gap: var(--space-3); }
+.project-settings-section { display: grid; gap: var(--space-2); }
+.project-settings-section + .project-settings-section { padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.project-settings-section-head { font-size: .86rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.project-setting-action .button { justify-self: end; }
 .project-settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
 .project-setting-row { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, .9fr); align-items: center; gap: var(--space-3); padding: 11px 13px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--panel-bg-2); }
 .project-setting-switch { cursor: pointer; }

@@ -1,6 +1,6 @@
-# Unterbrechungszähler 3.1.0 – technische Übersicht
+# Unterbrechungszähler 3.2.0 – technische Übersicht
 
-Dies ist der Sketchordner der Version **3.1.0** für ein klassisches ESP32 Dev Module / ESP32-WROOM-32.
+Dies ist der Sketchordner der Version **3.2.0** für ein klassisches ESP32 Dev Module / ESP32-WROOM-32.
 
 ## Ereigniserfassung
 

@@ -18,19 +18,21 @@ constexpr char TIMEZONE_POSIX[] = "CET-1CEST,M3.5.0,M10.5.0/3";
 // Feedback is independent from persistence: the event is captured first, then
 // display/audio/storage work is scheduled cooperatively.
 constexpr uint16_t INTERRUPTION_SOUND_TRACK_DEFAULT = 2;
-constexpr ProjectPreferences::SoundMode INTERRUPTION_SOUND_MODE_DEFAULT = ProjectPreferences::SoundMode::Fixed;
+constexpr ProjectPreferences::SoundMode INTERRUPTION_SOUND_MODE_DEFAULT = ProjectPreferences::SoundMode::Rotate;
 constexpr bool INTERRUPTION_SOUND_DEFAULT = true;
+constexpr uint8_t SOUND_VOLUME_DEFAULT_PERCENT = 100;
 constexpr bool DISPLAY_ENABLED_DEFAULT = true;
+constexpr bool DISPLAY_ROTATION_180_DEFAULT = false;
 constexpr bool DISPLAY_FLASH_DEFAULT = true;
 constexpr uint32_t DISPLAY_FLASH_MS = 220;
 
 // OLED project preferences are persisted in NVS. Brightness values are percent
 // and converted to the SH1106 0..255 contrast register only when needed.
 constexpr ProjectPreferences::DisplayMode DISPLAY_MODE_DEFAULT = ProjectPreferences::DisplayMode::Standard;
-constexpr uint8_t DISPLAY_BRIGHTNESS_DEFAULT_PERCENT = 50;
+constexpr uint8_t DISPLAY_BRIGHTNESS_DEFAULT_PERCENT = 65;
 constexpr uint16_t DISPLAY_DIM_AFTER_DEFAULT_MINUTES = 10;
 constexpr uint16_t DISPLAY_DIM_AFTER_MAX_MINUTES = 1440;
-constexpr uint8_t DISPLAY_DIM_BRIGHTNESS_DEFAULT_PERCENT = 10;
+constexpr uint8_t DISPLAY_DIM_BRIGHTNESS_DEFAULT_PERCENT = 5;
 
 // Raw binary ring: 100,000 * 9 bytes = 900,000 bytes.
 constexpr uint32_t RAW_EVENT_CAPACITY = 100000;
