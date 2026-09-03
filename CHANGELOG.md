@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.2.0
+
+- OLED-Inhalte folgen der persistent synchronisierten UI-Sprache; kompakte OLED-Transliteration für Umlaute und Akzente
+- SH1106-Bootscreen auf mindestens 4 Sekunden verlängert, weiterhin nicht blockierend
+- persistente 180°-Displaydrehung ergänzt
+- frische Helligkeitsdefaults auf 65 % normal und 5 % gedimmt gesetzt
+- Geräteeinstellungen nach Display, Display-Feedback und DY-SV17F-Sound gruppiert
+- DY-SV17F-Lautstärke von 0–100 %, Standard 100 %, zentral auf den Modulbereich 0…30 abgebildet
+- Wechsel-/Rotationsmodus ist bei einer frischen Konfiguration der neue Tonstandard; Track 1 bleibt Boot vorbehalten
+- OLED-Modi **Tagesfortschritt** und **Fokus** ergänzt
+- Arduino-IDE-Hinweis zum Erzeugen einer Sketch-BIN vollständig aus dem OTA-UI entfernt; Releases liefern die fertige OTA-BIN
+- Webbundle, Sprachchecks und Releasechecks auf 3.2.0 erweitert
+
 ## 3.1.0
 
 - Heatmaps zwischen **Anzahl** und **Ø Abstand bis zur nächsten Unterbrechung** umschaltbar

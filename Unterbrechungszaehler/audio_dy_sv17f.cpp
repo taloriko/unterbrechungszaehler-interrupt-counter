@@ -22,6 +22,9 @@ const char *errorText = "";
 PlayState currentPlayState = PlayState::Unknown;
 uint8_t devicesOnline = 0;
 uint16_t tracks = 0;
+bool uartReady = false;
+uint8_t desiredVolumePercent = 100;
+bool volumePending = true;
 
 enum class WaitKind : uint8_t { None, ProbePlay, ProbeDevices, ProbeCount, VerifyPlay };
 enum class VerifyExpectation : uint8_t { Any, Playing, Stopped };
@@ -95,6 +98,10 @@ void finishProbe(StatusRegistry::State state, const char *message = "") {
     SerialLog::error("AUDIO", "DY-SV17F: NO RESPONSE | UART play-state query timed out");
   }
 
+  // Apply the user volume before scheduling the boot tone. The command has
+  // no response frame, so this adds no blocking wait.
+  applyDesiredVolume();
+
   if (shouldPlayBootTone) {
     deferredAction = DeferredAction::BootTone;
     deferredAtMs = millis() + HardwareConfig::AUDIO_BOOT_TONE_DELAY_MS;
@@ -115,7 +122,24 @@ bool commandPathIdle() {
   return !probeActive && waitingFor == WaitKind::None && deferredAction == DeferredAction::None;
 }
 
+
+uint8_t moduleVolumeForPercent(uint8_t percent) {
+  if (percent > 100U) percent = 100U;
+  return static_cast<uint8_t>((static_cast<uint16_t>(percent) * 30U + 50U) / 100U);
+}
+
+bool applyDesiredVolume() {
+  if (!uartReady || !volumePending || !commandPathIdle()) return false;
+  const uint8_t moduleVolume = moduleVolumeForPercent(desiredVolumePercent);
+  sendFrame(0x13, &moduleVolume, 1);
+  volumePending = false;
+  SerialLog::infof("AUDIO", "Volume applied | ui=%u%% | module=%u/30",
+                   static_cast<unsigned int>(desiredVolumePercent), static_cast<unsigned int>(moduleVolume));
+  return true;
+}
+
 void updateBusyPin();
+bool applyDesiredVolume();
 
 void handleFrame(uint8_t command, const uint8_t *data, uint8_t length) {
   if (command != expectedCommand || waitingFor == WaitKind::None) return;
@@ -293,6 +317,8 @@ bool begin() {
   if (HardwareConfig::AUDIO_BUSY_PIN >= 0) pinMode(HardwareConfig::AUDIO_BUSY_PIN, INPUT);
   audioSerial.begin(HardwareConfig::AUDIO_BAUD_RATE, SERIAL_8N1,
                     HardwareConfig::AUDIO_RX_PIN, HardwareConfig::AUDIO_TX_PIN);
+  uartReady = true;
+  volumePending = true;
   SerialLog::infof("AUDIO", "DY-SV17F UART ready | UART%u | RX=%d | TX=%d | BUSY=%d | %lu baud",
                    HardwareConfig::AUDIO_UART_PORT, HardwareConfig::AUDIO_RX_PIN,
                    HardwareConfig::AUDIO_TX_PIN, HardwareConfig::AUDIO_BUSY_PIN,
@@ -312,6 +338,7 @@ void update() {
 
   while (audioSerial.available() > 0) feedParser(static_cast<uint8_t>(audioSerial.read()));
   handleTimeout();
+  if (volumePending && commandPathIdle()) applyDesiredVolume();
 
   const uint32_t now = millis();
   if (deferredAction != DeferredAction::None && due(now, deferredAtMs)) {
@@ -368,6 +395,22 @@ bool busyKnown() { return busyStateKnown; }
 bool busy() { return busyState; }
 uint8_t onlineDevices() { return devicesOnline; }
 uint16_t musicCount() { return tracks; }
+
+void configureVolumePercent(uint8_t percent) {
+  desiredVolumePercent = percent > 100U ? 100U : percent;
+  volumePending = true;
+  if (uartReady && commandPathIdle()) applyDesiredVolume();
+}
+
+bool setVolumePercent(uint8_t percent) {
+  if (percent > 100U) return false;
+  desiredVolumePercent = percent;
+  volumePending = true;
+  if (!uartReady || !commandPathIdle()) return true;
+  return applyDesiredVolume();
+}
+
+uint8_t volumePercent() { return desiredVolumePercent; }
 
 bool playTrack(uint16_t trackNumber) {
   if (!HardwareConfig::ENABLE_AUDIO_DY_SV17F || trackNumber == 0 || !commandPathIdle()) return false;

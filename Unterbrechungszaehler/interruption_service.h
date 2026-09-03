@@ -15,6 +15,7 @@ bool captureWeb();
 
 const InterruptionTypes::Summary &summary();
 bool setSoundEnabled(bool enabled);
+bool setSoundVolumePercent(uint8_t percent);
 bool soundEnabled();
 
 }  // namespace InterruptionService

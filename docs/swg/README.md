@@ -1,4 +1,4 @@
-# Unterbrechungszähler 3.1.0 – Schwäbisch
+# Unterbrechungszähler 3.2.0 – Schwäbisch
 
 > [!WARNING]
 > **KI-Hinweis:** Des Projekt isch mit ordentlich KI-Unterstützung entstanden, danach aber in echt getestet, verbessert ond weitergebaut worda. Wenn du KI-generierten Code grundsätzlich net leiden kasch, darfst trotzdem dr Knopf drucka. ;-)
@@ -109,6 +109,14 @@ Dr Rest macht s Gerät.
 ---
 
 ## Was kann s Gerät?
+
+**Neu in 3.2.0:**
+
+- S OLED folgt dr ausgwählte Sproch ond macht Umlaute/Akzente notfalls lesbar als ASCII
+- fünf OLED-Modi, 180° dreha ond mindestens vier Sekunda Bootbild
+- neue Display-Standards: 65 % normal / 5 % gedimmt
+- DY-SV17F-Lautstärk 0–100 %, Standard 100 %, Tön standardmäßig wechselnd
+
 
 - **Ereignisse per Taster oder potentialfreiem Kontakt erfassa**
   Schnell, simpel ond ohne jedes Mal an Verwaltungsakt draus zu macha.

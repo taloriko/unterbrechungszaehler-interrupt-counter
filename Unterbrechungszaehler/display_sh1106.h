@@ -25,6 +25,9 @@ bool initialize();
 bool clear();
 bool setPower(bool on);
 bool setContrast(uint8_t contrast);
+// Store/apply the controller orientation without redrawing pixels in software.
+bool setRotation180(bool rotated);
+void setBootStatusText(const char *text);
 bool showBootScreen();
 bool showTestScreen();
 bool bootScreenActive();

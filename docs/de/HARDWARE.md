@@ -113,3 +113,7 @@ Vor dem öffentlichen Verteilen eigener Audiodateien deren Lizenz/Herkunft prüf
 Alle Module brauchen gemeinsame Masse. ESP32-GPIOs sind 3,3-V-Logik; keine 5-V-Signale direkt auf ESP32-Eingänge geben.
 
 Die vollständige technische Verdrahtungsdokumentation liegt zusätzlich in [`../../Unterbrechungszaehler/HARDWARE_WIRING.md`](../../Unterbrechungszaehler/HARDWARE_WIRING.md).
+
+## OLED-Einstellungen ab 3.2.0
+
+Das SH1106 kann persistent um 180° gedreht werden. Standardwerte einer frischen Konfiguration sind 65 % Helligkeit und 5 % gedimmte Helligkeit. Der Bootscreen bleibt mindestens vier Sekunden sichtbar und blockiert die übrigen Gerätefunktionen nicht.

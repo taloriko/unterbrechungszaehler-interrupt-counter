@@ -1,4 +1,4 @@
-# Testbericht – Unterbrechungszähler 3.1.0
+# Testbericht – Unterbrechungszähler 3.2.0
 
 Auditdatum: 02.09.2026
 Ziel: ESP32 Dev Module / ESP32-WROOM-32, Arduino-ESP32
@@ -7,7 +7,7 @@ Ziel: ESP32 Dev Module / ESP32-WROOM-32, Arduino-ESP32
 
 Der Releasecheck `tools/release_check.py` prüft:
 
-- Projektname und Version 3.1.0
+- Projektname und Version 3.2.0
 - deklarierte UI-Sprachen Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch und Oberschwäbisch
 - Parität der drei Basis-Sprachpakete Deutsch/Englisch/Schwäbisch sowie Vorhandensein der zusätzlichen Sprach-/Dialektpakete
 - 100.000er Raw-Ring und 2.300 Tagesaggregate
@@ -49,4 +49,12 @@ Nach dem CI-Build weiterhin auf einem Zielgerät prüfen:
 
 ## Freigabe
 
-3.1.0 darf nach erfolgreicher GitHub-CI als Software-Release veröffentlicht werden. Die genannten Hardwaretests bleiben die praktische Gerätevalidierung.
+3.2.0 darf nach erfolgreicher GitHub-CI als Software-Release veröffentlicht werden. Die genannten Hardwaretests bleiben die praktische Gerätevalidierung.
+
+## 3.2.0 zusätzliche Hardwaretests
+
+- Displayinhalte in allen sieben UI-Sprachvarianten und OLED-Transliteration prüfen
+- 4-Sekunden-Bootscreen messen und Taster/Sound währenddessen testen
+- 180°-Drehung inklusive Boot, Test, Flash und allen fünf Ansichten prüfen
+- Helligkeit 65 % / gedimmt 5 % auf frischer NVS-Konfiguration prüfen
+- DY-SV17F-Lautstärke 0/50/100 % und Wechselmodus auf realem Modul prüfen

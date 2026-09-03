@@ -1,3 +1,13 @@
+# Unterbrechungszähler 3.2.0
+
+- OLED folgt der gewählten UI-Sprache mit ressourcenschonender Transliteration für Sonderzeichen
+- Bootscreen mindestens 4 Sekunden, weiterhin nicht blockierend
+- persistente 180°-Drehung und fünf Displaymodi inklusive Tagesfortschritt/Fokus
+- frische Displaydefaults 65 % / 5 %
+- DY-SV17F-Lautstärke 0–100 %, Standard 100 %; Wechselmodus ist neuer Standard
+- Einstellungen klar nach Display, Display-Feedback und Sound gegliedert
+- veralteter Arduino-Sketch-BIN-Hinweis im OTA-UI entfernt
+
 # Release Notes – Unterbrechungszähler 3.1.0
 
 3.1.0 erweitert die Auswertung und Displaysteuerung, ohne das bestehende Raw-Record-Format oder die 100.000er Ringspeicherkapazität zu ändern.

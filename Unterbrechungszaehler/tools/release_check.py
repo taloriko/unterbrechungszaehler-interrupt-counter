@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.1.0."""
+"""Portable release checks for Unterbrechungszaehler 3.2.0."""
 from __future__ import annotations
 
 import gzip
@@ -60,7 +60,7 @@ def main() -> None:
     partitions = (ROOT / "partitions.csv").read_text(encoding="utf-8")
 
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.1.0"' in config, "project version 3.1.0")
+    check('SOFTWARE_VERSION[] = "3.2.0"' in config, "project version 3.2.0")
     check(
         'AVAILABLE_LANGUAGES_JSON[] = "[\\\"de\\\",\\\"en\\\",\\\"it\\\",\\\"fr\\\",\\\"swg\\\",\\\"swg-alb\\\",\\\"swg-ob\\\"]"' in config,
         "declared UI languages",
@@ -73,12 +73,21 @@ def main() -> None:
     check("DAILY_AGGREGATE_CAPACITY = 2300" in project, "daily aggregate retention")
     check("PENDING_EVENT_CAPACITY = 64" in project, "64-event fixed persistence queue")
     check("DISPLAY_ENABLED_DEFAULT = true" in project, "persistent display master default")
-    check("DISPLAY_BOOT_SCREEN_MIN_MS = 2000" in hardware, "two-second nonblocking boot screen minimum")
+    check("DISPLAY_BOOT_SCREEN_MIN_MS = 4000" in hardware, "four-second nonblocking boot screen minimum")
     check("displayEnabled" in JS and "project.displayEnabled" in JS, "display master switch in UI")
+    check("DISPLAY_BRIGHTNESS_DEFAULT_PERCENT = 65" in project and "DISPLAY_DIM_BRIGHTNESS_DEFAULT_PERCENT = 5" in project, "display brightness defaults 65/5 percent")
+    check("SOUND_VOLUME_DEFAULT_PERCENT = 100" in project, "sound volume default 100 percent")
+    check("INTERRUPTION_SOUND_MODE_DEFAULT = ProjectPreferences::SoundMode::Rotate" in project, "rotating sound is the fresh default")
+    check("DISPLAY_ROTATION_180_DEFAULT = false" in project and "displayRotation180" in JS, "persistent 180-degree display option")
+    check("day-progress" in JS and "project.displayMode.focus" in JS, "five OLED display modes exposed")
+    check("normalizeDisplayText" in (ROOT / "display_sh1106.cpp").read_text(encoding="utf-8") and 'append("AE")' in (ROOT / "display_sh1106.cpp").read_text(encoding="utf-8"), "OLED UTF-8 transliteration fallback")
+    check("ProjectPreferences::language()" in (ROOT / "display_views.cpp").read_text(encoding="utf-8") and 'prefs.putString(key' in (ROOT / "project_preferences.cpp").read_text(encoding="utf-8"), "OLED language follows persistent UI language")
+    check("soundVolume" in JS and "setVolumePercent" in (ROOT / "audio_dy_sv17f.cpp").read_text(encoding="utf-8"), "DY-SV17F volume control")
+    check("ota.hint" not in JS and "Export Compiled Binary" not in JS, "obsolete Arduino sketch BIN hint removed")
     check("averageInterval" in JS and "analytics.coveragePartial" in JS, "average-interval heatmap UI")
     interruption_api = (ROOT / "interruption_api.cpp").read_text(encoding="utf-8")
     check("scanIntervalAnalytics" in interruption_api and "elapsedSeconds == current.deltaSeconds" in interruption_api, "retained adjacent-event interval scan")
-    check("delay(2000)" not in (ROOT / "display_views.cpp").read_text(encoding="utf-8") and "delay(2000)" not in (ROOT / "display_sh1106.cpp").read_text(encoding="utf-8"), "boot screen has no blocking two-second delay")
+    check("delay(4000)" not in (ROOT / "display_views.cpp").read_text(encoding="utf-8") and "delay(4000)" not in (ROOT / "display_sh1106.cpp").read_text(encoding="utf-8"), "boot screen has no blocking four-second delay")
     check(re.search(r'\{"di1"[^\n]*13,\s*PullMode::Up,\s*false[^\n]*25,\s*true,', hardware) is not None, "DI1 GPIO13 active-edge interrupt latch")
     check("AUDIO_RX_PIN = 18" in hardware and "AUDIO_TX_PIN = 19" in hardware and "AUDIO_BUSY_PIN = 39" in hardware, "DY-SV17F pin map")
     check("0x2D0000, 0x130000" in partitions, "LittleFS custom partition")
@@ -94,6 +103,9 @@ def main() -> None:
         and "I18N['swg-ob'] = {" in JS,
         "additional bundled UI languages",
     )
+    for language in ("de", "en", "it", "fr", "swg", "swg-alb", "swg-ob"):
+        token = f"Object.assign(I18N{'.' + language if '-' not in language else '[' + repr(language) + ']'}, {{"
+        check(token in JS, f"3.2.0 UI additions present for {language}")
 
     positions = [JS.find(f"{{ id: '{name}'") for name in ("device", "wifi", "memory", "time", "hardware", "ota")]
     check(all(position >= 0 for position in positions) and positions == sorted(positions), "device card order")

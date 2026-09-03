@@ -217,19 +217,23 @@ bool parseUnsignedArg(const String &value, uint32_t minValue, uint32_t maxValue,
 
 void handleProjectPreferences() {
   const bool hasSound = server.hasArg("soundEnabled");
+  const bool hasVolume = server.hasArg("soundVolume");
   const bool hasTrack = server.hasArg("soundTrack");
   const bool hasSoundMode = server.hasArg("soundMode");
+  const bool hasLanguage = server.hasArg("language");
   const bool hasDisplayEnabled = server.hasArg("displayEnabled");
+  const bool hasRotation = server.hasArg("displayRotation180");
   const bool hasFlash = server.hasArg("displayFlashEnabled");
   const bool hasMode = server.hasArg("displayMode");
   const bool hasBrightness = server.hasArg("displayBrightness");
   const bool hasDimAfter = server.hasArg("displayDimAfterMinutes");
   const bool hasDimBrightness = server.hasArg("displayDimBrightness");
-  const uint8_t fields = static_cast<uint8_t>(hasSound) + static_cast<uint8_t>(hasTrack) +
-                         static_cast<uint8_t>(hasSoundMode) + static_cast<uint8_t>(hasDisplayEnabled) +
-                         static_cast<uint8_t>(hasFlash) + static_cast<uint8_t>(hasMode) +
-                         static_cast<uint8_t>(hasBrightness) + static_cast<uint8_t>(hasDimAfter) +
-                         static_cast<uint8_t>(hasDimBrightness);
+  const uint8_t fields = static_cast<uint8_t>(hasSound) + static_cast<uint8_t>(hasVolume) +
+                         static_cast<uint8_t>(hasTrack) + static_cast<uint8_t>(hasSoundMode) +
+                         static_cast<uint8_t>(hasLanguage) + static_cast<uint8_t>(hasDisplayEnabled) +
+                         static_cast<uint8_t>(hasRotation) + static_cast<uint8_t>(hasFlash) +
+                         static_cast<uint8_t>(hasMode) + static_cast<uint8_t>(hasBrightness) +
+                         static_cast<uint8_t>(hasDimAfter) + static_cast<uint8_t>(hasDimBrightness);
   if (fields != 1U) {
     server.send(400, "application/json; charset=utf-8", "{\"ok\":false,\"error\":\"exactly_one_preference_required\"}");
     return;
@@ -244,6 +248,13 @@ void handleProjectPreferences() {
       return;
     }
     ok = InterruptionService::setSoundEnabled(value);
+  } else if (hasVolume) {
+    uint32_t value = 0;
+    if (!parseUnsignedArg(server.arg("soundVolume"), 0, 100, value)) {
+      server.send(400, "application/json; charset=utf-8", "{\"ok\":false,\"error\":\"invalid_sound_volume\"}");
+      return;
+    }
+    ok = InterruptionService::setSoundVolumePercent(static_cast<uint8_t>(value));
   } else if (hasTrack) {
     uint32_t value = 0;
     if (!parseUnsignedArg(server.arg("soundTrack"), 2, 65535, value)) {
@@ -258,6 +269,13 @@ void handleProjectPreferences() {
       return;
     }
     ok = ProjectPreferences::setSoundMode(value);
+  } else if (hasLanguage) {
+    ok = ProjectPreferences::setLanguage(server.arg("language").c_str());
+    if (!ok) {
+      server.send(400, "application/json; charset=utf-8", "{\"ok\":false,\"error\":\"invalid_language\"}");
+      return;
+    }
+    displayChanged = true;
   } else if (hasDisplayEnabled) {
     bool value = false;
     if (!parseBoolArg(server.arg("displayEnabled"), value)) {
@@ -265,6 +283,14 @@ void handleProjectPreferences() {
       return;
     }
     ok = ProjectPreferences::setDisplayEnabled(value);
+    displayChanged = ok;
+  } else if (hasRotation) {
+    bool value = false;
+    if (!parseBoolArg(server.arg("displayRotation180"), value)) {
+      server.send(400, "application/json; charset=utf-8", "{\"ok\":false,\"error\":\"invalid_display_rotation\"}");
+      return;
+    }
+    ok = ProjectPreferences::setDisplayRotation180(value);
     displayChanged = ok;
   } else if (hasFlash) {
     bool value = false;

@@ -51,7 +51,7 @@
       'theme.system': 'Automatisch / System', 'theme.light': 'Hell', 'theme.dark': 'Dunkel',
       'lang.de': 'Deutsch', 'lang.en': 'Englisch', 'lang.swg': 'Schwäbisch', 'lang.auto': 'Automatisch aus Browsersprache erkannt', 'lang.manual': 'Manuell ausgewählt',
       'action.refresh': 'Aktualisieren', 'action.retry': 'Erneut versuchen', 'action.otaUpload': 'Firmware installieren', 'action.hardwareCheckAll': 'Alle prüfen', 'action.hardwareCheck': 'Prüfen', 'action.audioTest': 'Ton testen', 'action.displayTest': 'Display testen',
-      'ota.file': 'Firmware-Datei (.bin)', 'ota.hint': 'Arduino IDE: Sketch > Export Compiled Binary. Verwende die erzeugte Firmware-Datei mit der Endung .bin.',
+      'ota.file': 'Firmware-Datei (.bin)',
       'ota.idle': 'Noch keine Firmware ausgewählt.', 'ota.ready': 'Bereit zum Update.', 'ota.uploading': 'Firmware wird übertragen und in die inaktive OTA-Partition geschrieben.', 'ota.verifying': 'Übertragung abgeschlossen. Firmware wird geprüft und aktiviert.',
       'ota.success': 'Update erfolgreich. Das Gerät startet neu.', 'ota.reconnecting': 'Warte auf den Neustart …', 'ota.reconnected': 'Gerät ist wieder erreichbar. Seite wird neu geladen.', 'ota.reconnectFailed': 'Neustart wurde ausgelöst. Falls die Seite nicht zurückkommt, neue IP in der seriellen Ausgabe prüfen.',
       'ota.fileTooLarge': 'Die gewählte Firmware ist größer als der verfügbare OTA-Speicher.', 'ota.invalidFile': 'Bitte eine kompilierte ESP32-Firmwaredatei mit der Endung .bin auswählen.', 'ota.networkError': 'Die Verbindung ist während des Updates abgebrochen. Die bisherige Firmware bleibt aktiv, sofern der ESP32 das Update nicht erfolgreich abgeschlossen hat.', 'ota.failedPrefix': 'Update fehlgeschlagen',
@@ -112,7 +112,7 @@
       'theme.system': 'Automatic / System', 'theme.light': 'Light', 'theme.dark': 'Dark',
       'lang.de': 'German', 'lang.en': 'English', 'lang.swg': 'Swabian', 'lang.auto': 'Automatically detected from browser language', 'lang.manual': 'Selected manually',
       'action.refresh': 'Refresh', 'action.retry': 'Try again', 'action.otaUpload': 'Install firmware', 'action.hardwareCheckAll': 'Check all', 'action.hardwareCheck': 'Check', 'action.audioTest': 'Test sound', 'action.displayTest': 'Test display',
-      'ota.file': 'Firmware file (.bin)', 'ota.hint': 'Arduino IDE: Sketch > Export Compiled Binary. Use the generated firmware file ending in .bin.',
+      'ota.file': 'Firmware file (.bin)',
       'ota.idle': 'No firmware selected yet.', 'ota.ready': 'Ready to update.', 'ota.uploading': 'Firmware is being uploaded and written to the inactive OTA partition.', 'ota.verifying': 'Upload complete. Firmware is being verified and activated.',
       'ota.success': 'Update successful. The device is restarting.', 'ota.reconnecting': 'Waiting for the restart …', 'ota.reconnected': 'Device is reachable again. Reloading the page.', 'ota.reconnectFailed': 'Restart was triggered. If this page does not return, check the new IP in the serial output.',
       'ota.fileTooLarge': 'The selected firmware is larger than the available OTA capacity.', 'ota.invalidFile': 'Select a compiled ESP32 firmware file with the .bin extension.', 'ota.networkError': 'The connection was interrupted during the update. The previous firmware remains active unless the ESP32 already completed the update successfully.', 'ota.failedPrefix': 'Update failed',
@@ -173,7 +173,7 @@
       'theme.system': 'Automatisch / System', 'theme.light': 'Hell', 'theme.dark': 'Dunkel',
       'lang.de': 'Deutsch', 'lang.en': 'Englisch', 'lang.swg': 'Schwäbisch', 'lang.auto': 'Vom Browser automatisch erkannt', 'lang.manual': 'Von dir ausgwählt',
       'action.refresh': 'Neu lada', 'action.retry': 'No mal probiera', 'action.otaUpload': 'Firmware uffspiela', 'action.hardwareCheckAll': 'Alle prüfa', 'action.hardwareCheck': 'Prüfa', 'action.audioTest': 'Ton testa', 'action.displayTest': 'Display testa',
-      'ota.file': 'Firmware-Datei (.bin)', 'ota.hint': 'Arduino IDE: Sketch > Export Compiled Binary. Nimm d erzeugte Firmware-Datei mit dr Endung .bin.',
+      'ota.file': 'Firmware-Datei (.bin)',
       'ota.idle': 'No koi Firmware ausgwählt.', 'ota.ready': 'Bereit fürs Update.', 'ota.uploading': 'D Firmware wird übertraga ond in d inaktive OTA-Partition gschrieba.', 'ota.verifying': 'Übertragung fertig. D Firmware wird prüft ond aktiviert.',
       'ota.success': 'Update hat klappt. S Grät startet neu.', 'ota.reconnecting': 'I wart auf dr Neustart …', 'ota.reconnected': 'S Grät isch wieder erreichbar. D Seite wird neu glada.', 'ota.reconnectFailed': 'Dr Neustart isch ausglöst. Wenn d Seite net wiederkommt, guck nach dr neua IP in dr seriella Ausgabe.',
       'ota.fileTooLarge': 'D ausgwählte Firmware isch größer als dr freie OTA-Speicher.', 'ota.invalidFile': 'Bitte a kompilierte ESP32-Firmware mit dr Endung .bin auswähla.', 'ota.networkError': 'D Verbindung isch beim Update abbrocha. D bisherige Firmware bleibt aktiv, wenn dr ESP32 s Update net scho erfolgreich fertig gmacht hot.', 'ota.failedPrefix': 'Update fehlgschlaga',
@@ -373,7 +373,6 @@
     "action.audioTest": "Test audio",
     "action.displayTest": "Test display",
     "ota.file": "File firmware (.bin)",
-    "ota.hint": "Arduino IDE: Sketch > Export Compiled Binary. Usa il file firmware generato con estensione .bin.",
     "ota.idle": "Nessun firmware selezionato.",
     "ota.ready": "Pronto per l’aggiornamento.",
     "ota.uploading": "Il firmware viene caricato e scritto nella partizione OTA inattiva.",
@@ -684,7 +683,6 @@
     "action.audioTest": "Tester le son",
     "action.displayTest": "Tester l’affichage",
     "ota.file": "Fichier firmware (.bin)",
-    "ota.hint": "Arduino IDE : Sketch > Export Compiled Binary. Utilisez le fichier firmware généré avec l’extension .bin.",
     "ota.idle": "Aucun firmware sélectionné.",
     "ota.ready": "Prêt pour la mise à jour.",
     "ota.uploading": "Le firmware est téléversé et écrit dans la partition OTA inactive.",
@@ -1034,7 +1032,7 @@
               { labelKey: 'label.projectReserve', path: 'ota.headroomBytes', format: 'bytes' }
             ] },
             { type: 'meter', labelKey: 'label.otaCapacity', path: 'ota.usedPercent', policy: 'heapUsed', format: 'percent' },
-            { type: 'upload', id: 'firmware', endpoint: '/api/ota', fieldName: 'firmware', accept: '.bin,application/octet-stream', labelKey: 'ota.file', hintKey: 'ota.hint', buttonKey: 'action.otaUpload', maxPath: 'ota.maxBytes', visibleWhen: { path: 'ota.supported', equals: true } },
+            { type: 'upload', id: 'firmware', endpoint: '/api/ota', fieldName: 'firmware', accept: '.bin,application/octet-stream', labelKey: 'ota.file', buttonKey: 'action.otaUpload', maxPath: 'ota.maxBytes', visibleWhen: { path: 'ota.supported', equals: true } },
           ] }
         ]
       },
@@ -1056,6 +1054,92 @@
     }
   };
 
+
+  Object.assign(I18N.de, {
+    'project.section.display': 'Display',
+    'project.section.displayFeedback': 'Display-Feedback',
+    'project.section.sound': 'Ton / DY-SV17F',
+    'project.soundVolume': 'Lautstärke',
+    'project.displayRotation180': 'Display um 180° drehen',
+    'project.displayMode.dayProgress': 'Tagesfortschritt – Heute + Ø Abstand',
+    'project.displayMode.focus': 'Fokus – Zeit seit letzter Unterbrechung',
+    'project.settings.title': 'Hardware-Feedback',
+    'project.settings.desc': 'Display, Display-Feedback und Ton sind getrennt gruppiert. Änderungen gelten sofort und bleiben im ESP32 gespeichert.',
+    'card.language.desc': 'Die Sprache gilt für Weboberfläche und OLED und wird auf dem ESP32 gespeichert.'
+  });
+  Object.assign(I18N.en, {
+    'project.section.display': 'Display',
+    'project.section.displayFeedback': 'Display feedback',
+    'project.section.sound': 'Sound / DY-SV17F',
+    'project.soundVolume': 'Volume',
+    'project.displayRotation180': 'Rotate display 180°',
+    'project.displayMode.dayProgress': 'Day progress – today + average interval',
+    'project.displayMode.focus': 'Focus – time since last interruption',
+    'project.settings.title': 'Hardware feedback',
+    'project.settings.desc': 'Display, display feedback and sound are grouped separately. Changes apply immediately and remain stored on the ESP32.',
+    'card.language.desc': 'The language applies to both the web interface and OLED and is stored on the ESP32.'
+  });
+  Object.assign(I18N.it, {
+    'project.section.display': 'Display',
+    'project.section.displayFeedback': 'Feedback display',
+    'project.section.sound': 'Audio / DY-SV17F',
+    'project.soundVolume': 'Volume',
+    'project.displayRotation180': 'Ruota display di 180°',
+    'project.displayMode.dayProgress': 'Progresso giornaliero – oggi + intervallo medio',
+    'project.displayMode.focus': 'Focus – tempo dall’ultima interruzione',
+    'project.settings.title': 'Feedback hardware',
+    'project.settings.desc': 'Display, feedback del display e audio sono raggruppati separatamente. Le modifiche vengono applicate subito e salvate nell’ESP32.',
+    'card.language.desc': 'La lingua vale per interfaccia web e OLED e viene salvata nell’ESP32.'
+  });
+  Object.assign(I18N.fr, {
+    'project.section.display': 'Affichage',
+    'project.section.displayFeedback': 'Retour d’affichage',
+    'project.section.sound': 'Son / DY-SV17F',
+    'project.soundVolume': 'Volume',
+    'project.displayRotation180': 'Tourner l’affichage de 180°',
+    'project.displayMode.dayProgress': 'Progression du jour – aujourd’hui + intervalle moyen',
+    'project.displayMode.focus': 'Focus – temps depuis la dernière interruption',
+    'project.settings.title': 'Retour matériel',
+    'project.settings.desc': 'Affichage, retour visuel et son sont regroupés séparément. Les modifications sont immédiates et enregistrées sur l’ESP32.',
+    'card.language.desc': 'La langue s’applique à l’interface web et à l’OLED et est enregistrée sur l’ESP32.'
+  });
+  Object.assign(I18N.swg, {
+    'project.section.display': 'Display',
+    'project.section.displayFeedback': 'Display-Rückmeldung',
+    'project.section.sound': 'Ton / DY-SV17F',
+    'project.soundVolume': 'Lautstärk',
+    'project.displayRotation180': 'Display um 180° dreha',
+    'project.displayMode.dayProgress': 'Tagesverlauf – heit + Ø Abstand',
+    'project.displayMode.focus': 'Fokus – Zeit seit dr letschta Unterbrechung',
+    'project.settings.title': 'Hardware-Rückmeldung',
+    'project.settings.desc': 'Display, Display-Rückmeldung ond Ton send sauber trennt. Ändrunga geltet glei ond bleibet em ESP32 gspeichert.',
+    'card.language.desc': 'D Sproch gilt fürs Web ond fürs OLED ond wird em ESP32 gspeichert.'
+  });
+  Object.assign(I18N['swg-alb'], {
+    'project.section.display': 'Display',
+    'project.section.displayFeedback': 'Display-Rückmeldung',
+    'project.section.sound': 'Ton / DY-SV17F',
+    'project.soundVolume': 'Lautstärk',
+    'project.displayRotation180': 'Display um 180° dreha',
+    'project.displayMode.dayProgress': 'Tagesverlauf – heit + Ø Abstand',
+    'project.displayMode.focus': 'Fokus – Zeit seit dr letschta Unterbrechung',
+    'project.settings.title': 'Hardware-Rückmeldung',
+    'project.settings.desc': 'Display, Display-Rückmeldung ond Ton send extra gruppiert. Ändrunga geltet glei ond bleibet gspeichert.',
+    'card.language.desc': 'D Sproch gilt fürs Web ond OLED ond bleibt em ESP32 gspeichert.'
+  });
+  Object.assign(I18N['swg-ob'], {
+    'project.section.display': 'Display',
+    'project.section.displayFeedback': 'Display-Rückmeldung',
+    'project.section.sound': 'Ton / DY-SV17F',
+    'project.soundVolume': 'Lautstärk',
+    'project.displayRotation180': 'Display um 180° dreha',
+    'project.displayMode.dayProgress': 'Tagesverlauf – heit + Ø Abstand',
+    'project.displayMode.focus': 'Fokus – Zeit seit dr letschta Unterbrechung',
+    'project.settings.title': 'Hardware-Rückmeldung',
+    'project.settings.desc': 'Display, Display-Rückmeldung ond Ton send getrennt gruppiert. Ändrunga geltet sofort ond bleibet gspeichert.',
+    'card.language.desc': 'D Sproch gilt fürs Web ond OLED ond bleibt em ESP32 gspeichert.'
+  });
+
   const state = {
     project: { name: 'ESP32 UI', icon: 'chip', version: '', footerComment: '', githubUser: '', githubUserUrl: '', projectUrl: '', timeZone: 'Europe/Berlin' },
     firmware: {},
@@ -1064,7 +1148,7 @@
     connection: { deviceLoading: false, deviceRequested: false, deviceLoaded: false },
     device: {}, wifi: {}, memory: {}, hardware: { checking: false, modules: [] }, ota: { supported: null, currentBytes: 0, maxBytes: 0, headroomBytes: 0, usedPercent: 0 },
     interruptions: { todayCount: 0, unassignedCount: 0, sequence: 0, persistedSequence: 0, pendingCount: 0, droppedCount: 0, storageState: 'unavailable', soundEnabled: true, last: { available: false } },
-    projectSettings: { soundEnabled: true, soundMode: 'fixed', soundTrack: 2, soundTrackCount: 0, displayEnabled: true, displayFlashEnabled: true, displayMode: 'standard', displayBrightness: 50, displayDimAfterMinutes: 10, displayDimBrightness: 10 },
+    projectSettings: { soundEnabled: true, soundVolume: 100, soundMode: 'rotate', soundTrack: 2, soundTrackCount: 0, language: 'en', languageStored: false, displayEnabled: true, displayRotation180: false, displayFlashEnabled: true, displayMode: 'standard', displayBrightness: 65, displayDimAfterMinutes: 10, displayDimBrightness: 5 },
     analytics: { loaded: false, loading: false, dirty: false, error: '', storage: null, hourly: null, monthWeek: null, yearMonth: null, hourlyMode: 'week', metric: 'count' },
     time: { valid: false, source: 'relative', quality: 'relative', epochMs: 0, syncPerf: 0 },
     timeManagement: { activeSource: 'relative', quality: 'relative', valid: false, ntpServer: '', browserFallbackAllowed: false, ntp: {}, rtc: {}, browser: {}, system: {} },
@@ -1134,6 +1218,7 @@
     state.preferences.languageMode = 'manual';
     state.preferences.languageStored = true;
     PreferenceStore.set('language', value);
+    Transport.setProjectPreference('language', value);
     document.documentElement.lang = value;
     updateNavigationText();
     updateStatusBar();
@@ -1555,9 +1640,6 @@
     input.accept = def.accept || '.bin';
     input.dataset.uploadInput = def.id;
 
-    const hint = el('div', 'form-note');
-    hint.textContent = t(def.hintKey);
-
     const selected = el('div', 'upload-selected');
     selected.textContent = t('ota.idle');
 
@@ -1590,7 +1672,7 @@
     status.setAttribute('aria-live', 'polite');
     status.textContent = t('ota.idle');
 
-    root.append(label, input, hint, selected, actions, progressWrap, status);
+    root.append(label, input, selected, actions, progressWrap, status);
     bindVisibility(root, def.visibleWhen);
     return root;
   }
@@ -1919,10 +2001,18 @@
 
   function renderProjectSettings() {
     const root = el('div', 'project-settings');
-    const grid = el('div', 'project-settings-grid');
     const controls = {};
 
-    const addSwitch = (field, labelKey) => {
+    const addSection = (titleKey) => {
+      const section = el('section', 'project-settings-section');
+      const head = el('div', 'project-settings-section-head');
+      head.textContent = t(titleKey);
+      const grid = el('div', 'project-settings-grid');
+      section.append(head, grid); root.append(section);
+      return grid;
+    };
+
+    const addSwitch = (grid, field, labelKey) => {
       const row = el('label', 'project-setting-row project-setting-switch');
       const label = el('span', 'project-setting-label'); label.textContent = t(labelKey);
       const control = el('span', 'project-sound-control');
@@ -1930,50 +2020,71 @@
       const visual = el('span', 'project-sound-visual');
       const stateText = el('strong', 'project-sound-state');
       control.append(input, visual, stateText); row.append(label, control); grid.append(row);
-      controls[field] = { input, stateText };
+      controls[field] = { input, stateText, row };
     };
 
-    const addSelect = (field, labelKey, options) => {
+    const addSelect = (grid, field, labelKey, options) => {
       const row = el('label', 'project-setting-row');
       const label = el('span', 'project-setting-label'); label.textContent = t(labelKey);
       const select = el('select', 'project-setting-input'); select.dataset.projectSetting = field;
       for (const [value, key] of options) { const option = el('option'); option.value = value; option.textContent = t(key); select.append(option); }
-      row.append(label, select); grid.append(row); controls[field] = { input: select };
+      row.append(label, select); grid.append(row); controls[field] = { input: select, row };
     };
 
-    const addNumber = (field, labelKey, min, max, suffixKey = '') => {
+    const addNumber = (grid, field, labelKey, min, max, suffixKey = '') => {
       const row = el('label', 'project-setting-row');
       const label = el('span', 'project-setting-label'); label.textContent = t(labelKey);
       const wrap = el('span', 'project-number-control');
       const input = el('input', 'project-setting-input'); input.type = 'number'; input.min = String(min); input.max = String(max); input.step = '1'; input.dataset.projectSetting = field;
       wrap.append(input);
       if (suffixKey) { const suffix = el('span', 'project-setting-suffix'); suffix.textContent = t(suffixKey); wrap.append(suffix); }
-      row.append(label, wrap); grid.append(row); controls[field] = { input };
+      row.append(label, wrap); grid.append(row); controls[field] = { input, row };
     };
 
-    const addRange = (field, labelKey, min, max) => {
+    const addRange = (grid, field, labelKey, min, max) => {
       const row = el('label', 'project-setting-row');
       const label = el('span', 'project-setting-label'); label.textContent = t(labelKey);
       const wrap = el('span', 'project-range-control');
       const input = el('input', 'project-setting-range'); input.type = 'range'; input.min = String(min); input.max = String(max); input.step = '1'; input.dataset.projectSetting = field;
       const output = el('output', 'project-range-value'); output.textContent = '0 %';
       input.addEventListener('input', () => { output.textContent = `${input.value} %`; });
-      wrap.append(input, output); row.append(label, wrap); grid.append(row); controls[field] = { input, output };
+      wrap.append(input, output); row.append(label, wrap); grid.append(row); controls[field] = { input, output, row };
     };
 
-    addSwitch('soundEnabled', 'interruptions.sound');
-    addSelect('soundMode', 'project.soundMode', [['fixed','project.soundMode.fixed'],['rotate','project.soundMode.rotate']]);
-    addNumber('soundTrack', 'project.soundTrack', 2, 65535);
-    const soundHint = el('div', 'form-note project-setting-note'); grid.append(soundHint);
-    addSwitch('displayEnabled', 'project.displayEnabled');
-    addSwitch('displayFlashEnabled', 'project.displayFlash');
-    addSelect('displayMode', 'project.displayMode', [['standard','project.displayMode.standard'],['count','project.displayMode.count'],['last','project.displayMode.last']]);
-    addRange('displayBrightness', 'project.displayBrightness', 1, 100);
-    addNumber('displayDimAfterMinutes', 'project.displayDimAfter', 0, 1440, 'project.minutes');
-    const dimHint = el('div', 'form-note project-setting-note'); dimHint.textContent = t('project.dimDisabled'); grid.append(dimHint);
-    addRange('displayDimBrightness', 'project.displayDimBrightness', 0, 100);
+    const addHardwareAction = (grid, moduleId, actionId, labelKey, iconName) => {
+      const row = el('div', 'project-setting-row project-setting-action');
+      const label = el('span', 'project-setting-label'); label.textContent = t(labelKey);
+      const button = el('button', 'button'); button.type = 'button'; button.dataset.hardwareAction = actionId; button.dataset.hardwareModule = moduleId;
+      button.append(icon(iconName)); const text = el('span'); text.textContent = t(labelKey); button.append(text);
+      row.append(label, button); grid.append(row);
+    };
+
+    const displayGrid = addSection('project.section.display');
+    addSwitch(displayGrid, 'displayEnabled', 'project.displayEnabled');
+    addSelect(displayGrid, 'displayMode', 'project.displayMode', [
+      ['standard','project.displayMode.standard'], ['count','project.displayMode.count'], ['last','project.displayMode.last'],
+      ['day-progress','project.displayMode.dayProgress'], ['focus','project.displayMode.focus']
+    ]);
+    addSwitch(displayGrid, 'displayRotation180', 'project.displayRotation180');
+    addRange(displayGrid, 'displayBrightness', 'project.displayBrightness', 1, 100);
+    addNumber(displayGrid, 'displayDimAfterMinutes', 'project.displayDimAfter', 0, 1440, 'project.minutes');
+    const dimHint = el('div', 'form-note project-setting-note'); dimHint.textContent = t('project.dimDisabled'); displayGrid.append(dimHint);
+    addRange(displayGrid, 'displayDimBrightness', 'project.displayDimBrightness', 0, 100);
+    addHardwareAction(displayGrid, 'display', 'test', 'action.displayTest', 'display');
+
+    const feedbackGrid = addSection('project.section.displayFeedback');
+    addSwitch(feedbackGrid, 'displayFlashEnabled', 'project.displayFlash');
+
+    const soundGrid = addSection('project.section.sound');
+    addSwitch(soundGrid, 'soundEnabled', 'interruptions.sound');
+    addRange(soundGrid, 'soundVolume', 'project.soundVolume', 0, 100);
+    addSelect(soundGrid, 'soundMode', 'project.soundMode', [['fixed','project.soundMode.fixed'],['rotate','project.soundMode.rotate']]);
+    addNumber(soundGrid, 'soundTrack', 'project.soundTrack', 2, 65535);
+    const soundHint = el('div', 'form-note project-setting-note'); soundGrid.append(soundHint);
+    addHardwareAction(soundGrid, 'audio', 'test', 'action.audioTest', 'audio');
+
     const message = el('div', 'project-setting-message'); message.setAttribute('aria-live', 'polite'); message.dataset.projectSettingMessage = '1';
-    root.append(grid, message);
+    root.append(message);
 
     const update = () => {
       const ps = state.projectSettings || {};
@@ -1983,11 +2094,13 @@
           if (input.type === 'checkbox') input.checked = !!ps[field];
           else if (ps[field] != null) input.value = String(ps[field]);
         }
-        if (entry.stateText) entry.stateText.textContent = t(input.checked ? 'interruptions.soundOn' : 'interruptions.soundOff');
+        if (entry.stateText) entry.stateText.textContent = t(input.checked ? 'common.on' : 'common.off');
         if (entry.output) entry.output.textContent = `${input.value} %`;
       }
       const count = Number(ps.soundTrackCount || 0);
       controls.soundTrack.input.max = count >= 2 ? String(count) : '65535';
+      const fixedMode = (ps.soundMode || 'rotate') === 'fixed';
+      controls.soundTrack.row.hidden = !fixedMode;
       soundHint.textContent = count >= 2
         ? t('project.soundTracksAvailable').replaceAll('{n}', String(count))
         : `${t('project.soundTrackHint')} ${t('project.soundTracksUnknown')}`;
@@ -1996,7 +2109,7 @@
     return root;
   }
 
-  function localeForLabels() { return state.preferences.language === 'en' ? 'en-GB' : 'de-DE'; }
+  function localeForLabels() { const lang = state.preferences.language; return lang === 'en' ? 'en-GB' : lang === 'fr' ? 'fr-FR' : lang === 'it' ? 'it-IT' : 'de-DE'; }
   function weekdayLabels() {
     const base = Date.UTC(2024, 0, 1); // Monday
     return Array.from({ length: 7 }, (_, i) => new Intl.DateTimeFormat(localeForLabels(), { weekday: 'short', timeZone: 'UTC' }).format(new Date(base + i * 86400000)));
@@ -2539,6 +2652,18 @@
         applyStatusProviders(data.statusProviders || []);
         patchState({ project: data.project || {}, firmware: data.firmware || {}, projectSettings: data.projectSettings || state.projectSettings, timeManagement: data.timeManagement || state.timeManagement, status: { ...(data.status || {}), api: 'ok' } });
         Bindings.notify('projectSettings');
+        const deviceLanguage = data.projectSettings?.language || '';
+        const deviceLanguageStored = data.projectSettings?.languageStored === true;
+        if (!state.preferences.languageStored && deviceLanguageStored && state.preferences.availableLanguages.includes(deviceLanguage)) {
+          state.preferences.language = deviceLanguage;
+          state.preferences.languageMode = 'manual';
+          state.preferences.languageStored = true;
+          PreferenceStore.set('language', deviceLanguage);
+          document.documentElement.lang = deviceLanguage;
+        } else if (state.preferences.availableLanguages.includes(state.preferences.language) &&
+                   (!deviceLanguageStored || deviceLanguage !== state.preferences.language)) {
+          this.setProjectPreference('language', state.preferences.language);
+        }
         if (data.interruptions) applyInterruptionSummary(data.interruptions);
         Bindings.notify('timeManagement');
         syncClock(data.time);
