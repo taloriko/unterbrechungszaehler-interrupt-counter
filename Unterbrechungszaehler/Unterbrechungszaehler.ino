@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <cstring>
 
 #include "config.h"
 #include "hardware_registry.h"

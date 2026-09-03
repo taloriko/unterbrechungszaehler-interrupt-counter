@@ -80,6 +80,8 @@ void sendQuery(WaitKind kind, uint8_t command) {
   startWait(kind, command);
 }
 
+bool applyDesiredVolume();
+
 void finishProbe(StatusRegistry::State state, const char *message = "") {
   const bool shouldPlayBootTone = probeWasBoot && isDetected && HardwareConfig::AUDIO_BOOT_TONE_ENABLED;
   probeWasBoot = false;
@@ -139,7 +141,6 @@ bool applyDesiredVolume() {
 }
 
 void updateBusyPin();
-bool applyDesiredVolume();
 
 void handleFrame(uint8_t command, const uint8_t *data, uint8_t length) {
   if (command != expectedCommand || waitingFor == WaitKind::None) return;

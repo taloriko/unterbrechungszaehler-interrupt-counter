@@ -158,6 +158,8 @@ void refreshCurrentDay(bool force) {
     if (currentDayValid) {
       currentDayValid = false;
       currentSummary.todayCount = 0;
+      currentSummary.todayIntervalSumSeconds = 0;
+      currentSummary.todayIntervalSamples = 0;
       bumpRevision();
       DisplayViews::requestHomeRefresh();
     }
