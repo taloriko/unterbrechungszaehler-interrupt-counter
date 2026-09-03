@@ -31,6 +31,9 @@ jobs:
       - name: Apply UI and documentation changes
         run: python3 Unterbrechungszaehler/tools/apply_3_2_0_ui_docs.py
 
+      - name: Remove obsolete OTA sketch-BIN hint
+        run: python3 Unterbrechungszaehler/tools/fix_3_2_0_ota_hint.py
+
       - name: Generate embedded Web UI
         run: python3 Unterbrechungszaehler/tools/build_web.py
 
