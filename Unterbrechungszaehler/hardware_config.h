@@ -42,6 +42,12 @@ constexpr uint32_t AUDIO_RESPONSE_TIMEOUT_MS = 1000;
 constexpr uint8_t AUDIO_PROBE_MAX_ATTEMPTS = 2;
 constexpr uint32_t AUDIO_PROBE_RETRY_DELAY_MS = 120;
 constexpr uint32_t AUDIO_COMMAND_VERIFY_DELAY_MS = 220;
+// Playback itself is confirmed by the independent BUSY feedback line. This is
+// intentionally separate from UART query timeouts: a lost status reply must not
+// suppress otherwise valid audio. If BUSY never becomes active, resend the
+// track once before reporting a playback warning.
+constexpr uint32_t AUDIO_PLAY_BUSY_CONFIRM_MS = 450;
+constexpr uint8_t AUDIO_PLAY_MAX_ATTEMPTS = 2;
 constexpr uint32_t AUDIO_INTER_COMMAND_DELAY_MS = 120;
 constexpr uint32_t AUDIO_BOOT_GRACE_MS = 1200;
 constexpr bool AUDIO_BOOT_TONE_ENABLED = true;
