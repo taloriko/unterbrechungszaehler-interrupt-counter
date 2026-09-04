@@ -19,6 +19,9 @@
 #include "project_preferences.h"
 #include "project_config.h"
 #include "display_views.h"
+#include "rf433_api.h"
+#include "rf433_service.h"
+#include "source_registry.h"
 
 namespace {
 
@@ -342,6 +345,73 @@ void handleProjectPreferences() {
   sendJson(InterruptionApi::buildProjectPreferencesJson(true));
 }
 
+void sendRfError(int status, const char *error) {
+  String json;
+  json.reserve(96);
+  json += F("{\"ok\":false,\"error\":\"");
+  json += error ? error : "rf_error";
+  json += F("\"}");
+  server.sendHeader("Cache-Control", "no-store");
+  server.send(status, "application/json; charset=utf-8", json);
+}
+
+void handleRfSources() {
+  sendJson(Rf433Api::buildSourcesJson());
+}
+
+void handleRfLearn() {
+  uint32_t sourceId = 0;
+  if (server.hasArg("sourceId") && server.arg("sourceId").length() &&
+      !parseUnsignedArg(server.arg("sourceId"), 0, SourceRegistry::SOURCE_ID_RADIO_LAST, sourceId)) {
+    sendRfError(400, "invalid_source_id");
+    return;
+  }
+  if (sourceId != 0U && sourceId < SourceRegistry::SOURCE_ID_RADIO_FIRST) {
+    sendRfError(400, "invalid_source_id");
+    return;
+  }
+  const String name = server.arg("name");
+  if (!Rf433Service::startLearn(name.c_str(), static_cast<uint8_t>(sourceId))) {
+    sendRfError(409, SourceRegistry::learnState().error);
+    return;
+  }
+  sendJson(Rf433Api::buildSourcesJson());
+}
+
+void handleRfCancel() {
+  Rf433Service::cancelLearn();
+  sendJson(Rf433Api::buildSourcesJson());
+}
+
+void handleRfRename() {
+  uint32_t sourceId = 0;
+  const String name = server.arg("name");
+  if (!parseUnsignedArg(server.arg("sourceId"), SourceRegistry::SOURCE_ID_RADIO_FIRST,
+                        SourceRegistry::SOURCE_ID_RADIO_LAST, sourceId) || !name.length()) {
+    sendRfError(400, "invalid_source");
+    return;
+  }
+  if (!Rf433Service::renameSource(static_cast<uint8_t>(sourceId), name.c_str())) {
+    sendRfError(409, "rename_failed");
+    return;
+  }
+  sendJson(Rf433Api::buildSourcesJson());
+}
+
+void handleRfUnbind() {
+  uint32_t sourceId = 0;
+  if (!parseUnsignedArg(server.arg("sourceId"), SourceRegistry::SOURCE_ID_RADIO_FIRST,
+                        SourceRegistry::SOURCE_ID_RADIO_LAST, sourceId)) {
+    sendRfError(400, "invalid_source");
+    return;
+  }
+  if (!Rf433Service::unbindSource(static_cast<uint8_t>(sourceId))) {
+    sendRfError(409, "unbind_failed");
+    return;
+  }
+  sendJson(Rf433Api::buildSourcesJson());
+}
+
 void handleInterruptionStorage() {
   sendJson(InterruptionApi::buildStorageJson());
 }
@@ -477,6 +547,11 @@ void registerRoutes() {
   server.on("/api/interruptions/live", HTTP_GET, handleInterruptionLive);
   server.on("/api/interruptions/sound", HTTP_POST, handleInterruptionSound);
   server.on("/api/interruptions/preferences", HTTP_POST, handleProjectPreferences);
+  server.on("/api/interruptions/sources", HTTP_GET, handleRfSources);
+  server.on("/api/interruptions/rf/learn", HTTP_POST, handleRfLearn);
+  server.on("/api/interruptions/rf/cancel", HTTP_POST, handleRfCancel);
+  server.on("/api/interruptions/sources/rename", HTTP_POST, handleRfRename);
+  server.on("/api/interruptions/sources/unbind", HTTP_POST, handleRfUnbind);
   server.on("/api/interruptions/storage", HTTP_GET, handleInterruptionStorage);
   server.on("/api/interruptions/analytics", HTTP_GET, handleAnalyticsBundle);
   server.on("/api/interruptions/heatmap/hourly", HTTP_GET, handleHeatmapHourly);

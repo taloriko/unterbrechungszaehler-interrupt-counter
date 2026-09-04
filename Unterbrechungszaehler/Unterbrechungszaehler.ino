@@ -6,6 +6,7 @@
 #include "audio_dy_sv17f.h"
 #include "display_sh1106.h"
 #include "project_preferences.h"
+#include "rf433_service.h"
 #include "interruption_service.h"
 #include "ota_module.h"
 #include "serial_log.h"
@@ -43,6 +44,7 @@ void setup() {
   // Project layer starts only after base hardware/time services exist. It may
   // use the provisional RTC source immediately while NTP continues cooperatively.
   InterruptionService::begin();
+  Rf433Service::begin();
 
   beginWebServer();
   OtaModule::logStorageInfo();
@@ -60,6 +62,7 @@ void loop() {
   // Physical DI capture runs first. The project service then provides immediate
   // feedback and queues persistence before less urgent network/UI work.
   HardwareRegistry::update();
+  Rf433Service::update();
   InterruptionService::update();
   WifiModule::update();
   handleWebServer();

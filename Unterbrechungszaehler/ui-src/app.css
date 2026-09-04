@@ -503,3 +503,19 @@ button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible
   .project-setting-row { grid-template-columns: 1fr; gap: 7px; }
   .project-setting-switch { grid-template-columns: minmax(0, 1fr) auto; }
 }
+
+
+/* RF433 prototype source manager: intentionally reuses existing controls. */
+.rf433-panel { display:grid; gap:12px; }
+.rf433-head { display:flex; gap:12px; justify-content:space-between; align-items:center; flex-wrap:wrap; }
+.rf433-status[data-state="ok"] { color:var(--success); }
+.rf433-status[data-state="error"] { color:var(--danger); }
+.rf433-toolbar { display:grid; grid-template-columns:minmax(180px,1fr) auto auto auto; gap:8px; align-items:center; }
+.rf433-learn-info:empty,.rf433-last-frame:empty { display:none; }
+.rf433-source-list { display:grid; gap:8px; }
+.rf433-source-row { display:grid; grid-template-columns:minmax(180px,.7fr) minmax(280px,1.3fr); gap:12px; padding:10px; border:1px solid var(--border); border-radius:10px; }
+.rf433-source-meta { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.rf433-source-edit { display:grid; grid-template-columns:minmax(140px,1fr) auto auto auto; gap:8px; align-items:center; }
+@media (max-width:760px) {
+  .rf433-toolbar,.rf433-source-row,.rf433-source-edit { grid-template-columns:1fr; }
+}

@@ -122,12 +122,58 @@ void setStatus(StatusRegistry::State state, const char *error = "none") {
   updateInfo();
 }
 
+// The 7 header bits that v2 used for 3-bit TimeSource, 3-bit EventSource
+// and absolute-valid have 128 possible values. Only 60 are valid v2 states
+// (TimeSource 0..4, EventSource 0..5). v3 maps its 16 source IDs x 4 persisted
+// time states into 64 of the 68 patterns that are impossible for v2. Every
+// 9-byte record is therefore self-describing; no ring rewrite/version cutoff
+// is needed and old/new records can coexist through a complete ring turnover.
+constexpr uint8_t V3_HEADER_ENCODE[64] = {
+    5,6,7,13,14,15,21,22,23,29,30,31,37,38,39,45,
+    46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,
+    62,63,69,70,71,77,78,79,85,86,87,93,94,95,101,102,
+    103,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123
+};
+
+constexpr int8_t V3_HEADER_DECODE[128] = {
+    -1,-1,-1,-1,-1,0,1,2,-1,-1,-1,-1,-1,3,4,5,
+    -1,-1,-1,-1,-1,6,7,8,-1,-1,-1,-1,-1,9,10,11,
+    -1,-1,-1,-1,-1,12,13,14,-1,-1,-1,-1,-1,15,16,17,
+    18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,
+    -1,-1,-1,-1,-1,34,35,36,-1,-1,-1,-1,-1,37,38,39,
+    -1,-1,-1,-1,-1,40,41,42,-1,-1,-1,-1,-1,43,44,45,
+    -1,-1,-1,-1,-1,46,47,48,-1,-1,-1,-1,-1,49,50,51,
+    52,53,54,55,56,57,58,59,60,61,62,63,-1,-1,-1,-1
+};
+
+uint8_t persistedTimeCode(TimeTypes::Source source) {
+  switch (source) {
+    case TimeTypes::Source::Ntp: return 1;
+    case TimeTypes::Source::Rtc: return 2;
+    case TimeTypes::Source::Browser: return 3;
+    case TimeTypes::Source::None:
+    case TimeTypes::Source::Relative:
+    default: return 0;
+  }
+}
+
+TimeTypes::Source timeSourceFromV3Code(uint8_t code) {
+  switch (code & 0x03U) {
+    case 1: return TimeTypes::Source::Ntp;
+    case 2: return TimeTypes::Source::Rtc;
+    case 3: return TimeTypes::Source::Browser;
+    case 0:
+    default: return TimeTypes::Source::Relative;
+  }
+}
+
 void encodeRecord(const InterruptionTypes::CapturedEvent &event, uint64_t sequence, uint8_t out[RECORD_SIZE]) {
   put32(out, event.timeValueSeconds);
+  const uint8_t sourceId = event.sourceId <= 15U ? event.sourceId : 0U;
+  const uint8_t ordinal = static_cast<uint8_t>(sourceId * 4U + persistedTimeCode(event.timeSource));
+  const uint8_t header = V3_HEADER_ENCODE[ordinal];
   uint32_t packed = event.deltaSeconds & 0x1FFFFUL;
-  packed |= (static_cast<uint32_t>(event.timeSource) & 0x07UL) << 17;
-  packed |= (static_cast<uint32_t>(event.eventSource) & 0x07UL) << 20;
-  if (event.absoluteValid) packed |= 1UL << 23;
+  packed |= static_cast<uint32_t>(header) << 17;
   out[4] = static_cast<uint8_t>(packed);
   out[5] = static_cast<uint8_t>(packed >> 8);
   out[6] = static_cast<uint8_t>(packed >> 16);
@@ -137,15 +183,41 @@ void encodeRecord(const InterruptionTypes::CapturedEvent &event, uint64_t sequen
 
 bool decodeRecord(const uint8_t in[RECORD_SIZE], InterruptionTypes::RawEvent &out) {
   if (crc8(in, 8) != in[8]) return false;
-  const uint32_t packed = static_cast<uint32_t>(in[4]) | (static_cast<uint32_t>(in[5]) << 8) | (static_cast<uint32_t>(in[6]) << 16);
+  const uint32_t packed = static_cast<uint32_t>(in[4]) |
+                          (static_cast<uint32_t>(in[5]) << 8) |
+                          (static_cast<uint32_t>(in[6]) << 16);
+  const uint8_t header = static_cast<uint8_t>((packed >> 17) & 0x7FU);
+  const uint8_t legacyTime = static_cast<uint8_t>(header & 0x07U);
+  const uint8_t legacyEvent = static_cast<uint8_t>((header >> 3) & 0x07U);
+
+  out = InterruptionTypes::RawEvent{};
   out.timeValueSeconds = get32(in);
   out.deltaSeconds = packed & 0x1FFFFUL;
-  out.timeSource = static_cast<TimeTypes::Source>((packed >> 17) & 0x07UL);
-  out.eventSource = static_cast<InterruptionTypes::EventSource>((packed >> 20) & 0x07UL);
-  out.absoluteValid = (packed & (1UL << 23)) != 0;
   out.sequenceTag = in[7];
-  if (static_cast<uint8_t>(out.timeSource) > static_cast<uint8_t>(TimeTypes::Source::Relative)) return false;
-  if (static_cast<uint8_t>(out.eventSource) > static_cast<uint8_t>(InterruptionTypes::EventSource::Hardware)) return false;
+
+  // v2: preserve exact historic decoding. EventSource::Radio must NOT be
+  // accepted here because legacy code 6 is deliberately an impossible-v2
+  // pattern used by the self-identifying v3 codec.
+  if (legacyTime <= static_cast<uint8_t>(TimeTypes::Source::Relative) &&
+      legacyEvent <= static_cast<uint8_t>(InterruptionTypes::EventSource::Hardware)) {
+    out.timeSource = static_cast<TimeTypes::Source>(legacyTime);
+    out.eventSource = static_cast<InterruptionTypes::EventSource>(legacyEvent);
+    out.sourceId = legacyEvent;
+    out.absoluteValid = (header & 0x40U) != 0U;
+    out.formatVersion = 2;
+    return true;
+  }
+
+  const int8_t ordinal = V3_HEADER_DECODE[header];
+  if (ordinal < 0) return false;
+  out.sourceId = static_cast<uint8_t>(ordinal) >> 2;
+  const uint8_t timeCode = static_cast<uint8_t>(ordinal) & 0x03U;
+  out.timeSource = timeSourceFromV3Code(timeCode);
+  out.absoluteValid = timeCode != 0U;
+  out.eventSource = out.sourceId <= 5U
+                        ? static_cast<InterruptionTypes::EventSource>(out.sourceId)
+                        : InterruptionTypes::EventSource::Radio;
+  out.formatVersion = 3;
   return true;
 }
 

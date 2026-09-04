@@ -12,6 +12,8 @@
 #include "project_config.h"
 #include "project_preferences.h"
 #include "project_time.h"
+#include "rf433_service.h"
+#include "source_registry.h"
 #include "time_service.h"
 #include "wifi_module.h"
 
@@ -99,6 +101,8 @@ void appendSummaryObjectInternal(String &out) {
     fieldUInt64(out, "monotonicMs", summary.lastMonotonicMs);
     fieldString(out, "timeSource", TimeTypes::sourceName(summary.lastTimeSource));
     fieldString(out, "eventSource", InterruptionTypes::eventSourceName(summary.lastEventSource));
+    fieldUInt(out, "sourceId", summary.lastSourceId);
+    fieldString(out, "sourceName", SourceRegistry::sourceName(summary.lastSourceId));
     if (summary.lastDeltaSeconds < InterruptionTypes::DELTA_UNKNOWN) {
       fieldUInt(out, "deltaSeconds", summary.lastDeltaSeconds);
     } else if (summary.lastDeltaSeconds == InterruptionTypes::DELTA_FIRST_OF_DAY) {
@@ -148,6 +152,7 @@ void servicePhysicalInputDuringRead(uint16_t &counter) {
   // synchronous WebServer handler periodically runs the generic input path and
   // immediate display/audio path. Persistence stays in the normal loop.
   HardwareRegistry::update();
+  Rf433Service::update();
   InterruptionService::serviceUrgent();
   delay(0);
 }
@@ -792,7 +797,7 @@ void streamCsv(WebServer &server) {
 
   static const char header[] =
       "sequence,timestamp_utc,timestamp_local,date_local,time_local,weekday,iso_week,"
-      "time_source,event_source,delta_previous_same_day_seconds,relative_seconds,time_valid\r\n";
+      "time_source,event_source,source_id,delta_previous_same_day_seconds,relative_seconds,time_valid\r\n";
   server.chunkWrite(header, sizeof(header) - 1U);
 
   // Batch output to avoid one TCP/chunk write per CSV row. Between chunks the
@@ -803,6 +808,7 @@ void streamCsv(WebServer &server) {
 
   auto serviceCriticalPaths = [&]() {
     HardwareRegistry::update();
+    Rf433Service::update();
     InterruptionService::update();
     TimeService::update();
     WifiModule::update();
@@ -857,7 +863,7 @@ void streamCsv(WebServer &server) {
     const int length = snprintf(
         line,
         sizeof(line),
-        "%llu,%s,%s,%s,%s,%d,%d,%s,%s,%s,%lu,%s\r\n",
+        "%llu,%s,%s,%s,%s,%d,%d,%s,%s,%u,%s,%lu,%s\r\n",
         static_cast<unsigned long long>(sequence),
         utc,
         localText,
@@ -867,6 +873,7 @@ void streamCsv(WebServer &server) {
         week,
         TimeTypes::sourceName(raw.timeSource),
         InterruptionTypes::eventSourceName(raw.eventSource),
+        static_cast<unsigned int>(raw.sourceId),
         delta,
         relative,
         raw.absoluteValid ? "true" : "false");

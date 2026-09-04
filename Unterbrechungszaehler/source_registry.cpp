@@ -28,7 +28,7 @@ struct StoredEntry {
 struct StoredRegistry {
   uint32_t magic = MAGIC;
   uint16_t version = VERSION;
-  uint16_t size = sizeof(StoredRegistry);
+  uint16_t size = 0;
   StoredEntry entries[RADIO_SOURCE_CAPACITY]{};
   uint32_t crc = 0;
 };

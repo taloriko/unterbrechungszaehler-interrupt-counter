@@ -969,6 +969,9 @@
           ] },
           { id: 'project-settings', titleKey: 'project.settings.title', descriptionKey: 'project.settings.desc', icon: 'settings', width: 'full', components: [
             { type: 'projectSettings' }
+          ] },
+          { id: 'rf433-sources', titleKey: 'card.rf433', descriptionKey: 'card.rf433.desc', icon: 'hardware', width: 'full', components: [
+            { type: 'rfSources' }
           ] }
         ]
       },
@@ -1140,6 +1143,67 @@
     'card.language.desc': 'D Sproch gilt fürs Web ond OLED ond bleibt em ESP32 gspeichert.'
   });
 
+
+  const RF433_I18N = {
+    de: {
+      'status.rf433': '433 MHz', 'event.source.radio': 'Funk', 'card.rf433': 'Funkbuttons / 433 MHz',
+      'card.rf433.desc': 'CC1101-Testbetrieb: feste Funkcodes werden stabilen Source-IDs zugeordnet. Namen stehen nur in der Konfiguration, nie im Event.',
+      'rf433.ready': 'Empfänger bereit', 'rf433.offline': 'Empfänger nicht bereit', 'rf433.learning': 'Anlernen aktiv',
+      'rf433.newName': 'Name des neuen Buttons', 'rf433.learnNew': 'Neuen Button anlernen', 'rf433.cancel': 'Abbrechen', 'rf433.refresh': 'Aktualisieren',
+      'rf433.pressButton': 'Jetzt den gewünschten Funkbutton mehrfach drücken.', 'rf433.noSources': 'Noch kein Funkbutton angelernt.',
+      'rf433.sourceId': 'Source-ID', 'rf433.retained': 'Rohereignisse im Ring', 'rf433.bound': 'Gebunden', 'rf433.unbound': 'Nicht gebunden',
+      'rf433.rename': 'Umbenennen', 'rf433.replace': 'Sender ersetzen', 'rf433.unbind': 'Sender lösen', 'rf433.lastFrame': 'Letzter Funkcode',
+      'rf433.error': 'Funkaktion fehlgeschlagen', 'rf433.capacity': '{n} von 10 Funkquellen vergeben'
+    },
+    en: {
+      'status.rf433': '433 MHz', 'event.source.radio': 'Radio', 'card.rf433': 'Radio buttons / 433 MHz',
+      'card.rf433.desc': 'CC1101 test mode: fixed radio codes are mapped to stable source IDs. Names live only in configuration, never in each event.',
+      'rf433.ready': 'Receiver ready', 'rf433.offline': 'Receiver not ready', 'rf433.learning': 'Learn mode active',
+      'rf433.newName': 'Name of new button', 'rf433.learnNew': 'Learn new button', 'rf433.cancel': 'Cancel', 'rf433.refresh': 'Refresh',
+      'rf433.pressButton': 'Press the desired radio button several times now.', 'rf433.noSources': 'No radio button learned yet.',
+      'rf433.sourceId': 'Source ID', 'rf433.retained': 'Raw events retained', 'rf433.bound': 'Bound', 'rf433.unbound': 'Not bound',
+      'rf433.rename': 'Rename', 'rf433.replace': 'Replace transmitter', 'rf433.unbind': 'Unbind transmitter', 'rf433.lastFrame': 'Last radio code',
+      'rf433.error': 'Radio action failed', 'rf433.capacity': '{n} of 10 radio sources assigned'
+    },
+    it: {
+      'status.rf433': '433 MHz', 'event.source.radio': 'Radio', 'card.rf433': 'Pulsanti radio / 433 MHz',
+      'card.rf433.desc': 'Test CC1101: i codici radio fissi vengono associati a ID sorgente stabili. I nomi restano solo nella configurazione.',
+      'rf433.ready': 'Ricevitore pronto', 'rf433.offline': 'Ricevitore non pronto', 'rf433.learning': 'Apprendimento attivo',
+      'rf433.newName': 'Nome del nuovo pulsante', 'rf433.learnNew': 'Apprendi nuovo pulsante', 'rf433.cancel': 'Annulla', 'rf433.refresh': 'Aggiorna',
+      'rf433.pressButton': 'Premere ora più volte il pulsante radio desiderato.', 'rf433.noSources': 'Nessun pulsante radio appreso.',
+      'rf433.sourceId': 'ID sorgente', 'rf433.retained': 'Eventi grezzi nel ring', 'rf433.bound': 'Associato', 'rf433.unbound': 'Non associato',
+      'rf433.rename': 'Rinomina', 'rf433.replace': 'Sostituisci trasmettitore', 'rf433.unbind': 'Scollega trasmettitore', 'rf433.lastFrame': 'Ultimo codice radio',
+      'rf433.error': 'Azione radio non riuscita', 'rf433.capacity': '{n} di 10 sorgenti radio assegnate'
+    },
+    fr: {
+      'status.rf433': '433 MHz', 'event.source.radio': 'Radio', 'card.rf433': 'Boutons radio / 433 MHz',
+      'card.rf433.desc': 'Mode test CC1101 : les codes radio fixes sont associés à des ID source stables. Les noms restent uniquement dans la configuration.',
+      'rf433.ready': 'Récepteur prêt', 'rf433.offline': 'Récepteur indisponible', 'rf433.learning': 'Apprentissage actif',
+      'rf433.newName': 'Nom du nouveau bouton', 'rf433.learnNew': 'Apprendre un bouton', 'rf433.cancel': 'Annuler', 'rf433.refresh': 'Actualiser',
+      'rf433.pressButton': 'Appuyer maintenant plusieurs fois sur le bouton radio souhaité.', 'rf433.noSources': 'Aucun bouton radio appris.',
+      'rf433.sourceId': 'ID source', 'rf433.retained': 'Événements bruts conservés', 'rf433.bound': 'Associé', 'rf433.unbound': 'Non associé',
+      'rf433.rename': 'Renommer', 'rf433.replace': 'Remplacer émetteur', 'rf433.unbind': 'Dissocier émetteur', 'rf433.lastFrame': 'Dernier code radio',
+      'rf433.error': 'Action radio échouée', 'rf433.capacity': '{n} sur 10 sources radio attribuées'
+    },
+    swg: {
+      'status.rf433': '433 MHz', 'event.source.radio': 'Funk', 'card.rf433': 'Funkknöpf / 433 MHz',
+      'card.rf433.desc': 'CC1101-Test: feste Funkcodes krieget stabile Source-IDs. Dr Name steht bloß in dr Konfiguration.',
+      'rf433.ready': 'Empfänger bereit', 'rf433.offline': 'Empfänger net bereit', 'rf433.learning': 'Anlerna läuft',
+      'rf433.newName': 'Name vom neia Knopf', 'rf433.learnNew': 'Neia Knopf anlerna', 'rf433.cancel': 'Abbrecha', 'rf433.refresh': 'Neu lada',
+      'rf433.pressButton': 'Jetzt dr gewünschte Funkknopf mehrafach drucka.', 'rf433.noSources': 'No koi Funkknopf anglernt.',
+      'rf433.sourceId': 'Source-ID', 'rf433.retained': 'Rohereignis em Ring', 'rf433.bound': 'Gebunda', 'rf433.unbound': 'Net gebunda',
+      'rf433.rename': 'Umbenenna', 'rf433.replace': 'Sender ersetza', 'rf433.unbind': 'Sender lösa', 'rf433.lastFrame': 'Letschter Funkcode',
+      'rf433.error': 'Funkaktion isch schief ganga', 'rf433.capacity': '{n} vo 10 Funkquella vergebba'
+    }
+  };
+  Object.assign(I18N.de, RF433_I18N.de);
+  Object.assign(I18N.en, RF433_I18N.en);
+  Object.assign(I18N.it, RF433_I18N.it);
+  Object.assign(I18N.fr, RF433_I18N.fr);
+  Object.assign(I18N.swg, RF433_I18N.swg);
+  Object.assign(I18N['swg-alb'], RF433_I18N.swg);
+  Object.assign(I18N['swg-ob'], RF433_I18N.swg);
+
   const state = {
     project: { name: 'ESP32 UI', icon: 'chip', version: '', footerComment: '', githubUser: '', githubUserUrl: '', projectUrl: '', timeZone: 'Europe/Berlin' },
     firmware: {},
@@ -1149,6 +1213,7 @@
     device: {}, wifi: {}, memory: {}, hardware: { checking: false, modules: [] }, ota: { supported: null, currentBytes: 0, maxBytes: 0, headroomBytes: 0, usedPercent: 0 },
     interruptions: { todayCount: 0, unassignedCount: 0, sequence: 0, persistedSequence: 0, pendingCount: 0, droppedCount: 0, storageState: 'unavailable', soundEnabled: true, last: { available: false } },
     projectSettings: { soundEnabled: true, soundVolume: 100, soundMode: 'rotate', soundTrack: 2, soundTrackCount: 0, language: 'en', languageStored: false, displayEnabled: true, displayRotation180: false, displayFlashEnabled: true, displayMode: 'standard', displayBrightness: 65, displayDimAfterMinutes: 10, displayDimBrightness: 5 },
+    rf433: { rf: { ready: false }, learn: { active: false }, sources: [], assignedRadio: 0, radioCapacity: 10 },
     analytics: { loaded: false, loading: false, dirty: false, error: '', storage: null, hourly: null, monthWeek: null, yearMonth: null, hourlyMode: 'week', metric: 'count' },
     time: { valid: false, source: 'relative', quality: 'relative', epochMs: 0, syncPerf: 0 },
     timeManagement: { activeSource: 'relative', quality: 'relative', valid: false, ntpServer: '', browserFallbackAllowed: false, ntp: {}, rtc: {}, browser: {}, system: {} },
@@ -1989,7 +2054,8 @@
       lastValue.textContent = interruptionAgeText();
       const last = state.interruptions.last || {};
       const eventSourceKey = `event.source.${last.eventSource || 'unknown'}`;
-      lastMeta.textContent = last.available ? `${t(`time.source.${last.timeSource || 'relative'}`)} · ${t(eventSourceKey)}` : '';
+      const sourceLabel = last.sourceName || t(eventSourceKey);
+      lastMeta.textContent = last.available ? `${t(`time.source.${last.timeSource || 'relative'}`)} · ${sourceLabel}` : '';
       const pending = Number(state.interruptions.pendingCount || 0);
       const dropped = Number(state.interruptions.droppedCount || 0);
       status.textContent = dropped > 0 ? translatedCount('interruptions.dropped', dropped) : pending > 0 ? `${t('interruptions.pending')} (${pending})` : '';
@@ -2106,6 +2172,71 @@
         : `${t('project.soundTrackHint')} ${t('project.soundTracksUnknown')}`;
     };
     Bindings.add('projectSettings', update);
+    return root;
+  }
+
+
+  function renderRfSources() {
+    const root = el('div', 'rf433-panel');
+    const head = el('div', 'rf433-head');
+    const status = el('strong', 'rf433-status');
+    const capacity = el('span', 'rf433-capacity');
+    head.append(status, capacity);
+
+    const learnInfo = el('div', 'rf433-learn-info');
+    const toolbar = el('div', 'rf433-toolbar');
+    const nameInput = el('input', 'project-setting-input');
+    nameInput.type = 'text'; nameInput.maxLength = 23; nameInput.placeholder = t('rf433.newName'); nameInput.dataset.rfNewName = '1';
+    const learnButton = el('button', 'button'); learnButton.type = 'button'; learnButton.dataset.rfAction = 'learn-new'; learnButton.textContent = t('rf433.learnNew');
+    const cancelButton = el('button', 'button'); cancelButton.type = 'button'; cancelButton.dataset.rfAction = 'cancel'; cancelButton.textContent = t('rf433.cancel');
+    const refreshButton = el('button', 'button'); refreshButton.type = 'button'; refreshButton.dataset.rfAction = 'refresh'; refreshButton.textContent = t('rf433.refresh');
+    toolbar.append(nameInput, learnButton, cancelButton, refreshButton);
+
+    const lastFrame = el('div', 'form-note rf433-last-frame');
+    const list = el('div', 'rf433-source-list');
+    const message = el('div', 'project-setting-message'); message.setAttribute('aria-live', 'polite'); message.dataset.rfMessage = '1';
+    root.append(head, learnInfo, toolbar, lastFrame, list, message);
+
+    const update = () => {
+      const data = state.rf433 || {};
+      const rf = data.rf || {};
+      const learn = data.learn || {};
+      status.textContent = t(rf.ready ? 'rf433.ready' : 'rf433.offline');
+      status.dataset.state = rf.ready ? 'ok' : 'error';
+      capacity.textContent = t('rf433.capacity').replace('{n}', String(Number(data.assignedRadio || 0)));
+      learnInfo.textContent = learn.active
+        ? `${t('rf433.learning')} · ${t('rf433.pressButton')} (${Math.ceil(Number(learn.remainingMs || 0) / 1000)} s)`
+        : '';
+      cancelButton.hidden = !learn.active;
+      learnButton.disabled = !rf.ready || !!learn.active || Number(data.assignedRadio || 0) >= Number(data.radioCapacity || 10);
+      nameInput.disabled = !rf.ready || !!learn.active;
+      if (Number(rf.lastCode || 0) > 0) {
+        lastFrame.textContent = `${t('rf433.lastFrame')}: 0x${Number(rf.lastCode).toString(16).toUpperCase().padStart(8, '0')} · ${Number(rf.lastBits || 0)} bit`;
+      } else lastFrame.textContent = '';
+
+      list.replaceChildren();
+      const sources = Array.isArray(data.sources) ? data.sources.filter(source => source.kind === 'radio') : [];
+      if (!sources.length) {
+        const empty = el('div', 'form-note'); empty.textContent = t('rf433.noSources'); list.append(empty); return;
+      }
+      for (const source of sources) {
+        const row = el('article', 'rf433-source-row'); row.dataset.rfSourceId = String(source.id);
+        const meta = el('div', 'rf433-source-meta');
+        const id = el('strong'); id.textContent = `${t('rf433.sourceId')} ${source.id}`;
+        const retained = el('span'); retained.textContent = `${t('rf433.retained')}: ${Number(source.retainedCount || 0)}`;
+        const bound = el('span'); bound.textContent = t(source.bound ? 'rf433.bound' : 'rf433.unbound');
+        meta.append(id, retained, bound);
+        const edit = el('div', 'rf433-source-edit');
+        const input = el('input', 'project-setting-input'); input.type = 'text'; input.maxLength = 23; input.value = source.name || ''; input.dataset.rfSourceName = String(source.id);
+        const rename = el('button', 'button'); rename.type = 'button'; rename.dataset.rfAction = 'rename'; rename.textContent = t('rf433.rename');
+        const replace = el('button', 'button'); replace.type = 'button'; replace.dataset.rfAction = 'replace'; replace.textContent = t('rf433.replace');
+        const unbind = el('button', 'button'); unbind.type = 'button'; unbind.dataset.rfAction = 'unbind'; unbind.textContent = t('rf433.unbind'); unbind.disabled = !source.bound;
+        edit.append(input, rename, replace, unbind);
+        row.append(meta, edit); list.append(row);
+      }
+    };
+    Bindings.add('rf433', update);
+    queueMicrotask(() => Transport.loadRfSources());
     return root;
   }
 
@@ -2303,7 +2434,7 @@
   }
 
   function renderComponent(def) {
-    const renderers = { kv: renderKv, status: renderStatus, meter: renderMeter, select: renderSelect, switch: renderSwitch, action: renderAction, upload: renderUpload, hardware: renderHardware, timeManagement: renderTimeManagement, notice: renderNotice, list: renderList, interruptionHome: renderInterruptionHome, projectSettings: renderProjectSettings, heatmapHourly: renderHeatmapHourly, heatmapMonthWeek: renderHeatmapMonthWeek, heatmapYearMonth: renderHeatmapYearMonth, analyticsStorage: renderAnalyticsStorage };
+    const renderers = { kv: renderKv, status: renderStatus, meter: renderMeter, select: renderSelect, switch: renderSwitch, action: renderAction, upload: renderUpload, hardware: renderHardware, timeManagement: renderTimeManagement, notice: renderNotice, list: renderList, interruptionHome: renderInterruptionHome, projectSettings: renderProjectSettings, rfSources: renderRfSources, heatmapHourly: renderHeatmapHourly, heatmapMonthWeek: renderHeatmapMonthWeek, heatmapYearMonth: renderHeatmapYearMonth, analyticsStorage: renderAnalyticsStorage };
     const renderer = renderers[def.type];
     return renderer ? renderer(def) : null;
   }
@@ -2505,6 +2636,44 @@
         return false;
       } finally { if (input) input.disabled = false; }
     },
+
+    async loadRfSources() {
+      if (this._rfBusy) return;
+      this._rfBusy = true;
+      try {
+        const data = await this.requestResult('/api/interruptions/sources');
+        patchState({ rf433: data });
+        Bindings.notify('rf433');
+      } catch (error) {
+        console.warn('RF433 source load failed:', error);
+        const message = document.querySelector('[data-rf-message]');
+        if (message) { message.textContent = t('rf433.error'); message.dataset.state = 'error'; }
+      } finally { this._rfBusy = false; }
+    },
+    async startRfLearn(sourceId, name) {
+      const parts = [`name=${encodeURIComponent(String(name || '').trim())}`];
+      if (Number(sourceId) > 0) parts.push(`sourceId=${encodeURIComponent(sourceId)}`);
+      try {
+        const data = await this.requestResult(`/api/interruptions/rf/learn?${parts.join('&')}`, { method: 'POST' });
+        patchState({ rf433: data }); Bindings.notify('rf433');
+      } catch (error) { console.warn('RF433 learn failed:', error); alert(`${t('rf433.error')}: ${error.code || 'unknown'}`); }
+    },
+    async cancelRfLearn() {
+      try { const data = await this.requestResult('/api/interruptions/rf/cancel', { method: 'POST' }); patchState({ rf433: data }); Bindings.notify('rf433'); }
+      catch (error) { console.warn('RF433 cancel failed:', error); }
+    },
+    async renameRfSource(sourceId, name) {
+      try {
+        const data = await this.requestResult(`/api/interruptions/sources/rename?sourceId=${encodeURIComponent(sourceId)}&name=${encodeURIComponent(String(name || '').trim())}`, { method: 'POST' });
+        patchState({ rf433: data }); Bindings.notify('rf433');
+      } catch (error) { console.warn('RF433 rename failed:', error); alert(t('rf433.error')); }
+    },
+    async unbindRfSource(sourceId) {
+      try {
+        const data = await this.requestResult(`/api/interruptions/sources/unbind?sourceId=${encodeURIComponent(sourceId)}`, { method: 'POST' });
+        patchState({ rf433: data }); Bindings.notify('rf433');
+      } catch (error) { console.warn('RF433 unbind failed:', error); alert(t('rf433.error')); }
+    },
     async liveInterruptionTick() {
       if (this._liveBusy || !['home', 'analytics'].includes(state.activeView) || document.visibilityState !== 'visible') return;
       this._liveBusy = true;
@@ -2631,6 +2800,9 @@
         this.liveInterruptionTick();
       }
       if (state.activeView === 'analytics' && state.analytics.dirty && !state.analytics.loading) this.loadAnalytics(true);
+      if (state.activeView === 'home' && state.rf433?.learn?.active && (!this._lastRfTick || now - this._lastRfTick >= 1000)) {
+        this._lastRfTick = now; this.loadRfSources();
+      }
     },
     async loadBootstrap() {
       state.status.api = 'busy'; updateStatusBar();
@@ -2974,6 +3146,21 @@
       } finally {
         timeButton.disabled = false;
       }
+      return;
+    }
+    const rfButton = event.target.closest('[data-rf-action]');
+    if (rfButton) {
+      const action = rfButton.dataset.rfAction || '';
+      const row = rfButton.closest('[data-rf-source-id]');
+      const sourceId = row ? Number(row.dataset.rfSourceId || 0) : 0;
+      const sourceNameInput = row ? row.querySelector('[data-rf-source-name]') : null;
+      const root = rfButton.closest('.rf433-panel');
+      if (action === 'learn-new') await Transport.startRfLearn(0, root?.querySelector('[data-rf-new-name]')?.value || '');
+      else if (action === 'cancel') await Transport.cancelRfLearn();
+      else if (action === 'refresh') await Transport.loadRfSources();
+      else if (action === 'rename') await Transport.renameRfSource(sourceId, sourceNameInput?.value || '');
+      else if (action === 'replace') await Transport.startRfLearn(sourceId, sourceNameInput?.value || '');
+      else if (action === 'unbind') await Transport.unbindRfSource(sourceId);
       return;
     }
     const hardwareActionButton = event.target.closest('[data-hardware-action]');

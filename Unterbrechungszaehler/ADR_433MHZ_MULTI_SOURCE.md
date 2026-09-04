@@ -1,5 +1,8 @@
 # ADR – 433-MHz-Multi-Source-Erfassung
 
+> **Prototyp-Verfeinerung nach der ersten Analyse:** Für die konkrete Team-Zielgröße werden nicht 5, sondern **4 Bit Source-ID** verwendet. Das ergibt 16 IDs insgesamt: 0–5 für bestehende/technische Quellen und 6–15 für exakt 10 Funkquellen. Die 64 Kombinationen aus 16 Source-IDs × 4 persistierten Zeitquellen werden in 64 Headerwerte gelegt, die im alten v2-Format ungültig sind. Dadurch erkennt jeder 9-Byte-Record sein Format selbst. Ein separater Sequenz-Cutover und ein Raw-Ring-Rewrite sind nicht nötig. Diese Variante ist für den Testprototyp maßgeblich und ersetzt die weiter unten dokumentierte frühere 5-Bit-/Cutover-Idee.
+
+
 Status: **Entwurf / Diskussionsgrundlage**  
 Basis: aktueller `main`-Stand 3.2.0  
 Ziel dieses PRs: **nur Architektur und Umsetzungsplan, keine Firmwarefunktion, kein Versionssprung, kein Release**

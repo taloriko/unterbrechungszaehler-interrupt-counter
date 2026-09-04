@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.2.0."""
+"""Portable release checks for Unterbrechungszaehler 3.3.0-dev433."""
 from __future__ import annotations
 
 import gzip
@@ -60,7 +60,7 @@ def main() -> None:
     partitions = (ROOT / "partitions.csv").read_text(encoding="utf-8")
 
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.2.0"' in config, "project version 3.2.0")
+    check('SOFTWARE_VERSION[] = "3.3.0-dev433"' in config, "prototype version 3.3.0-dev433")
     check(
         'AVAILABLE_LANGUAGES_JSON[] = "[\\\"de\\\",\\\"en\\\",\\\"it\\\",\\\"fr\\\",\\\"swg\\\",\\\"swg-alb\\\",\\\"swg-ob\\\"]"' in config,
         "declared UI languages",
@@ -72,6 +72,13 @@ def main() -> None:
     check("RAW_RECORD_SIZE = 9" in project, "9-byte raw record")
     check("DAILY_AGGREGATE_CAPACITY = 2300" in project, "daily aggregate retention")
     check("PENDING_EVENT_CAPACITY = 64" in project, "64-event fixed persistence queue")
+    source_registry = (ROOT / "source_registry.h").read_text(encoding="utf-8")
+    raw_store = (ROOT / "interruption_store.cpp").read_text(encoding="utf-8")
+    check("SOURCE_ID_RADIO_FIRST = 6" in source_registry and "SOURCE_ID_RADIO_LAST = 15" in source_registry, "exactly ten RF logical source ids")
+    check("V3_HEADER_ENCODE[64]" in raw_store and "V3_HEADER_DECODE[128]" in raw_store, "self-describing mixed v2/v3 raw codec")
+    check("out.sourceId" in raw_store and "RAW_RECORD_SIZE = 9" in project, "source id stored without growing raw records")
+    check("RF433_SCK_PIN = 14" in hardware and "RF433_MISO_PIN = 32" in hardware and "RF433_MOSI_PIN = 23" in hardware and "RF433_CS_PIN = 25" in hardware and "RF433_GDO0_PIN = 26" in hardware and "RF433_GDO2_PIN = 27" in hardware, "CC1101 pin map")
+    check((ROOT / "rf433_cc1101.cpp").exists() and (ROOT / "source_registry.cpp").exists(), "RF receiver and source registry modules")
     check("DISPLAY_ENABLED_DEFAULT = true" in project, "persistent display master default")
     check("DISPLAY_BOOT_SCREEN_MIN_MS = 4000" in hardware, "four-second nonblocking boot screen minimum")
     check("displayEnabled" in JS and "project.displayEnabled" in JS, "display master switch in UI")
@@ -113,6 +120,7 @@ def main() -> None:
     check("const weeks = Array.from({ length: 53 }, (_, i) => String(i + 1))" in JS, "calendar-week heatmap headers use numbers only")
     check("Bindings.notify('analytics.monthWeek')" in JS and "Bindings.notify('analytics.hourly')" in JS, "manual heatmap filters trigger targeted rerender")
     check("projectSettings: renderProjectSettings" in JS, "Home project settings card")
+    check("rfSources: renderRfSources" in JS and "card.rf433" in JS, "RF source manager in Home UI")
     check("SoundMode::Rotate" in (ROOT / "project_preferences.cpp").read_text(encoding="utf-8"), "rotating interruption sound mode")
     check("Track 1 belongs exclusively to the boot sound" in (ROOT / "interruption_service.cpp").read_text(encoding="utf-8"), "boot track excluded from rotating interruption sound")
     check(not re.search(r"\.(?:innerHTML|outerHTML)\s*=|insertAdjacentHTML\s*\(|document\.write\s*\(", JS), "no unsafe bulk DOM HTML writes")
@@ -124,6 +132,11 @@ def main() -> None:
         "/api/interruptions/live",
         "/api/interruptions/sound",
         "/api/interruptions/preferences",
+        "/api/interruptions/sources",
+        "/api/interruptions/rf/learn",
+        "/api/interruptions/rf/cancel",
+        "/api/interruptions/sources/rename",
+        "/api/interruptions/sources/unbind",
         "/api/interruptions/storage",
         "/api/interruptions/analytics",
         "/api/interruptions/heatmap/hourly",

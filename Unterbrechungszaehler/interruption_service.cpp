@@ -12,6 +12,7 @@
 #include "project_time.h"
 #include "serial_log.h"
 #include "status_registry.h"
+#include "source_registry.h"
 #include "time_service.h"
 
 namespace InterruptionService {
@@ -87,6 +88,7 @@ void loadLastEvent() {
   currentSummary.lastTimeValueSeconds = raw.timeValueSeconds;
   currentSummary.lastTimeSource = raw.timeSource;
   currentSummary.lastEventSource = raw.eventSource;
+  currentSummary.lastSourceId = raw.sourceId;
   currentSummary.lastDeltaSeconds = raw.deltaSeconds;
   currentSummary.lastMonotonicMs = 0; // monotonic time cannot span reboot
   if (raw.absoluteValid) {
@@ -182,9 +184,22 @@ void refreshCurrentDay(bool force) {
   }
 }
 
+uint8_t defaultSourceId(InterruptionTypes::EventSource source) {
+  switch (source) {
+    case InterruptionTypes::EventSource::PhysicalButton: return SourceRegistry::SOURCE_ID_MASTER;
+    case InterruptionTypes::EventSource::WebButton: return SourceRegistry::SOURCE_ID_WEB;
+    case InterruptionTypes::EventSource::Software: return SourceRegistry::SOURCE_ID_SOFTWARE;
+    case InterruptionTypes::EventSource::Api: return SourceRegistry::SOURCE_ID_API;
+    case InterruptionTypes::EventSource::Hardware: return SourceRegistry::SOURCE_ID_HARDWARE;
+    case InterruptionTypes::EventSource::Radio:
+    case InterruptionTypes::EventSource::Unknown:
+    default: return SourceRegistry::SOURCE_ID_UNKNOWN;
+  }
+}
+
 void onGpioChanged(const char *channelId, bool logicalState) {
   if (!logicalState || !channelId || strcmp(channelId, ProjectConfig::INTERRUPTION_INPUT_ID) != 0) return;
-  capture(InterruptionTypes::EventSource::PhysicalButton);
+  capture(InterruptionTypes::EventSource::PhysicalButton, SourceRegistry::SOURCE_ID_MASTER);
 }
 
 bool enqueue(const InterruptionTypes::CapturedEvent &event) {
@@ -287,8 +302,9 @@ void processPersistence() {
   } else {
     snprintf(deltaText, sizeof(deltaText), "%lus", static_cast<unsigned long>(event.deltaSeconds));
   }
-  SerialLog::infof("INTERRUPT", "Persisted | sequence=%llu | source=%s | time=%s | delta=%s | pending=%u",
-                   static_cast<unsigned long long>(sequence), InterruptionTypes::eventSourceName(event.eventSource),
+  SerialLog::infof("INTERRUPT", "Persisted | sequence=%llu | source=%u:%s | kind=%s | time=%s | delta=%s | pending=%u",
+                   static_cast<unsigned long long>(sequence), static_cast<unsigned int>(event.sourceId),
+                   SourceRegistry::sourceName(event.sourceId), InterruptionTypes::eventSourceName(event.eventSource),
                    TimeTypes::sourceName(event.timeSource), deltaText, static_cast<unsigned int>(queueCount));
 }
 
@@ -376,12 +392,15 @@ void serviceUrgent() {
   processFeedback();
 }
 
-bool capture(InterruptionTypes::EventSource source) {
+bool capture(InterruptionTypes::EventSource source, uint8_t sourceId) {
+  if (sourceId == SourceRegistry::SOURCE_ID_UNKNOWN) sourceId = defaultSourceId(source);
+  if (sourceId > SourceRegistry::SOURCE_ID_MAX) return false;
   const TimeTypes::Snapshot snapshot = TimeService::eventTimestamp();
   InterruptionTypes::CapturedEvent event;
   event.monotonicMs = snapshot.monotonicMs;
   event.timeSource = snapshot.source;
   event.eventSource = source;
+  event.sourceId = sourceId;
   event.absoluteValid = snapshot.valid;
   event.timeValueSeconds = snapshot.valid ? static_cast<uint32_t>(snapshot.epochMs / 1000LL)
                                           : static_cast<uint32_t>(snapshot.monotonicMs / 1000ULL);
@@ -435,6 +454,7 @@ bool capture(InterruptionTypes::EventSource source) {
   currentSummary.lastMonotonicMs = event.monotonicMs;
   currentSummary.lastTimeSource = event.timeSource;
   currentSummary.lastEventSource = source;
+  currentSummary.lastSourceId = sourceId;
   currentSummary.lastDeltaSeconds = event.deltaSeconds;
   if (event.localCalendarValid) {
     currentSummary.lastLocalDayIndex = event.localDayIndex;
@@ -463,11 +483,11 @@ bool capture(InterruptionTypes::EventSource source) {
   // nonblocking display/audio command path can safely run now. Web-triggered
   // events deliberately return their HTTP response first and are serviced a
   // couple of milliseconds later by update().
-  if (source == InterruptionTypes::EventSource::PhysicalButton) serviceUrgent();
+  if (source == InterruptionTypes::EventSource::PhysicalButton || source == InterruptionTypes::EventSource::Radio) serviceUrgent();
   return true;
 }
 
-bool captureWeb() { return capture(InterruptionTypes::EventSource::WebButton); }
+bool captureWeb() { return capture(InterruptionTypes::EventSource::WebButton, SourceRegistry::SOURCE_ID_WEB); }
 const InterruptionTypes::Summary &summary() { return currentSummary; }
 
 bool setSoundEnabled(bool enabled) {
