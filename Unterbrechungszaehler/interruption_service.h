@@ -10,7 +10,7 @@ void update();
 // It never performs filesystem persistence or statistics work.
 void serviceUrgent();
 
-bool capture(InterruptionTypes::EventSource source);
+bool capture(InterruptionTypes::EventSource source, uint8_t sourceId = 0);
 bool captureWeb();
 
 const InterruptionTypes::Summary &summary();
