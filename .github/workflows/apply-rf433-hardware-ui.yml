@@ -1,0 +1,46 @@
+name: Apply RF433 hardware UI refinement
+
+on:
+  push:
+    branches:
+      - "design/433mhz-multisource"
+    paths:
+      - "Unterbrechungszaehler/tools/apply_rf433_hardware_ui.py"
+      - ".github/workflows/apply-rf433-hardware-ui.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: design/433mhz-multisource
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Apply refinement
+        run: python3 Unterbrechungszaehler/tools/apply_rf433_hardware_ui.py
+      - name: Regenerate embedded web UI
+        run: python3 Unterbrechungszaehler/tools/build_web.py
+      - name: Portable checks
+        run: python3 Unterbrechungszaehler/tools/release_check.py
+      - name: Diff sanity
+        run: git diff --check
+      - name: Commit refinement
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No generated changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Unterbrechungszaehler
+          git commit -m "Refine RF433 hardware status, tests and UI"
+          git push origin HEAD:design/433mhz-multisource
