@@ -27,6 +27,12 @@ Bewusst eng: gängige **433,92-MHz-ASK/OOK-Festcode-Sender** mit etwa 20–32 Bi
 
 Die Firmware verlangt zwei übereinstimmende empfangene Frames, bevor ein Tastendruck akzeptiert wird, und unterdrückt die Wiederholungen eines einzelnen Funk-Tastendrucks anschließend kurz. Damit soll ein typischer Sender mit mehreren identischen Wiederholtelegrammen genau eine Unterbrechung erzeugen.
 
+## Test-OTA
+
+Die OTA wird nicht als GitHub Release veröffentlicht. Sie entsteht ausschließlich als Artefakt des erfolgreichen PR-Builds. Nach jeder weiteren Codeänderung im Draft-PR gilt immer das Artefakt des neuesten grünen `Firmware build`.
+
+ZIP des erfolgreichen Builds herunterladen, entpacken und die enthaltene `Unterbrechungszaehler-3.3.0-dev433-OTA.bin` über die bestehende OTA-Seite hochladen.
+
 ## Anlernen
 
 1. `3.3.0-dev433` OTA installieren.
