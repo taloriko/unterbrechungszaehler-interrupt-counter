@@ -26,7 +26,17 @@ constexpr uint32_t FRAME_GAP_US = 5000;
 constexpr uint32_t FORCE_FRAME_GAP_US = 7000;
 constexpr uint32_t REPEAT_WINDOW_MS = 650;
 constexpr uint32_t PRESS_DEDUPE_MS = 550;
-constexpr uint32_t RECEIVE_TEST_MS = 5000;
+constexpr uint32_t RECEIVE_TEST_MS = 10000;
+constexpr uint32_t RECEIVE_TEST_SWITCH_MS = 1500;
+constexpr uint32_t SOMFY_HALF_MIN_US = 448;
+constexpr uint32_t SOMFY_HALF_MAX_US = 832;
+constexpr uint32_t SOMFY_SYMBOL_MIN_US = 896;
+constexpr uint32_t SOMFY_SYMBOL_MAX_US = 1664;
+constexpr uint32_t SOMFY_HW_SYNC_MIN_US = 1792;
+constexpr uint32_t SOMFY_HW_SYNC_MAX_US = 3328;
+constexpr uint32_t SOMFY_SW_SYNC_MIN_US = 3395;
+constexpr uint32_t SOMFY_SW_SYNC_MAX_US = 6305;
+constexpr uint32_t SOMFY_GLITCH_MIN_US = 300;
 
 struct RegisterSetting { uint8_t address; uint8_t value; };
 
@@ -93,6 +103,21 @@ uint32_t receiveTestStartedMs = 0;
 const char *receiveTestResultText = "idle";
 Frame receiveTestFrame;
 
+enum class CaptureMode : uint8_t { FixedOok = 0, SomfyRts = 1 };
+volatile CaptureMode captureMode = CaptureMode::FixedOok;
+bool receiveTestSomfyPhase = false;
+uint32_t receiveTestPhaseStartedMs = 0;
+
+volatile bool somfyReceiving = false;
+volatile bool somfyWaitingHalf = false;
+volatile bool somfyReady = false;
+volatile uint8_t somfySyncCount = 0;
+volatile uint8_t somfyBitCount = 0;
+volatile uint8_t somfyPreviousBit = 0;
+volatile uint8_t somfyPayload[7]{};
+volatile uint8_t somfyReadyPayload[7]{};
+volatile uint8_t somfyReadySyncCount = 0;
+
 void setHealth(StatusRegistry::State state) {
   currentHealth = state;
   StatusRegistry::setState("rf433", state);
@@ -147,6 +172,94 @@ uint8_t readStatusRegister(uint8_t address) {
   return value;
 }
 
+uint8_t readConfigRegister(uint8_t address) {
+  if (!selectChip()) return 0xFF;
+  SPI.transfer(static_cast<uint8_t>(address | READ_SINGLE));
+  const uint8_t value = SPI.transfer(0);
+  deselectChip();
+  return value;
+}
+
+bool verifyFixedConfiguration() {
+  return readConfigRegister(0x02) == 0x0D &&
+         readConfigRegister(0x08) == 0x32 &&
+         readConfigRegister(0x0D) == 0x10 &&
+         readConfigRegister(0x0E) == 0xB0 &&
+         readConfigRegister(0x0F) == 0x71 &&
+         readConfigRegister(0x12) == 0x30;
+}
+
+void IRAM_ATTR resetSomfyCapture(bool clearReady) {
+  somfyReceiving = false;
+  somfyWaitingHalf = false;
+  somfySyncCount = 0;
+  somfyBitCount = 0;
+  somfyPreviousBit = 0;
+  for (uint8_t i = 0; i < 7; ++i) somfyPayload[i] = 0;
+  if (clearReady) {
+    somfyReady = false;
+    somfyReadySyncCount = 0;
+    for (uint8_t i = 0; i < 7; ++i) somfyReadyPayload[i] = 0;
+  }
+}
+
+void IRAM_ATTR appendSomfyBit() {
+  if (somfyBitCount >= 56U || somfyReady) return;
+  if (somfyPreviousBit) {
+    somfyPayload[somfyBitCount / 8U] |= static_cast<uint8_t>(1U << (7U - (somfyBitCount % 8U)));
+  }
+  ++somfyBitCount;
+  if (somfyBitCount < 56U) return;
+
+  for (uint8_t i = 0; i < 7; ++i) somfyReadyPayload[i] = somfyPayload[i];
+  somfyReadySyncCount = somfySyncCount;
+  somfyReady = true;
+  somfyReceiving = false;
+  somfyWaitingHalf = false;
+  somfySyncCount = 0;
+  somfyBitCount = 0;
+  somfyPreviousBit = 0;
+  for (uint8_t i = 0; i < 7; ++i) somfyPayload[i] = 0;
+}
+
+void IRAM_ATTR feedSomfyDuration(uint32_t duration) {
+  if (somfyReady) return;
+
+  if (!somfyReceiving) {
+    if (duration >= SOMFY_HW_SYNC_MIN_US && duration <= SOMFY_HW_SYNC_MAX_US) {
+      if (somfySyncCount < 31U) ++somfySyncCount;
+      return;
+    }
+    if (duration >= SOMFY_SW_SYNC_MIN_US && duration <= SOMFY_SW_SYNC_MAX_US && somfySyncCount >= 4U) {
+      somfyReceiving = true;
+      somfyWaitingHalf = false;
+      somfyBitCount = 0;
+      somfyPreviousBit = 0;
+      for (uint8_t i = 0; i < 7; ++i) somfyPayload[i] = 0;
+      return;
+    }
+    somfySyncCount = 0;
+    return;
+  }
+
+  if (duration >= SOMFY_SYMBOL_MIN_US && duration <= SOMFY_SYMBOL_MAX_US && !somfyWaitingHalf) {
+    somfyPreviousBit ^= 1U;
+    appendSomfyBit();
+    return;
+  }
+  if (duration >= SOMFY_HALF_MIN_US && duration <= SOMFY_HALF_MAX_US) {
+    if (somfyWaitingHalf) {
+      somfyWaitingHalf = false;
+      appendSomfyBit();
+    } else {
+      somfyWaitingHalf = true;
+    }
+    return;
+  }
+
+  resetSomfyCapture(false);
+}
+
 void IRAM_ATTR finalizeFrameFromIsr() {
   if (writeCount < MIN_FRAME_PULSES) {
     writeCount = 0;
@@ -167,8 +280,17 @@ void IRAM_ATTR finalizeFrameFromIsr() {
 void IRAM_ATTR onDataEdge() {
   const uint32_t nowUs = micros();
   const uint32_t duration = static_cast<uint32_t>(nowUs - lastEdgeUs);
-  lastEdgeUs = nowUs;
 
+  if (captureMode == CaptureMode::SomfyRts) {
+    // RTS decoding uses the edge-to-edge Manchester timing. Ignore tiny glitches
+    // without moving the reference edge, matching the protocol's timing model.
+    if (duration < SOMFY_GLITCH_MIN_US) return;
+    lastEdgeUs = nowUs;
+    feedSomfyDuration(duration);
+    return;
+  }
+
+  lastEdgeUs = nowUs;
   if (duration > FRAME_GAP_US) {
     finalizeFrameFromIsr();
     return;
@@ -184,6 +306,34 @@ void IRAM_ATTR onDataEdge() {
     return;
   }
   pulseBuffers[writeBuffer][writeCount++] = static_cast<uint16_t>(duration);
+}
+
+bool applyCaptureMode(CaptureMode mode) {
+  detachInterrupt(digitalPinToInterrupt(HardwareConfig::RF433_GDO0_PIN));
+  if (!strobe(SIDLE)) return false;
+
+  // 26 MHz crystal: 433.92 MHz = 0x10B071, Somfy RTS 433.42 MHz = 0x10AB85.
+  const bool somfy = mode == CaptureMode::SomfyRts;
+  if (!writeRegister(0x0D, 0x10) ||
+      !writeRegister(0x0E, somfy ? 0xAB : 0xB0) ||
+      !writeRegister(0x0F, somfy ? 0x85 : 0x71)) {
+    return false;
+  }
+  strobe(SFRX);
+
+  noInterrupts();
+  captureMode = mode;
+  writeCount = 0;
+  readyFrame = false;
+  readyCount = 0;
+  resetSomfyCapture(true);
+  lastEdgeUs = micros();
+  interrupts();
+
+  if (!strobe(SRX)) return false;
+  currentInfo.activeFrequencyHz = somfy ? HardwareConfig::RF433_SOMFY_FREQUENCY_HZ : HardwareConfig::RF433_FREQUENCY_HZ;
+  attachInterrupt(digitalPinToInterrupt(HardwareConfig::RF433_GDO0_PIN), onDataEdge, CHANGE);
+  return true;
 }
 
 void finalizeSilentFrameIfNeeded() {
@@ -249,11 +399,71 @@ bool decodeFrame(const uint16_t *timings, uint16_t count, Frame &out) {
   if (!found || bestBits == 0) return false;
   const uint32_t averageShort = bestShortSum / bestBits;
   const uint32_t bucket = (averageShort + 12U) / 25U;
+  out.protocol = Protocol::FixedOok;
   out.code = bestCode;
   out.bitCount = bestBits;
   out.pulseBucket = static_cast<uint8_t>(bucket > 255U ? 255U : bucket);
   out.repeats = 1;
   return true;
+}
+
+bool decodeSomfyPayload(const uint8_t encoded[7], Frame &out) {
+  uint8_t decoded[7]{};
+  decoded[0] = encoded[0];
+  for (uint8_t i = 1; i < 7; ++i) decoded[i] = static_cast<uint8_t>(encoded[i] ^ encoded[i - 1U]);
+
+  uint8_t checksum = 0;
+  for (uint8_t i = 0; i < 7; ++i) checksum ^= static_cast<uint8_t>(decoded[i] ^ (decoded[i] >> 4U));
+  if ((checksum & 0x0FU) != 0U || decoded[0] == 0U) return false;
+
+  const uint32_t address = (static_cast<uint32_t>(decoded[4]) << 16U) |
+                           (static_cast<uint32_t>(decoded[5]) << 8U) |
+                           static_cast<uint32_t>(decoded[6]);
+  if (address == 0U || address == 0xFFFFFFUL) return false;
+
+  out = Frame{};
+  out.protocol = Protocol::SomfyRts;
+  out.code = address;
+  out.rollingCode = static_cast<uint16_t>((static_cast<uint16_t>(decoded[2]) << 8U) | decoded[3]);
+  out.command = static_cast<uint8_t>(decoded[1] >> 4U);
+  out.bitCount = 56;
+  out.repeats = 1;
+  return true;
+}
+
+void processSomfyReady() {
+  if (!somfyReady) return;
+  uint8_t encoded[7]{};
+  uint8_t syncCount = 0;
+  noInterrupts();
+  if (somfyReady) {
+    for (uint8_t i = 0; i < 7; ++i) encoded[i] = somfyReadyPayload[i];
+    syncCount = somfyReadySyncCount;
+    somfyReady = false;
+  }
+  interrupts();
+
+  Frame candidate;
+  if (!decodeSomfyPayload(encoded, candidate)) {
+    ++currentInfo.rejectedFrames;
+    return;
+  }
+
+  receiveTestFrame = candidate;
+  receiveTestActiveFlag = false;
+  receiveTestResultText = "somfy_received";
+  checkedAtMs = millis();
+  setHealth(StatusRegistry::State::Ok);
+  SerialLog::successf("RF433", "Somfy RTS test passed | sync=%u | address=0x%06lX | rolling=%u | command=%s",
+                      static_cast<unsigned int>(syncCount),
+                      static_cast<unsigned long>(candidate.code),
+                      static_cast<unsigned int>(candidate.rollingCode),
+                      somfyCommandName(candidate.command));
+  if (!applyCaptureMode(CaptureMode::FixedOok)) {
+    failReceiver("cc1101_restore_fixed_failed", StatusRegistry::State::Error);
+  } else {
+    currentInfo.configVerified = verifyFixedConfiguration();
+  }
 }
 
 void processCandidate(const Frame &candidate) {
@@ -269,7 +479,7 @@ void processCandidate(const Frame &candidate) {
   if (pendingRepeats < 2U) return;
   if (sameFrame(candidate, currentInfo.lastFrame) && static_cast<uint32_t>(nowMs - lastEmitMs) < PRESS_DEDUPE_MS) return;
 
-  const bool diagnostic = receiveTestActiveFlag;
+  const bool diagnostic = receiveTestActiveFlag && captureMode == CaptureMode::FixedOok;
   if (diagnostic) {
     receiveTestActiveFlag = false;
     receiveTestResultText = "received";
@@ -371,7 +581,15 @@ bool begin() {
     failReceiver("cc1101_rx_failed", StatusRegistry::State::Error);
     return false;
   }
+  currentInfo.configVerified = verifyFixedConfiguration();
+  if (!currentInfo.configVerified) {
+    failReceiver("cc1101_config_readback_failed", StatusRegistry::State::Error);
+    SerialLog::error("RF433", "CC1101 configuration readback failed; SPI wiring/register writes not confirmed");
+    return false;
+  }
 
+  captureMode = CaptureMode::FixedOok;
+  currentInfo.activeFrequencyHz = HardwareConfig::RF433_FREQUENCY_HZ;
   lastEdgeUs = micros();
   attachInterrupt(digitalPinToInterrupt(HardwareConfig::RF433_GDO0_PIN), onDataEdge, CHANGE);
   currentInfo.ready = true;
@@ -406,7 +624,14 @@ bool probe() {
     failReceiver("cc1101_probe_rx_failed", StatusRegistry::State::Error);
     return true;
   }
+  if (!verifyFixedConfiguration()) {
+    failReceiver("cc1101_probe_readback_failed", StatusRegistry::State::Error);
+    SerialLog::error("RF433", "Manual probe: configuration register readback failed");
+    return true;
+  }
 
+  currentInfo.configVerified = true;
+  currentInfo.activeFrequencyHz = HardwareConfig::RF433_FREQUENCY_HZ;
   currentInfo.partNumber = part;
   currentInfo.version = version;
   currentInfo.error = "none";
@@ -422,15 +647,48 @@ uint32_t lastCheckMs() { return checkedAtMs; }
 const char *lastError() { return currentInfo.error; }
 HardwareTypes::FeedbackType feedbackType() { return HardwareTypes::FeedbackType::ProtocolResponse; }
 
+const char *protocolName(Protocol protocol) {
+  return protocol == Protocol::SomfyRts ? "Somfy RTS" : "Fixed OOK";
+}
+
+const char *somfyCommandName(uint8_t command) {
+  switch (command & 0x0FU) {
+    case 0x1: return "My";
+    case 0x2: return "Up";
+    case 0x3: return "My+Up";
+    case 0x4: return "Down";
+    case 0x5: return "My+Down";
+    case 0x6: return "Up+Down";
+    case 0x7: return "My+Up+Down";
+    case 0x8: return "Prog";
+    case 0x9: return "Sun";
+    case 0xA: return "Flag";
+    case 0xB: return "StepDown";
+    case 0xC: return "Toggle";
+    case 0xE: return "Sensor";
+    default: return "Unknown";
+  }
+}
+
 bool startReceiveTest() {
   if (!enabled() || !currentInfo.ready || receiveTestActiveFlag) return false;
   receiveTestActiveFlag = true;
   receiveTestStartedMs = millis();
+  receiveTestPhaseStartedMs = receiveTestStartedMs;
+  receiveTestSomfyPhase = true;
   receiveTestResultText = "waiting";
   receiveTestFrame = Frame{};
   checkedAtMs = receiveTestStartedMs;
   setHealth(StatusRegistry::State::Checking);
-  SerialLog::infof("RF433", "Receive test started | window=%lu ms | press any compatible 433 MHz button",
+
+  // Start on Somfy's 433.42 MHz because a normal 433.92 MHz fixed-code sender
+  // is already covered by the production receive path. The test alternates both.
+  if (!applyCaptureMode(CaptureMode::SomfyRts)) {
+    receiveTestActiveFlag = false;
+    failReceiver("cc1101_test_retune_failed", StatusRegistry::State::Error);
+    return false;
+  }
+  SerialLog::infof("RF433", "Auto receive test started | window=%lu ms | scans 433.92 fixed OOK + 433.42 Somfy RTS | press repeatedly",
                    static_cast<unsigned long>(RECEIVE_TEST_MS));
   return true;
 }
@@ -440,6 +698,11 @@ void cancelReceiveTest() {
   receiveTestActiveFlag = false;
   receiveTestResultText = "cancelled";
   checkedAtMs = millis();
+  if (captureMode != CaptureMode::FixedOok && !applyCaptureMode(CaptureMode::FixedOok)) {
+    failReceiver("cc1101_restore_fixed_failed", StatusRegistry::State::Error);
+    return;
+  }
+  currentInfo.configVerified = verifyFixedConfiguration();
   setHealth(currentInfo.ready ? StatusRegistry::State::Ok : StatusRegistry::State::Error);
   SerialLog::info("RF433", "Receive test cancelled");
 }
@@ -455,14 +718,34 @@ const Frame &lastTestFrame() { return receiveTestFrame; }
 
 void update() {
   if (!currentInfo.ready) return;
-  processReadyFrame();
-  if (receiveTestActiveFlag && static_cast<uint32_t>(millis() - receiveTestStartedMs) >= RECEIVE_TEST_MS) {
+  if (captureMode == CaptureMode::SomfyRts) processSomfyReady();
+  else processReadyFrame();
+
+  if (!receiveTestActiveFlag) return;
+  const uint32_t nowMs = millis();
+  if (static_cast<uint32_t>(nowMs - receiveTestStartedMs) >= RECEIVE_TEST_MS) {
     receiveTestActiveFlag = false;
     receiveTestResultText = "timeout";
-    checkedAtMs = millis();
+    checkedAtMs = nowMs;
+    if (captureMode != CaptureMode::FixedOok && !applyCaptureMode(CaptureMode::FixedOok)) {
+      failReceiver("cc1101_restore_fixed_failed", StatusRegistry::State::Error);
+      return;
+    }
+    currentInfo.configVerified = verifyFixedConfiguration();
     setHealth(StatusRegistry::State::Ok);
-    SerialLog::warning("RF433", "Receive test finished without a valid fixed-code frame");
+    SerialLog::warning("RF433", "Auto receive test finished without valid fixed-code or Somfy RTS frame");
+    return;
   }
+
+  if (static_cast<uint32_t>(nowMs - receiveTestPhaseStartedMs) < RECEIVE_TEST_SWITCH_MS) return;
+  const CaptureMode nextMode = receiveTestSomfyPhase ? CaptureMode::FixedOok : CaptureMode::SomfyRts;
+  if (!applyCaptureMode(nextMode)) {
+    receiveTestActiveFlag = false;
+    failReceiver("cc1101_test_retune_failed", StatusRegistry::State::Error);
+    return;
+  }
+  receiveTestSomfyPhase = nextMode == CaptureMode::SomfyRts;
+  receiveTestPhaseStartedMs = nowMs;
 }
 
 bool pollFrame(Frame &frameOut) {

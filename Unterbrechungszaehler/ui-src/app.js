@@ -1154,8 +1154,8 @@
       'card.rf433.sources': 'Angelernte Funkbuttons', 'card.rf433.sources.desc': 'Namen, stabile Source-IDs und Senderbindungen verwalten. Die Funkempfänger-Diagnose steht direkt in der Hardwareliste darüber.',
       'hardware.rf433': 'CC1101 Funkempfänger', 'hardware.info.frequency': 'Frequenz', 'hardware.info.partNumber': 'Chip Part', 'hardware.info.chipVersion': 'Chip-Version',
       'hardware.info.decodedFrames': 'Dekodierte Frames', 'hardware.info.rejectedFrames': 'Verworfene Frames', 'hardware.info.overflowFrames': 'Pufferüberläufe',
-      'hardware.info.rfTestResult': 'Empfangstest', 'hardware.info.rfTestFrame': 'Test-Frame', 'action.rf433Test': 'Empfang testen (5 s)',
-      'rf433.test.idle': 'Noch nicht getestet', 'rf433.test.waiting': 'Warte auf Funktelegramm …', 'rf433.test.received': 'Funktelegramm empfangen', 'rf433.test.timeout': 'Kein gültiges Telegramm empfangen', 'rf433.test.cancelled': 'Test abgebrochen',
+      'hardware.info.rfTestResult': 'Empfangstest', 'hardware.info.rfTestFrame': 'Test-Frame', 'hardware.info.configVerified': 'Registerprüfung', 'action.rf433Test': 'Empfang testen (Auto 10 s)',
+      'rf433.test.idle': 'Noch nicht getestet', 'rf433.test.waiting': 'Scanne 433,92 MHz und Somfy RTS 433,42 MHz – Taste mehrfach drücken …', 'rf433.test.received': '433,92-MHz-Funktelegramm empfangen', 'rf433.test.somfy_received': 'Somfy RTS auf 433,42 MHz empfangen', 'rf433.test.timeout': 'Kein gültiges Festcode- oder Somfy-RTS-Telegramm empfangen', 'rf433.test.cancelled': 'Test abgebrochen',
       'rf433.ready': 'Empfänger bereit', 'rf433.offline': 'Empfänger nicht bereit', 'rf433.learning': 'Anlernen aktiv',
       'rf433.newName': 'Name des neuen Buttons', 'rf433.learnNew': 'Neuen Button anlernen', 'rf433.cancel': 'Abbrechen', 'rf433.refresh': 'Aktualisieren',
       'rf433.pressButton': 'Jetzt den gewünschten Funkbutton mehrfach drücken.', 'rf433.noSources': 'Noch kein Funkbutton angelernt.',
@@ -1169,8 +1169,8 @@
       'card.rf433.sources': 'Learned radio buttons', 'card.rf433.sources.desc': 'Manage names, stable source IDs and transmitter bindings. Receiver diagnostics are shown in the hardware list above.',
       'hardware.rf433': 'CC1101 radio receiver', 'hardware.info.frequency': 'Frequency', 'hardware.info.partNumber': 'Chip part', 'hardware.info.chipVersion': 'Chip version',
       'hardware.info.decodedFrames': 'Decoded frames', 'hardware.info.rejectedFrames': 'Rejected frames', 'hardware.info.overflowFrames': 'Buffer overflows',
-      'hardware.info.rfTestResult': 'Receive test', 'hardware.info.rfTestFrame': 'Test frame', 'action.rf433Test': 'Test reception (5 s)',
-      'rf433.test.idle': 'Not tested yet', 'rf433.test.waiting': 'Waiting for radio frame …', 'rf433.test.received': 'Radio frame received', 'rf433.test.timeout': 'No valid frame received', 'rf433.test.cancelled': 'Test cancelled',
+      'hardware.info.rfTestResult': 'Receive test', 'hardware.info.rfTestFrame': 'Test frame', 'hardware.info.configVerified': 'Register verification', 'action.rf433Test': 'Test reception (auto 10 s)',
+      'rf433.test.idle': 'Not tested yet', 'rf433.test.waiting': 'Scanning 433.92 MHz and Somfy RTS 433.42 MHz – press repeatedly …', 'rf433.test.received': '433.92 MHz radio frame received', 'rf433.test.somfy_received': 'Somfy RTS received at 433.42 MHz', 'rf433.test.timeout': 'No valid fixed-code or Somfy RTS frame received', 'rf433.test.cancelled': 'Test cancelled',
       'rf433.ready': 'Receiver ready', 'rf433.offline': 'Receiver not ready', 'rf433.learning': 'Learn mode active',
       'rf433.newName': 'Name of new button', 'rf433.learnNew': 'Learn new button', 'rf433.cancel': 'Cancel', 'rf433.refresh': 'Refresh',
       'rf433.pressButton': 'Press the desired radio button several times now.', 'rf433.noSources': 'No radio button learned yet.',
@@ -1184,8 +1184,8 @@
       'card.rf433.sources': 'Pulsanti radio appresi', 'card.rf433.sources.desc': 'Gestione di nomi, ID sorgente stabili e associazioni. La diagnostica del ricevitore è nella lista hardware sopra.',
       'hardware.rf433': 'Ricevitore radio CC1101', 'hardware.info.frequency': 'Frequenza', 'hardware.info.partNumber': 'Parte chip', 'hardware.info.chipVersion': 'Versione chip',
       'hardware.info.decodedFrames': 'Frame decodificati', 'hardware.info.rejectedFrames': 'Frame scartati', 'hardware.info.overflowFrames': 'Overflow buffer',
-      'hardware.info.rfTestResult': 'Test ricezione', 'hardware.info.rfTestFrame': 'Frame di test', 'action.rf433Test': 'Test ricezione (5 s)',
-      'rf433.test.idle': 'Non ancora testato', 'rf433.test.waiting': 'In attesa di un frame radio …', 'rf433.test.received': 'Frame radio ricevuto', 'rf433.test.timeout': 'Nessun frame valido ricevuto', 'rf433.test.cancelled': 'Test annullato',
+      'hardware.info.rfTestResult': 'Test ricezione', 'hardware.info.rfTestFrame': 'Frame di test', 'hardware.info.configVerified': 'Verifica registri', 'action.rf433Test': 'Test ricezione (auto 10 s)',
+      'rf433.test.idle': 'Non ancora testato', 'rf433.test.waiting': 'Scansione 433,92 MHz e Somfy RTS 433,42 MHz – premere più volte …', 'rf433.test.received': 'Frame radio 433,92 MHz ricevuto', 'rf433.test.somfy_received': 'Somfy RTS ricevuto a 433,42 MHz', 'rf433.test.timeout': 'Nessun frame fixed-code o Somfy RTS valido ricevuto', 'rf433.test.cancelled': 'Test annullato',
       'rf433.ready': 'Ricevitore pronto', 'rf433.offline': 'Ricevitore non pronto', 'rf433.learning': 'Apprendimento attivo',
       'rf433.newName': 'Nome del nuovo pulsante', 'rf433.learnNew': 'Apprendi nuovo pulsante', 'rf433.cancel': 'Annulla', 'rf433.refresh': 'Aggiorna',
       'rf433.pressButton': 'Premere ora più volte il pulsante radio desiderato.', 'rf433.noSources': 'Nessun pulsante radio appreso.',
@@ -1199,8 +1199,8 @@
       'card.rf433.sources': 'Boutons radio appris', 'card.rf433.sources.desc': 'Gérer les noms, ID source stables et liaisons émetteur. Le diagnostic du récepteur est dans la liste matérielle ci-dessus.',
       'hardware.rf433': 'Récepteur radio CC1101', 'hardware.info.frequency': 'Fréquence', 'hardware.info.partNumber': 'Référence puce', 'hardware.info.chipVersion': 'Version puce',
       'hardware.info.decodedFrames': 'Trames décodées', 'hardware.info.rejectedFrames': 'Trames rejetées', 'hardware.info.overflowFrames': 'Débordements tampon',
-      'hardware.info.rfTestResult': 'Test réception', 'hardware.info.rfTestFrame': 'Trame de test', 'action.rf433Test': 'Tester réception (5 s)',
-      'rf433.test.idle': 'Pas encore testé', 'rf433.test.waiting': 'Attente d’une trame radio …', 'rf433.test.received': 'Trame radio reçue', 'rf433.test.timeout': 'Aucune trame valide reçue', 'rf433.test.cancelled': 'Test annulé',
+      'hardware.info.rfTestResult': 'Test réception', 'hardware.info.rfTestFrame': 'Trame de test', 'hardware.info.configVerified': 'Vérification registres', 'action.rf433Test': 'Tester réception (auto 10 s)',
+      'rf433.test.idle': 'Pas encore testé', 'rf433.test.waiting': 'Balayage 433,92 MHz et Somfy RTS 433,42 MHz – appuyer plusieurs fois …', 'rf433.test.received': 'Trame radio 433,92 MHz reçue', 'rf433.test.somfy_received': 'Somfy RTS reçu à 433,42 MHz', 'rf433.test.timeout': 'Aucune trame fixed-code ou Somfy RTS valide reçue', 'rf433.test.cancelled': 'Test annulé',
       'rf433.ready': 'Récepteur prêt', 'rf433.offline': 'Récepteur indisponible', 'rf433.learning': 'Apprentissage actif',
       'rf433.newName': 'Nom du nouveau bouton', 'rf433.learnNew': 'Apprendre un bouton', 'rf433.cancel': 'Annuler', 'rf433.refresh': 'Actualiser',
       'rf433.pressButton': 'Appuyer maintenant plusieurs fois sur le bouton radio souhaité.', 'rf433.noSources': 'Aucun bouton radio appris.',
@@ -1214,8 +1214,8 @@
       'card.rf433.sources': 'Anglernte Funkknöpf', 'card.rf433.sources.desc': 'Nama, stabile Source-IDs ond Senderbindunga verwalta. D Empfängerdiagnose steht oba in dr Hardwarelist.',
       'hardware.rf433': 'CC1101 Funkempfänger', 'hardware.info.frequency': 'Frequenz', 'hardware.info.partNumber': 'Chip-Part', 'hardware.info.chipVersion': 'Chip-Version',
       'hardware.info.decodedFrames': 'Dekodierte Frames', 'hardware.info.rejectedFrames': 'Verworfene Frames', 'hardware.info.overflowFrames': 'Pufferüberläuf',
-      'hardware.info.rfTestResult': 'Empfangstest', 'hardware.info.rfTestFrame': 'Test-Frame', 'action.rf433Test': 'Empfang testa (5 s)',
-      'rf433.test.idle': 'No net testet', 'rf433.test.waiting': 'Wart auf a Funktelegramm …', 'rf433.test.received': 'Funktelegramm empfangen', 'rf433.test.timeout': 'Koi gültigs Telegramm empfangen', 'rf433.test.cancelled': 'Test abbrocha',
+      'hardware.info.rfTestResult': 'Empfangstest', 'hardware.info.rfTestFrame': 'Test-Frame', 'hardware.info.configVerified': 'Registerprüfig', 'action.rf433Test': 'Empfang testa (Auto 10 s)',
+      'rf433.test.idle': 'No net testet', 'rf433.test.waiting': 'Scannt 433,92 MHz ond Somfy RTS 433,42 MHz – Knopf mehrafach drucka …', 'rf433.test.received': '433,92-MHz-Funktelegramm empfangen', 'rf433.test.somfy_received': 'Somfy RTS auf 433,42 MHz empfangen', 'rf433.test.timeout': 'Koi gültigs Festcode- oder Somfy-RTS-Telegramm empfangen', 'rf433.test.cancelled': 'Test abbrocha',
       'rf433.ready': 'Empfänger bereit', 'rf433.offline': 'Empfänger net bereit', 'rf433.learning': 'Anlerna läuft',
       'rf433.newName': 'Name vom neia Knopf', 'rf433.learnNew': 'Neia Knopf anlerna', 'rf433.cancel': 'Abbrecha', 'rf433.refresh': 'Neu lada',
       'rf433.pressButton': 'Jetzt dr gewünschte Funkknopf mehrafach drucka.', 'rf433.noSources': 'No koi Funkknopf anglernt.',
@@ -2947,7 +2947,7 @@
       await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 380 : 300));
       try {
         const data = await this.refreshHardwareState();
-        if (data.hardware?.checking && attempt < 24) this.followHardwareCheck(attempt + 1);
+        if (data.hardware?.checking && attempt < 40) this.followHardwareCheck(attempt + 1);
       } catch (error) {
         console.warn('Hardware check follow-up failed:', error);
       }

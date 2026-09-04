@@ -663,7 +663,7 @@ for old, new in replacements:
     if old not in js:
         raise SystemExit(f"missing JS translation anchor: {old[:80]}")
     js = js.replace(old, new, 1)
-js = replace_once(js, "if (data.hardware?.checking && attempt < 4) this.followHardwareCheck(attempt + 1);", "if (data.hardware?.checking && attempt < 40) this.followHardwareCheck(attempt + 1);", "bounded hardware test follow-up")
+js = replace_once(js, "if (data.hardware?.checking && attempt < 24) this.followHardwareCheck(attempt + 1);", "if (data.hardware?.checking && attempt < 40) this.followHardwareCheck(attempt + 1);", "bounded hardware test follow-up")
 write("ui-src/app.js", js)
 
 # Portable checks explicitly guard the added diagnostics and Somfy-only test path.
@@ -674,7 +674,7 @@ checks = replace_once(
     '    check("RF433_SCK_PIN = 14" in hardware and "RF433_MISO_PIN = 32" in hardware and "RF433_MOSI_PIN = 23" in hardware and "RF433_CS_PIN = 25" in hardware and "RF433_GDO0_PIN = 26" in hardware and "RF433_GDO2_PIN = 27" in hardware, "CC1101 pin map")\n    check("RF433_SOMFY_FREQUENCY_HZ = 433420000UL" in hardware, "Somfy RTS 433.42 MHz test frequency")\n    rf_driver = (ROOT / "rf433_cc1101.cpp").read_text(encoding="utf-8")\n    check("Protocol::SomfyRts" in rf_driver and "decodeSomfyPayload" in rf_driver and "somfy_received" in rf_driver, "Somfy RTS receive-only diagnostic decoder")\n    check("verifyFixedConfiguration" in rf_driver and "configVerified" in (ROOT / "rf433_cc1101.h").read_text(encoding="utf-8"), "CC1101 register readback verification")',
     "Somfy release checks",
 )
-checks = replace_once(checks, 'check("rfSources: renderRfSources" in JS and "card.rf433" in JS, "RF source manager in Home UI")', 'check("rfSources: renderRfSources" in JS and "card.rf433" in JS, "RF source manager in Home UI")\n    check("rf433.test.somfy_received" in JS and "attempt < 40" in JS, "Somfy test UI and bounded 10-second hardware follow-up")', "Somfy UI check")
+checks = replace_once(checks, 'check("rfLearn: renderRfLearn" in JS and "rfSources: renderRfSourceList" in JS, "RF learning on Home and source manager on Device")', 'check("rfLearn: renderRfLearn" in JS and "rfSources: renderRfSourceList" in JS, "RF learning on Home and source manager on Device")\n    check("rf433.test.somfy_received" in JS and "attempt < 40" in JS, "Somfy test UI and bounded 10-second hardware follow-up")', "Somfy UI check")
 write("tools/release_check.py", checks)
 
 # Test guide: Somfy is diagnostic-only until proven on the user's real remote.

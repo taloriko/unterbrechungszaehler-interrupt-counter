@@ -57,6 +57,7 @@ constexpr int8_t RF433_CS_PIN = 25;
 constexpr int8_t RF433_GDO0_PIN = 26;  // asynchronous demodulated data
 constexpr int8_t RF433_GDO2_PIN = 27;  // carrier sense
 constexpr uint32_t RF433_FREQUENCY_HZ = 433920000UL;
+constexpr uint32_t RF433_SOMFY_FREQUENCY_HZ = 433420000UL;  // Somfy RTS receive test
 
 // CON3/BUSY is also a mode selection input during roughly the first 30 ms of
 // DY-SV17F power-up. Hardware wiring must hold it HIGH during that interval;

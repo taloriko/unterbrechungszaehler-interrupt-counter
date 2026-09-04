@@ -23,7 +23,7 @@ Der ESP32 bleibt Master. Der lokale DI1-Taster auf GPIO13 funktioniert weiter. E
 
 ## Welche Taster unterstützt der erste Prototyp?
 
-Bewusst eng: gängige **433,92-MHz-ASK/OOK-Festcode-Sender** mit etwa 20–32 Bit und kurzen/langen Pulspaaren. Das ist noch kein universeller 433-MHz-Decoder. Rolling Code, Keeloq und unbekannte/proprietäre Protokolle sind nicht zugesichert.
+Bewusst eng: gängige **433,92-MHz-ASK/OOK-Festcode-Sender** mit etwa 20–32 Bit und kurzen/langen Pulspaaren. Zusätzlich besitzt der Hardwaretest jetzt einen **passiven Somfy-RTS-Decoder für 56-Bit-RTS auf 433,42 MHz**. Dieser RTS-Pfad dient zunächst nur zur Diagnose: Er liest Senderadresse, Rolling Code und Befehl, sendet selbst nichts und erzeugt beim Test keine Unterbrechung. Rolling-Code-Protokolle außerhalb Somfy RTS, Keeloq und unbekannte/proprietäre Protokolle sind nicht zugesichert.
 
 Die Firmware verlangt zwei übereinstimmende empfangene Frames, bevor ein Tastendruck akzeptiert wird, und unterdrückt die Wiederholungen eines einzelnen Funk-Tastendrucks anschließend kurz. Damit soll ein typischer Sender mit mehreren identischen Wiederholtelegrammen genau eine Unterbrechung erzeugen.
 
@@ -47,7 +47,7 @@ Es stehen im ersten Prototyp genau **10 Funk-IDs (6–15)** zur Verfügung. IDs 
 
 ## Hardwarestatus und Empfangstest
 
-Unter **Gerät → Hardware** erscheint der CC1101 wie RTC, Display und Sound als normales Hardwaremodul. Dort werden Status, SPI-/Chipdaten, Pins sowie Frame-Zähler angezeigt. **Hardware prüfen** fragt den CC1101 über SPI erneut ab. **Empfang testen (5 s)** wartet auf ein gültiges Funktelegramm; ein dabei empfangenes Testtelegramm wird absichtlich nicht als Unterbrechung gespeichert.
+Unter **Gerät → Hardware** erscheint der CC1101 wie RTC, Display und Sound als normales Hardwaremodul. Dort werden Status, SPI-/Chipdaten, Pins, Registerprüfung sowie Frame-Zähler angezeigt. **Hardware prüfen** fragt den CC1101 über SPI erneut ab und verifiziert zusätzlich ausgewählte Konfigurationsregister per Readback. **Empfang testen (Auto 10 s)** wechselt während des Tests zwischen normalem 433,92-MHz-Festcodeempfang und **Somfy RTS 433,42 MHz**. Während der zehn Sekunden die Fernbedienung mehrfach drücken. Ein Testtelegramm wird absichtlich nicht als Unterbrechung gespeichert. Bei Somfy RTS zeigt `Test-Frame` die stabile 24-Bit-Senderadresse, den Befehl und den Rolling Code.
 
 Die vollständige Liste der angelernten Funkbuttons befindet sich ebenfalls unter **Gerät → Hardware**. Dort werden Namen geändert, Sender gelöst oder ersetzt.
 
@@ -68,7 +68,8 @@ CSV enthält die numerische `source_id`; Namen werden nicht pro Event gespeicher
 - Bootlog: `CC1101 ready ...`
 - Headerstatus `433 MHz` sollte OK sein.
 - Unter Gerät / Hardware muss der CC1101 mit denselben Status-/Prüfmechanismen wie die übrige Hardware erscheinen.
-- Der 5-s-Empfangstest muss bei einem passenden Tastendruck ein Test-Frame melden, ohne den Unterbrechungszähler zu erhöhen.
+- Der Auto-10-s-Empfangstest muss bei einem passenden Tastendruck ein Test-Frame melden, ohne den Unterbrechungszähler zu erhöhen. Für Somfy RTS mehrfach während des Tests drücken; Erfolg wird ausdrücklich als `Somfy RTS auf 433,42 MHz empfangen` angezeigt.
+- `Registerprüfung` sollte `Ja` zeigen. Das bestätigt SPI-Schreib-/Lesezugriff deutlich stärker als nur ein nicht-`0xFF` Chipwert; GDO-Leitungen und Antennen-/RF-Pfad gelten trotzdem erst nach einem erfolgreichen Empfangstest als praktisch bestätigt.
 - Im Heimnetz meldet sich die WLAN-Station als `Unterbrechungszaehler` statt als generischer ESP32-Hostname.
 - Beim Anlernen sollte die neue Quelle erscheinen.
 - Ein einzelner menschlicher Tastendruck darf trotz RF-Wiederholtelegrammen nur **ein** Event ergeben.

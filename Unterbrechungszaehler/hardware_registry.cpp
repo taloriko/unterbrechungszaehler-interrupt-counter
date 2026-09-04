@@ -413,7 +413,7 @@ void appendJson(String &out) {
     bool first = true;
     const auto &rf = Rf433Cc1101::info();
     appendInfoString(out, first, "hardware.info.model", "CC1101 / RF1100SE");
-    appendInfoString(out, first, "hardware.info.transport", "SPI / 433.92 MHz OOK");
+    appendInfoString(out, first, "hardware.info.transport", "SPI / OOK: 433.92 MHz + Somfy RTS 433.42 MHz Test");
     appendInfoString(out, first, "hardware.info.pins",
                      String("SCK GPIO") + String(static_cast<int>(HardwareConfig::RF433_SCK_PIN)) +
                      ", MISO GPIO" + String(static_cast<int>(HardwareConfig::RF433_MISO_PIN)) +
@@ -421,8 +421,9 @@ void appendJson(String &out) {
                      ", CS GPIO" + String(static_cast<int>(HardwareConfig::RF433_CS_PIN)) +
                      ", GDO0 GPIO" + String(static_cast<int>(HardwareConfig::RF433_GDO0_PIN)) +
                      ", GDO2 GPIO" + String(static_cast<int>(HardwareConfig::RF433_GDO2_PIN)));
-    appendInfoUInt(out, first, "hardware.info.frequency", HardwareConfig::RF433_FREQUENCY_HZ);
+    appendInfoUInt(out, first, "hardware.info.frequency", rf.activeFrequencyHz ? rf.activeFrequencyHz : HardwareConfig::RF433_FREQUENCY_HZ);
     appendInfoBool(out, first, "hardware.info.initialized", rf.initialized);
+    appendInfoBool(out, first, "hardware.info.configVerified", rf.configVerified);
     if (rf.partNumber != 0xFFU) appendInfoString(out, first, "hardware.info.partNumber", hexByte(rf.partNumber));
     if (rf.version != 0xFFU) appendInfoString(out, first, "hardware.info.chipVersion", hexByte(rf.version));
     appendInfoUInt(out, first, "hardware.info.decodedFrames", rf.decodedFrames);
@@ -431,8 +432,18 @@ void appendJson(String &out) {
     appendInfoString(out, first, "hardware.info.rfTestResult", Rf433Cc1101::receiveTestResult(), "rfTest");
     const auto &testFrame = Rf433Cc1101::lastTestFrame();
     if (testFrame.code != 0U) {
-      appendInfoString(out, first, "hardware.info.rfTestFrame",
-                       hexDword(testFrame.code) + " / " + String(testFrame.bitCount) + " bit");
+      String frameText = String(Rf433Cc1101::protocolName(testFrame.protocol)) + " / ";
+      if (testFrame.protocol == Rf433Cc1101::Protocol::SomfyRts) {
+        frameText += "Addr ";
+        frameText += hexDword(testFrame.code);
+        frameText += " / ";
+        frameText += Rf433Cc1101::somfyCommandName(testFrame.command);
+        frameText += " / RC ";
+        frameText += String(testFrame.rollingCode);
+      } else {
+        frameText += hexDword(testFrame.code) + " / " + String(testFrame.bitCount) + " bit";
+      }
+      appendInfoString(out, first, "hardware.info.rfTestFrame", frameText);
     }
     endModule(out, "test", "action.rf433Test", "hardware");
   }
