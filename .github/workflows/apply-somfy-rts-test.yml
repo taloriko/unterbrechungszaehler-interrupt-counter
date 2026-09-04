@@ -24,8 +24,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Fix current UI anchor
-        run: sed -i 's/attempt < 4/attempt < 24/' Unterbrechungszaehler/tools/apply_somfy_rts_test.py
+      - name: Align migration helper with current branch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('Unterbrechungszaehler/tools/apply_somfy_rts_test.py')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('if (data.hardware?.checking && attempt < 4) this.followHardwareCheck(attempt + 1);',
+                        'if (data.hardware?.checking && attempt < 24) this.followHardwareCheck(attempt + 1);')
+          s = s.replace('check("rfSources: renderRfSources" in JS and "card.rf433" in JS, "RF source manager in Home UI")',
+                        'check("rfLearn: renderRfLearn" in JS and "rfSources: renderRfSourceList" in JS, "RF learning on Home and source manager on Device")')
+          p.write_text(s, encoding='utf-8')
+          PY
       - name: Apply Somfy RTS diagnostic patch
         run: python Unterbrechungszaehler/tools/apply_somfy_rts_test.py
       - name: Rebuild embedded web UI
