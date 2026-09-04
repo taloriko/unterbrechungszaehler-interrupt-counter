@@ -24,6 +24,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Fix current UI anchor
+        run: sed -i 's/attempt < 4/attempt < 24/' Unterbrechungszaehler/tools/apply_somfy_rts_test.py
       - name: Apply Somfy RTS diagnostic patch
         run: python Unterbrechungszaehler/tools/apply_somfy_rts_test.py
       - name: Rebuild embedded web UI
