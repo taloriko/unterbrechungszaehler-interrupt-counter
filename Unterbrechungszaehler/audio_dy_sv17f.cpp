@@ -27,6 +27,15 @@ uint8_t desiredVolumePercent = 100;
 bool volumePending = true;
 uint8_t probePlayAttempts = 0;
 
+// Playback commands are confirmed through the independent BUSY line instead
+// of issuing a second UART query after every tone. This keeps normal sound
+// output independent from transient query-response loss under RF load.
+bool playbackConfirmActive = false;
+bool playbackBusyConfirmedEver = false;
+uint16_t playbackTrack = 0;
+uint8_t playbackAttempts = 0;
+uint32_t playbackDeadlineMs = 0;
+
 enum class WaitKind : uint8_t { None, ProbePlay, ProbeDevices, ProbeCount, VerifyPlay };
 enum class VerifyExpectation : uint8_t { Any, Playing, Stopped };
 WaitKind waitingFor = WaitKind::None;
@@ -86,10 +95,18 @@ void sendProbePlayQuery() {
   sendQuery(WaitKind::ProbePlay, 0x01);
 }
 
+void sendPlayCommand(uint16_t trackNumber) {
+  const uint8_t data[2] = {static_cast<uint8_t>((trackNumber >> 8) & 0xFF),
+                           static_cast<uint8_t>(trackNumber & 0xFF)};
+  sendFrame(0x07, data, sizeof(data));
+}
+
 bool applyDesiredVolume();
 
 void finishProbe(StatusRegistry::State state, const char *message = "") {
-  const bool shouldPlayBootTone = probeWasBoot && isDetected && HardwareConfig::AUDIO_BOOT_TONE_ENABLED;
+  // Boot sound must not depend on an optional UART status response. The play
+  // command itself is verified separately through BUSY after this probe ends.
+  const bool shouldPlayBootTone = probeWasBoot && HardwareConfig::AUDIO_BOOT_TONE_ENABLED;
   probeWasBoot = false;
   probeActive = false;
   waitingFor = WaitKind::None;
@@ -100,7 +117,7 @@ void finishProbe(StatusRegistry::State state, const char *message = "") {
                         playStateName(), devicesOnline, tracks,
                         busyStateKnown ? (busyState ? "active" : "idle") : "n/a");
   } else if (state == StatusRegistry::State::Warning) {
-    SerialLog::warningf("AUDIO", "DY-SV17F: WARNING | communication confirmed | some optional information missing | play=%s",
+    SerialLog::warningf("AUDIO", "DY-SV17F: WARNING | communication/feedback partially confirmed | play=%s",
                         playStateName());
   } else {
     SerialLog::error("AUDIO", "DY-SV17F: NO RESPONSE | UART play-state query timed out");
@@ -127,9 +144,9 @@ void scheduleVerify(uint32_t delayMs, VerifyExpectation expectation) {
 }
 
 bool commandPathIdle() {
-  return !probeActive && waitingFor == WaitKind::None && deferredAction == DeferredAction::None;
+  return !probeActive && waitingFor == WaitKind::None && deferredAction == DeferredAction::None &&
+         !playbackConfirmActive;
 }
-
 
 uint8_t moduleVolumeForPercent(uint8_t percent) {
   if (percent > 100U) percent = 100U;
@@ -176,6 +193,8 @@ void handleFrame(uint8_t command, const uint8_t *data, uint8_t length) {
                   probeHadSecondaryFailure ? "optional query failed" : "");
       break;
 
+    // Stop/pause keep the existing optional protocol verification. Normal play
+    // no longer enters this state; it is confirmed by BUSY instead.
     case WaitKind::VerifyPlay:
       if (length == 1) {
         isDetected = true;
@@ -192,7 +211,7 @@ void handleFrame(uint8_t command, const uint8_t *data, uint8_t length) {
           SerialLog::successf("AUDIO", "Command verification OK | play-state=%s", playStateName());
         } else {
           setHealth(StatusRegistry::State::Warning, "play-state does not match command");
-          SerialLog::warningf("AUDIO", "Command answered, but play-state does not match expectation | play-state=%s", playStateName());
+          SerialLog::warningf("AUDIO", "Command answered, but play-state does not match expectation | play=%s", playStateName());
         }
       }
       break;
@@ -254,15 +273,18 @@ void handleTimeout() {
       return;
     }
 
-    // BUSY is an independent hardware feedback line. If UART replies were lost
-    // but the module is demonstrably playing, report a warning instead of the
-    // misleading hard NO RESPONSE state. An idle BUSY line still requires a
-    // valid UART reply and therefore remains a real transport failure.
     updateBusyPin();
     if (busyStateKnown && busyState) {
       isDetected = true;
       currentPlayState = PlayState::Playing;
-      finishProbe(StatusRegistry::State::Warning, "UART response missing; BUSY confirms active playback");
+      playbackBusyConfirmedEver = true;
+      finishProbe(StatusRegistry::State::Warning, "UART query timeout; BUSY confirms active playback");
+    } else if (playbackBusyConfirmedEver) {
+      // Once BUSY has confirmed real playback during this boot, a later missing
+      // UART status reply is a transport/query warning, not proof that the
+      // audio module disappeared.
+      isDetected = true;
+      finishProbe(StatusRegistry::State::Warning, "UART play-state query timeout; BUSY previously confirmed audio");
     } else {
       isDetected = false;
       currentPlayState = PlayState::Unknown;
@@ -289,6 +311,7 @@ void handleTimeout() {
     verifyExpectation = VerifyExpectation::Any;
     if (expectation == VerifyExpectation::Playing && busyStateKnown && busyState) {
       currentPlayState = PlayState::Playing;
+      playbackBusyConfirmedEver = true;
       setHealth(StatusRegistry::State::Warning, "UART response missing; BUSY confirms playback");
       SerialLog::warning("AUDIO", "UART verification timed out, but BUSY is active | playback confirmed by BUSY");
     } else if (expectation == VerifyExpectation::Stopped && busyStateKnown && !busyState) {
@@ -296,16 +319,61 @@ void handleTimeout() {
       setHealth(StatusRegistry::State::Warning, "UART response missing; BUSY confirms idle/stopped");
       SerialLog::warning("AUDIO", "UART verification timed out, but BUSY is idle | stop confirmed by BUSY");
     } else {
-      setHealth(StatusRegistry::State::NoResponse, "command verification timeout");
-      SerialLog::error("AUDIO", "Command verification failed | no matching UART/BUSY feedback");
+      setHealth(StatusRegistry::State::Warning, "command verification timeout");
+      SerialLog::warning("AUDIO", "Optional command verification timed out | command path remains available");
     }
   }
 }
 
 void updateBusyPin() {
   if (HardwareConfig::AUDIO_BUSY_PIN < 0) return;
+  const bool previousBusy = busyStateKnown && busyState;
   busyStateKnown = true;
   busyState = digitalRead(HardwareConfig::AUDIO_BUSY_PIN) == LOW;
+
+  if (busyState) {
+    playbackBusyConfirmedEver = true;
+    isDetected = true;
+    currentPlayState = PlayState::Playing;
+    if (playbackConfirmActive) {
+      playbackConfirmActive = false;
+      checkedAtMs = millis();
+      setHealth(StatusRegistry::State::Ok);
+      SerialLog::successf("AUDIO", "Playback confirmed by BUSY | track=%u | attempt=%u",
+                          static_cast<unsigned int>(playbackTrack),
+                          static_cast<unsigned int>(playbackAttempts));
+    }
+  } else if (previousBusy && currentPlayState == PlayState::Playing) {
+    currentPlayState = PlayState::Stopped;
+  }
+}
+
+void handlePlaybackConfirmation() {
+  if (!playbackConfirmActive) return;
+  const uint32_t nowMs = millis();
+  if (!due(nowMs, playbackDeadlineMs)) return;
+
+  if (playbackAttempts < HardwareConfig::AUDIO_PLAY_MAX_ATTEMPTS) {
+    ++playbackAttempts;
+    sendPlayCommand(playbackTrack);
+    playbackDeadlineMs = nowMs + HardwareConfig::AUDIO_PLAY_BUSY_CONFIRM_MS;
+    SerialLog::warningf("AUDIO", "BUSY did not confirm playback | retry %u/%u | track=%u",
+                        static_cast<unsigned int>(playbackAttempts),
+                        static_cast<unsigned int>(HardwareConfig::AUDIO_PLAY_MAX_ATTEMPTS),
+                        static_cast<unsigned int>(playbackTrack));
+    return;
+  }
+
+  playbackConfirmActive = false;
+  checkedAtMs = nowMs;
+  if (moduleHealth == StatusRegistry::State::NoResponse) {
+    setHealth(StatusRegistry::State::NoResponse, "UART query failed and playback was not confirmed by BUSY");
+  } else {
+    setHealth(StatusRegistry::State::Warning, "playback not confirmed by BUSY after retry");
+  }
+  SerialLog::warningf("AUDIO", "Playback not confirmed by BUSY after %u attempts | track=%u",
+                      static_cast<unsigned int>(playbackAttempts),
+                      static_cast<unsigned int>(playbackTrack));
 }
 
 bool startProbe(bool bootProbe) {
@@ -314,7 +382,7 @@ bool startProbe(bool bootProbe) {
     return false;
   }
   if (!bootProbe && !commandPathIdle()) {
-    SerialLog::warning("AUDIO", "Health check rejected | audio command/verification is still active");
+    SerialLog::warning("AUDIO", "Health check rejected | audio command/feedback is still active");
     return false;
   }
   while (audioSerial.available() > 0) audioSerial.read();
@@ -363,6 +431,7 @@ bool begin() {
 void update() {
   if (!HardwareConfig::ENABLE_AUDIO_DY_SV17F) return;
   updateBusyPin();
+  handlePlaybackConfirmation();
 
   while (audioSerial.available() > 0) feedParser(static_cast<uint8_t>(audioSerial.read()));
   handleTimeout();
@@ -384,7 +453,7 @@ void update() {
     } else if (action == DeferredAction::VerifyPlay) {
       if (!probeActive && waitingFor == WaitKind::None) sendQuery(WaitKind::VerifyPlay, 0x01);
     } else if (action == DeferredAction::BootTone) {
-      if (!probeActive && waitingFor == WaitKind::None) {
+      if (!probeActive && waitingFor == WaitKind::None && !playbackConfirmActive) {
         SerialLog::infof("AUDIO", "Boot tone | track=%u", HardwareConfig::AUDIO_BOOT_TONE_TRACK);
         playTrack(HardwareConfig::AUDIO_BOOT_TONE_TRACK);
       }
@@ -399,7 +468,7 @@ bool probe() {
 bool enabled() { return HardwareConfig::ENABLE_AUDIO_DY_SV17F; }
 bool detected() { return isDetected; }
 bool checking() {
-  return probeActive || waitingFor != WaitKind::None ||
+  return probeActive || playbackConfirmActive || waitingFor != WaitKind::None ||
          deferredAction == DeferredAction::StartProbe ||
          deferredAction == DeferredAction::RetryProbePlay ||
          deferredAction == DeferredAction::QueryDevices ||
@@ -450,11 +519,20 @@ bool playTrack(uint16_t trackNumber) {
   // switching the drive also starts the first track, which makes command
   // verification ambiguous and can produce an unwanted sound. Track 0x07
   // directly addresses the currently selected/internal FLASH sequence.
-  const uint8_t data[2] = {static_cast<uint8_t>((trackNumber >> 8) & 0xFF),
-                           static_cast<uint8_t>(trackNumber & 0xFF)};
-  sendFrame(0x07, data, sizeof(data));
-  SerialLog::infof("AUDIO", "Play track command sent | track=%u", trackNumber);
-  scheduleVerify(HardwareConfig::AUDIO_COMMAND_VERIFY_DELAY_MS, VerifyExpectation::Playing);
+  sendPlayCommand(trackNumber);
+  playbackTrack = trackNumber;
+  playbackAttempts = 1;
+  playbackConfirmActive = HardwareConfig::AUDIO_BUSY_PIN >= 0;
+  playbackDeadlineMs = millis() + HardwareConfig::AUDIO_PLAY_BUSY_CONFIRM_MS;
+  SerialLog::infof("AUDIO", "Play track command sent | track=%u | confirmation=%s",
+                   trackNumber, playbackConfirmActive ? "BUSY" : "UART");
+
+  if (playbackConfirmActive) {
+    setHealth(StatusRegistry::State::Checking);
+  } else {
+    // Keep the old protocol-query fallback only when no BUSY input exists.
+    scheduleVerify(HardwareConfig::AUDIO_COMMAND_VERIFY_DELAY_MS, VerifyExpectation::Playing);
+  }
   return true;
 }
 
@@ -481,7 +559,8 @@ bool setVolume(uint8_t volume) {
   if (!HardwareConfig::ENABLE_AUDIO_DY_SV17F || volume > 30 || !commandPathIdle()) return false;
   sendFrame(0x13, &volume, 1);
   // The documented volume command has no return value, so no missing response
-  // is interpreted as an error. Health remains based on real protocol queries.
+  // is interpreted as an error. Health remains based on real protocol queries
+  // and BUSY-confirmed playback.
   SerialLog::infof("AUDIO", "Volume command sent | volume=%u | no protocol response expected", volume);
   return true;
 }
