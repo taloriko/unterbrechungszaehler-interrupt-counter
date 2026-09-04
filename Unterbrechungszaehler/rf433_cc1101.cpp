@@ -26,6 +26,7 @@ constexpr uint32_t FRAME_GAP_US = 5000;
 constexpr uint32_t FORCE_FRAME_GAP_US = 7000;
 constexpr uint32_t REPEAT_WINDOW_MS = 650;
 constexpr uint32_t PRESS_DEDUPE_MS = 550;
+constexpr uint32_t RECEIVE_TEST_MS = 5000;
 
 struct RegisterSetting { uint8_t address; uint8_t value; };
 
@@ -85,6 +86,24 @@ uint32_t pendingSeenMs = 0;
 Frame emittedFrame;
 bool emittedAvailable = false;
 uint32_t lastEmitMs = 0;
+StatusRegistry::State currentHealth = StatusRegistry::State::Disabled;
+uint32_t checkedAtMs = 0;
+bool receiveTestActiveFlag = false;
+uint32_t receiveTestStartedMs = 0;
+const char *receiveTestResultText = "idle";
+Frame receiveTestFrame;
+
+void setHealth(StatusRegistry::State state) {
+  currentHealth = state;
+  StatusRegistry::setState("rf433", state);
+}
+
+void failReceiver(const char *error, StatusRegistry::State state) {
+  currentInfo.ready = false;
+  currentInfo.error = error ? error : "rf433_error";
+  checkedAtMs = millis();
+  setHealth(state);
+}
 
 bool selectChip() {
   SPI.beginTransaction(spiSettings);
@@ -250,8 +269,21 @@ void processCandidate(const Frame &candidate) {
   if (pendingRepeats < 2U) return;
   if (sameFrame(candidate, currentInfo.lastFrame) && static_cast<uint32_t>(nowMs - lastEmitMs) < PRESS_DEDUPE_MS) return;
 
+  const bool diagnostic = receiveTestActiveFlag;
+  if (diagnostic) {
+    receiveTestActiveFlag = false;
+    receiveTestResultText = "received";
+    receiveTestFrame = candidate;
+    checkedAtMs = nowMs;
+    setHealth(StatusRegistry::State::Ok);
+    SerialLog::successf("RF433", "Receive test passed | bits=%u | code=0x%08lX",
+                        static_cast<unsigned int>(candidate.bitCount),
+                        static_cast<unsigned long>(candidate.code));
+  }
+
   emittedFrame = candidate;
   emittedFrame.repeats = pendingRepeats;
+  emittedFrame.diagnostic = diagnostic;
   emittedAvailable = true;
   currentInfo.lastFrame = emittedFrame;
   ++currentInfo.decodedFrames;
@@ -287,12 +319,20 @@ void processReadyFrame() {
 }  // namespace
 
 bool begin() {
-  if (currentInfo.initialized) return currentInfo.ready;
+  if (!enabled()) {
+    currentHealth = StatusRegistry::State::Disabled;
+    return false;
+  }
+  if (currentInfo.ready) return true;
+
   currentInfo = Info{};
   currentInfo.initialized = true;
   currentInfo.error = "initializing";
+  checkedAtMs = millis();
+  receiveTestActiveFlag = false;
+  receiveTestResultText = "idle";
   StatusRegistry::registerProvider("rf433", "status.rf433", "hardware", true);
-  StatusRegistry::setState("rf433", StatusRegistry::State::Checking);
+  setHealth(StatusRegistry::State::Checking);
 
   pinMode(HardwareConfig::RF433_CS_PIN, OUTPUT);
   digitalWrite(HardwareConfig::RF433_CS_PIN, HIGH);
@@ -305,8 +345,7 @@ bool begin() {
   delay(1);
 
   if (!strobe(SRES)) {
-    currentInfo.error = "cc1101_not_ready";
-    StatusRegistry::setState("rf433", StatusRegistry::State::Error);
+    failReceiver("cc1101_not_ready", StatusRegistry::State::NoResponse);
     SerialLog::error("RF433", "CC1101 reset failed (MISO never became ready)");
     return false;
   }
@@ -315,8 +354,7 @@ bool begin() {
   currentInfo.partNumber = readStatusRegister(PARTNUM);
   currentInfo.version = readStatusRegister(VERSION);
   if (currentInfo.partNumber == 0xFFU || currentInfo.version == 0xFFU) {
-    currentInfo.error = "cc1101_spi_read_failed";
-    StatusRegistry::setState("rf433", StatusRegistry::State::Error);
+    failReceiver("cc1101_spi_read_failed", StatusRegistry::State::NoResponse);
     SerialLog::error("RF433", "CC1101 SPI status read failed");
     return false;
   }
@@ -324,15 +362,13 @@ bool begin() {
   strobe(SIDLE);
   for (const RegisterSetting &setting : SETTINGS) {
     if (!writeRegister(setting.address, setting.value)) {
-      currentInfo.error = "cc1101_config_failed";
-      StatusRegistry::setState("rf433", StatusRegistry::State::Error);
+      failReceiver("cc1101_config_failed", StatusRegistry::State::Error);
       return false;
     }
   }
   strobe(SFRX);
   if (!strobe(SRX)) {
-    currentInfo.error = "cc1101_rx_failed";
-    StatusRegistry::setState("rf433", StatusRegistry::State::Error);
+    failReceiver("cc1101_rx_failed", StatusRegistry::State::Error);
     return false;
   }
 
@@ -340,16 +376,93 @@ bool begin() {
   attachInterrupt(digitalPinToInterrupt(HardwareConfig::RF433_GDO0_PIN), onDataEdge, CHANGE);
   currentInfo.ready = true;
   currentInfo.error = "none";
-  StatusRegistry::setState("rf433", StatusRegistry::State::Ok);
+  checkedAtMs = millis();
+  setHealth(StatusRegistry::State::Ok);
   SerialLog::successf("RF433", "CC1101 ready | 433.92 MHz OOK async | part=0x%02X | version=0x%02X | GDO0=%d GDO2=%d",
                       currentInfo.partNumber, currentInfo.version,
                       HardwareConfig::RF433_GDO0_PIN, HardwareConfig::RF433_GDO2_PIN);
   return true;
 }
 
+bool probe() {
+  if (!enabled() || receiveTestActiveFlag) return false;
+  checkedAtMs = millis();
+  if (!currentInfo.ready) {
+    begin();
+    return true;
+  }
+
+  setHealth(StatusRegistry::State::Checking);
+  const uint8_t part = readStatusRegister(PARTNUM);
+  const uint8_t version = readStatusRegister(VERSION);
+  if (part == 0xFFU || version == 0xFFU) {
+    detachInterrupt(digitalPinToInterrupt(HardwareConfig::RF433_GDO0_PIN));
+    failReceiver("cc1101_probe_no_response", StatusRegistry::State::NoResponse);
+    SerialLog::error("RF433", "Manual probe: CC1101 did not answer on SPI");
+    return true;
+  }
+  if (!strobe(SRX)) {
+    detachInterrupt(digitalPinToInterrupt(HardwareConfig::RF433_GDO0_PIN));
+    failReceiver("cc1101_probe_rx_failed", StatusRegistry::State::Error);
+    return true;
+  }
+
+  currentInfo.partNumber = part;
+  currentInfo.version = version;
+  currentInfo.error = "none";
+  checkedAtMs = millis();
+  setHealth(StatusRegistry::State::Ok);
+  SerialLog::successf("RF433", "Manual probe: OK | part=0x%02X | version=0x%02X", part, version);
+  return true;
+}
+
+bool enabled() { return HardwareConfig::ENABLE_RF433_CC1101; }
+StatusRegistry::State health() { return currentHealth; }
+uint32_t lastCheckMs() { return checkedAtMs; }
+const char *lastError() { return currentInfo.error; }
+HardwareTypes::FeedbackType feedbackType() { return HardwareTypes::FeedbackType::ProtocolResponse; }
+
+bool startReceiveTest() {
+  if (!enabled() || !currentInfo.ready || receiveTestActiveFlag) return false;
+  receiveTestActiveFlag = true;
+  receiveTestStartedMs = millis();
+  receiveTestResultText = "waiting";
+  receiveTestFrame = Frame{};
+  checkedAtMs = receiveTestStartedMs;
+  setHealth(StatusRegistry::State::Checking);
+  SerialLog::infof("RF433", "Receive test started | window=%lu ms | press any compatible 433 MHz button",
+                   static_cast<unsigned long>(RECEIVE_TEST_MS));
+  return true;
+}
+
+void cancelReceiveTest() {
+  if (!receiveTestActiveFlag) return;
+  receiveTestActiveFlag = false;
+  receiveTestResultText = "cancelled";
+  checkedAtMs = millis();
+  setHealth(currentInfo.ready ? StatusRegistry::State::Ok : StatusRegistry::State::Error);
+  SerialLog::info("RF433", "Receive test cancelled");
+}
+
+bool receiveTestActive() { return receiveTestActiveFlag; }
+const char *receiveTestResult() { return receiveTestResultText; }
+uint32_t receiveTestRemainingMs() {
+  if (!receiveTestActiveFlag) return 0;
+  const uint32_t elapsedMs = static_cast<uint32_t>(millis() - receiveTestStartedMs);
+  return elapsedMs < RECEIVE_TEST_MS ? RECEIVE_TEST_MS - elapsedMs : 0;
+}
+const Frame &lastTestFrame() { return receiveTestFrame; }
+
 void update() {
   if (!currentInfo.ready) return;
   processReadyFrame();
+  if (receiveTestActiveFlag && static_cast<uint32_t>(millis() - receiveTestStartedMs) >= RECEIVE_TEST_MS) {
+    receiveTestActiveFlag = false;
+    receiveTestResultText = "timeout";
+    checkedAtMs = millis();
+    setHealth(StatusRegistry::State::Ok);
+    SerialLog::warning("RF433", "Receive test finished without a valid fixed-code frame");
+  }
 }
 
 bool pollFrame(Frame &frameOut) {

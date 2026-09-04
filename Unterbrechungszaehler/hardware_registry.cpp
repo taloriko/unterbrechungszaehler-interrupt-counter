@@ -9,6 +9,8 @@
 #include "hardware_types.h"
 #include "json_utils.h"
 #include "rtc_ds3231.h"
+#include "rf433_cc1101.h"
+#include "source_registry.h"
 #include "serial_log.h"
 #include "status_registry.h"
 
@@ -61,6 +63,14 @@ bool validatePinConfiguration() {
     add(HardwareConfig::AUDIO_RX_PIN, "Audio RX", false);
     add(HardwareConfig::AUDIO_TX_PIN, "Audio TX", true);
     add(HardwareConfig::AUDIO_BUSY_PIN, "Audio BUSY", false);
+  }
+  if (HardwareConfig::ENABLE_RF433_CC1101) {
+    add(HardwareConfig::RF433_SCK_PIN, "RF433 SCK", true);
+    add(HardwareConfig::RF433_MISO_PIN, "RF433 MISO", false);
+    add(HardwareConfig::RF433_MOSI_PIN, "RF433 MOSI", true);
+    add(HardwareConfig::RF433_CS_PIN, "RF433 CS", true);
+    add(HardwareConfig::RF433_GDO0_PIN, "RF433 GDO0", false);
+    add(HardwareConfig::RF433_GDO2_PIN, "RF433 GDO2", false);
   }
   if (HardwareConfig::ENABLE_GPIO) {
     for (size_t i = 0; i < HardwareConfig::GPIO_CHANNEL_COUNT; ++i) {
@@ -126,6 +136,10 @@ void registerConfigurationErrorProviders() {
   if (HardwareConfig::ENABLE_AUDIO_DY_SV17F) {
     StatusRegistry::registerProvider("audio", "status.audio", "audio", true);
     StatusRegistry::setState("audio", StatusRegistry::State::Error);
+  }
+  if (HardwareConfig::ENABLE_RF433_CC1101) {
+    StatusRegistry::registerProvider("rf433", "status.rf433", "hardware", true);
+    StatusRegistry::setState("rf433", StatusRegistry::State::Error);
   }
 }
 
@@ -239,6 +253,12 @@ String hexByte(uint8_t value) {
   return String(buffer);
 }
 
+String hexDword(uint32_t value) {
+  char buffer[11];
+  snprintf(buffer, sizeof(buffer), "0x%08lX", static_cast<unsigned long>(value));
+  return String(buffer);
+}
+
 }  // namespace
 
 void begin() {
@@ -253,6 +273,7 @@ void begin() {
   RtcDs3231::begin();
   DisplaySh1106::begin();
   AudioDySv17f::begin();
+  Rf433Cc1101::begin();
   SerialLog::info("HARDWARE", "Boot hardware checks dispatched | asynchronous modules finish in loop()");
 }
 
@@ -272,6 +293,7 @@ void probeAll() {
   RtcDs3231::probe();
   DisplaySh1106::probe();
   AudioDySv17f::probe();
+  Rf433Cc1101::probe();
 }
 
 bool hasModule(const char *moduleId) {
@@ -280,6 +302,7 @@ bool hasModule(const char *moduleId) {
   if (std::strcmp(moduleId, "rtc") == 0) return RtcDs3231::enabled();
   if (std::strcmp(moduleId, "display") == 0) return DisplaySh1106::enabled();
   if (std::strcmp(moduleId, "audio") == 0) return AudioDySv17f::enabled();
+  if (std::strcmp(moduleId, "rf433") == 0) return Rf433Cc1101::enabled();
   return false;
 }
 
@@ -289,6 +312,7 @@ bool probe(const char *moduleId) {
   if (std::strcmp(moduleId, "rtc") == 0 && RtcDs3231::enabled()) { RtcDs3231::probe(); return true; }
   if (std::strcmp(moduleId, "display") == 0 && DisplaySh1106::enabled()) { DisplaySh1106::probe(); return true; }
   if (std::strcmp(moduleId, "audio") == 0 && AudioDySv17f::enabled()) return AudioDySv17f::probe();
+  if (std::strcmp(moduleId, "rf433") == 0 && Rf433Cc1101::enabled()) return Rf433Cc1101::probe();
   return false;
 }
 
@@ -302,6 +326,11 @@ bool action(const char *moduleId, const char *actionId) {
     SerialLog::info("HARDWARE", "Manual action | audio test tone");
     return AudioDySv17f::playTestTone();
   }
+  if (std::strcmp(moduleId, "rf433") == 0 && std::strcmp(actionId, "test") == 0 && Rf433Cc1101::enabled()) {
+    if (SourceRegistry::learnState().active) return false;
+    SerialLog::info("HARDWARE", "Manual action | RF433 receive test");
+    return Rf433Cc1101::startReceiveTest();
+  }
   return false;
 }
 
@@ -310,7 +339,9 @@ bool anyChecking() {
   return GpioModule::health() == StatusRegistry::State::Checking ||
          RtcDs3231::health() == StatusRegistry::State::Checking ||
          DisplaySh1106::health() == StatusRegistry::State::Checking ||
-         AudioDySv17f::checking();
+         AudioDySv17f::checking() ||
+         Rf433Cc1101::health() == StatusRegistry::State::Checking ||
+         Rf433Cc1101::receiveTestActive();
 }
 
 void appendJson(String &out) {
@@ -374,6 +405,36 @@ void appendJson(String &out) {
     if (AudioDySv17f::busyKnown()) appendInfoBool(out, first, "hardware.info.busy", AudioDySv17f::busy());
     appendInfoUInt(out, first, "hardware.info.testTrack", HardwareConfig::AUDIO_TEST_TRACK);
     endModule(out, "test", "action.audioTest", "audio");
+  }
+
+  if (Rf433Cc1101::enabled()) {
+    beginModule(out, firstModule, "rf433", "hardware.rf433", "hardware", true, effectiveHealth(Rf433Cc1101::health()),
+                Rf433Cc1101::feedbackType(), effectiveCheckedAt(Rf433Cc1101::lastCheckMs()), effectiveError(Rf433Cc1101::lastError()));
+    bool first = true;
+    const auto &rf = Rf433Cc1101::info();
+    appendInfoString(out, first, "hardware.info.model", "CC1101 / RF1100SE");
+    appendInfoString(out, first, "hardware.info.transport", "SPI / 433.92 MHz OOK");
+    appendInfoString(out, first, "hardware.info.pins",
+                     String("SCK GPIO") + String(static_cast<int>(HardwareConfig::RF433_SCK_PIN)) +
+                     ", MISO GPIO" + String(static_cast<int>(HardwareConfig::RF433_MISO_PIN)) +
+                     ", MOSI GPIO" + String(static_cast<int>(HardwareConfig::RF433_MOSI_PIN)) +
+                     ", CS GPIO" + String(static_cast<int>(HardwareConfig::RF433_CS_PIN)) +
+                     ", GDO0 GPIO" + String(static_cast<int>(HardwareConfig::RF433_GDO0_PIN)) +
+                     ", GDO2 GPIO" + String(static_cast<int>(HardwareConfig::RF433_GDO2_PIN)));
+    appendInfoUInt(out, first, "hardware.info.frequency", HardwareConfig::RF433_FREQUENCY_HZ);
+    appendInfoBool(out, first, "hardware.info.initialized", rf.initialized);
+    if (rf.partNumber != 0xFFU) appendInfoString(out, first, "hardware.info.partNumber", hexByte(rf.partNumber));
+    if (rf.version != 0xFFU) appendInfoString(out, first, "hardware.info.chipVersion", hexByte(rf.version));
+    appendInfoUInt(out, first, "hardware.info.decodedFrames", rf.decodedFrames);
+    appendInfoUInt(out, first, "hardware.info.rejectedFrames", rf.rejectedFrames);
+    appendInfoUInt(out, first, "hardware.info.overflowFrames", rf.overflowFrames);
+    appendInfoString(out, first, "hardware.info.rfTestResult", Rf433Cc1101::receiveTestResult(), "rfTest");
+    const auto &testFrame = Rf433Cc1101::lastTestFrame();
+    if (testFrame.code != 0U) {
+      appendInfoString(out, first, "hardware.info.rfTestFrame",
+                       hexDword(testFrame.code) + " / " + String(testFrame.bitCount) + " bit");
+    }
+    endModule(out, "test", "action.rf433Test", "hardware");
   }
 
   out += ']';

@@ -36,7 +36,7 @@ ZIP des erfolgreichen Builds herunterladen, entpacken und die enthaltene `Unterb
 ## Anlernen
 
 1. `3.3.0-dev433` OTA installieren.
-2. Weboberfläche → **Home → Funkbuttons / 433 MHz**.
+2. Weboberfläche → **Home → Funkbutton anlernen**. Dort stehen absichtlich nur Anlernen und die Anzahl der aktuell gebundenen Taster.
 3. Namen eingeben, z. B. `Anna`.
 4. **Neuen Button anlernen** wählen.
 5. Gewünschten Funkbutton innerhalb von 30 Sekunden mehrfach drücken.
@@ -44,6 +44,12 @@ ZIP des erfolgreichen Builds herunterladen, entpacken und die enthaltene `Unterb
 7. Danach normal drücken. Der Event läuft über denselben `InterruptionService` wie Master/Web und bekommt seine stabile Source-ID.
 
 Es stehen im ersten Prototyp genau **10 Funk-IDs (6–15)** zur Verfügung. IDs 0–5 bleiben für Unknown/Master/Web/Software/API/Technik reserviert.
+
+## Hardwarestatus und Empfangstest
+
+Unter **Gerät → Hardware** erscheint der CC1101 wie RTC, Display und Sound als normales Hardwaremodul. Dort werden Status, SPI-/Chipdaten, Pins sowie Frame-Zähler angezeigt. **Hardware prüfen** fragt den CC1101 über SPI erneut ab. **Empfang testen (5 s)** wartet auf ein gültiges Funktelegramm; ein dabei empfangenes Testtelegramm wird absichtlich nicht als Unterbrechung gespeichert.
+
+Die vollständige Liste der angelernten Funkbuttons befindet sich ebenfalls unter **Gerät → Hardware**. Dort werden Namen geändert, Sender gelöst oder ersetzt.
 
 ## Sender ersetzen ohne Historie umzubenennen
 
@@ -61,6 +67,9 @@ CSV enthält die numerische `source_id`; Namen werden nicht pro Event gespeicher
 
 - Bootlog: `CC1101 ready ...`
 - Headerstatus `433 MHz` sollte OK sein.
+- Unter Gerät / Hardware muss der CC1101 mit denselben Status-/Prüfmechanismen wie die übrige Hardware erscheinen.
+- Der 5-s-Empfangstest muss bei einem passenden Tastendruck ein Test-Frame melden, ohne den Unterbrechungszähler zu erhöhen.
+- Im Heimnetz meldet sich die WLAN-Station als `Unterbrechungszaehler` statt als generischer ESP32-Hostname.
 - Beim Anlernen sollte die neue Quelle erscheinen.
 - Ein einzelner menschlicher Tastendruck darf trotz RF-Wiederholtelegrammen nur **ein** Event ergeben.
 - Master-DI1 und Webbutton müssen parallel weiter funktionieren.

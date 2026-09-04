@@ -24,6 +24,11 @@ void update() {
 
   Rf433Cc1101::Frame frame;
   while (Rf433Cc1101::pollFrame(frame)) {
+    if (frame.diagnostic) {
+      SerialLog::infof("RF433", "Diagnostic frame consumed without interruption | bits=%u | code=0x%08lX",
+                       static_cast<unsigned int>(frame.bitCount), static_cast<unsigned long>(frame.code));
+      continue;
+    }
     uint8_t sourceId = SourceRegistry::SOURCE_ID_UNKNOWN;
     bool learned = false;
     const bool known = SourceRegistry::consumeFrame(frame.code, frame.bitCount, frame.pulseBucket, sourceId, learned);
@@ -49,6 +54,7 @@ bool ready() { return Rf433Cc1101::info().ready; }
 
 bool startLearn(const char *name, uint8_t targetSourceId) {
   if (!ready()) return false;
+  if (Rf433Cc1101::receiveTestActive()) Rf433Cc1101::cancelReceiveTest();
   return SourceRegistry::startLearn(name, targetSourceId);
 }
 

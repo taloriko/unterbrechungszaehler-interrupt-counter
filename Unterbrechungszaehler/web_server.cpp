@@ -356,7 +356,7 @@ void sendRfError(int status, const char *error) {
 }
 
 void handleRfSources() {
-  sendJson(Rf433Api::buildSourcesJson());
+  sendJson(Rf433Api::buildSourcesJson(server.arg("compact") != "1"));
 }
 
 void handleRfLearn() {
@@ -375,12 +375,12 @@ void handleRfLearn() {
     sendRfError(409, SourceRegistry::learnState().error);
     return;
   }
-  sendJson(Rf433Api::buildSourcesJson());
+  sendJson(Rf433Api::buildSourcesJson(server.arg("compact") != "1"));
 }
 
 void handleRfCancel() {
   Rf433Service::cancelLearn();
-  sendJson(Rf433Api::buildSourcesJson());
+  sendJson(Rf433Api::buildSourcesJson(server.arg("compact") != "1"));
 }
 
 void handleRfRename() {
@@ -395,7 +395,7 @@ void handleRfRename() {
     sendRfError(409, "rename_failed");
     return;
   }
-  sendJson(Rf433Api::buildSourcesJson());
+  sendJson(Rf433Api::buildSourcesJson(server.arg("compact") != "1"));
 }
 
 void handleRfUnbind() {
@@ -409,7 +409,7 @@ void handleRfUnbind() {
     sendRfError(409, "unbind_failed");
     return;
   }
-  sendJson(Rf433Api::buildSourcesJson());
+  sendJson(Rf433Api::buildSourcesJson(server.arg("compact") != "1"));
 }
 
 void handleInterruptionStorage() {

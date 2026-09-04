@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 
+#include "hardware_types.h"
+
 namespace Rf433Cc1101 {
 
 struct Frame {
@@ -9,6 +11,7 @@ struct Frame {
   uint8_t bitCount = 0;
   uint8_t pulseBucket = 0;  // average short pulse in ~25 us units
   uint8_t repeats = 0;
+  bool diagnostic = false;
 };
 
 struct Info {
@@ -24,8 +27,22 @@ struct Info {
 };
 
 bool begin();
+bool probe();
 void update();
 bool pollFrame(Frame &frameOut);
 const Info &info();
+
+bool enabled();
+StatusRegistry::State health();
+uint32_t lastCheckMs();
+const char *lastError();
+HardwareTypes::FeedbackType feedbackType();
+
+bool startReceiveTest();
+void cancelReceiveTest();
+bool receiveTestActive();
+const char *receiveTestResult();
+uint32_t receiveTestRemainingMs();
+const Frame &lastTestFrame();
 
 }  // namespace Rf433Cc1101

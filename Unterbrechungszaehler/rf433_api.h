@@ -4,6 +4,6 @@
 
 namespace Rf433Api {
 
-String buildSourcesJson();
+String buildSourcesJson(bool includeRetainedCounts = true);
 
 }  // namespace Rf433Api

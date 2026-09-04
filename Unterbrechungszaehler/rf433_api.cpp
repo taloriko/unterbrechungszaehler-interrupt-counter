@@ -59,11 +59,11 @@ void appendSource(String &out, uint8_t sourceId, bool assigned, bool bound, uint
 
 }  // namespace
 
-String buildSourcesJson() {
+String buildSourcesJson(bool includeRetainedCounts) {
   uint32_t counts[SourceRegistry::SOURCE_ID_MAX + 1U]{};
   const bool rawReady = InterruptionStore::ready();
   uint16_t serviceCounter = 0;
-  if (rawReady) {
+  if (rawReady && includeRetainedCounts) {
     const uint64_t first = InterruptionStore::oldestSequence();
     const uint64_t last = InterruptionStore::newestSequence();
     for (uint64_t sequence = first; sequence != 0 && sequence <= last; ++sequence) {
@@ -96,6 +96,7 @@ String buildSourcesJson() {
   fieldUInt(out, "radioCapacity", SourceRegistry::RADIO_SOURCE_CAPACITY);
   fieldUInt(out, "assignedRadio", static_cast<uint32_t>(SourceRegistry::assignedRadioCount()));
   fieldUInt(out, "boundRadio", static_cast<uint32_t>(SourceRegistry::boundRadioCount()));
+  fieldBool(out, "retainedCountsIncluded", includeRetainedCounts);
 
   JsonUtils::appendKey(out, "rf");
   out += '{';
