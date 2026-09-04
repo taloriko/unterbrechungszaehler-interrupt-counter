@@ -12,7 +12,8 @@ enum class EventSource : uint8_t {
   WebButton = 2,
   Software = 3,
   Api = 4,
-  Hardware = 5
+  Hardware = 5,
+  Radio = 6
 };
 
 enum class StorageState : uint8_t {
@@ -34,6 +35,9 @@ struct CapturedEvent {
   uint8_t localHour = 0;
   TimeTypes::Source timeSource = TimeTypes::Source::Relative;
   EventSource eventSource = EventSource::Unknown;
+  // Stable logical source id. 0..5 mirror the legacy event-source codes;
+  // 6..15 are reserved for learned RF team sources in the prototype.
+  uint8_t sourceId = 0;
   bool absoluteValid = false;
   bool localCalendarValid = false;
 };
@@ -43,6 +47,8 @@ struct RawEvent {
   uint32_t deltaSeconds = DELTA_UNKNOWN;
   TimeTypes::Source timeSource = TimeTypes::Source::Relative;
   EventSource eventSource = EventSource::Unknown;
+  uint8_t sourceId = 0;
+  uint8_t formatVersion = 2;
   bool absoluteValid = false;
   uint8_t sequenceTag = 0;
 };
@@ -70,6 +76,7 @@ struct Summary {
   uint16_t lastLocalDayIndex = 0;
   TimeTypes::Source lastTimeSource = TimeTypes::Source::Relative;
   EventSource lastEventSource = EventSource::Unknown;
+  uint8_t lastSourceId = 0;
   uint32_t lastDeltaSeconds = DELTA_UNKNOWN;
 };
 
@@ -80,6 +87,7 @@ inline const char *eventSourceName(EventSource source) {
     case EventSource::Software: return "software";
     case EventSource::Api: return "api";
     case EventSource::Hardware: return "hardware";
+    case EventSource::Radio: return "radio";
     case EventSource::Unknown:
     default: return "unknown";
   }
