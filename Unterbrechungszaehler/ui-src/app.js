@@ -1449,6 +1449,7 @@
     bool(value) { return value === true ? t('common.yes') : value === false ? t('common.no') : t('common.none'); },
     stateKey(value) { return t(`hardware.play.${value || 'unknown'}`); },
     rfTest(value) { return t(`rf433.test.${value || 'idle'}`); },
+    rfMode(value) { return t(`rf433.mode.${value === 'somfy' ? 'somfy' : 'universal'}`); },
     checkTime(value) {
       const ms = Number(value);
       if (!Number.isFinite(ms) || ms <= 0) return t('common.none');

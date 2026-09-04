@@ -109,7 +109,7 @@ def main() -> None:
     hardware_registry = (ROOT / "hardware_registry.cpp").read_text(encoding="utf-8")
     check("AUDIO_PROBE_MAX_ATTEMPTS = 2" in hardware and "RetryProbePlay" in audio_driver and "BUSY confirms active playback" in audio_driver, "DY-SV17F nonblocking query retry and BUSY fallback")
     check(hardware_registry.find("Rf433Cc1101::begin();") < hardware_registry.find("AudioDySv17f::begin();"), "CC1101 SPI initialized before final UART2 pin routing")
-    check("rfMode" in JS and "'rf433.mode.somfy'" in JS and "'rf433.mode.universal'" in JS, "RF mode selector UI")
+    check("rfMode" in JS and "'rf433.mode.somfy'" in JS and "'rf433.mode.universal'" in JS and "rfMode(value)" in JS, "RF mode selector UI")
     check("0x2D0000, 0x130000" in partitions, "LittleFS custom partition")
 
     de = translation_keys("de", "en")
