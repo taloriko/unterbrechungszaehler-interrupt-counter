@@ -1,0 +1,43 @@
+name: Apply RF mode UI label polish
+
+on:
+  push:
+    branches:
+      - design/433mhz-multisource
+    paths:
+      - .github/workflows/apply-rf-mode-ui-polish.yml
+      - Unterbrechungszaehler/tools/apply_rf_mode_ui_polish.py
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: design/433mhz-multisource
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply UI polish
+        run: python Unterbrechungszaehler/tools/apply_rf_mode_ui_polish.py
+      - name: Rebuild embedded web UI
+        run: python Unterbrechungszaehler/tools/build_web.py
+      - name: Portable release checks
+        run: python Unterbrechungszaehler/tools/release_check.py
+      - name: Verify JavaScript syntax
+        run: node --check Unterbrechungszaehler/ui-src/app.js
+      - name: Diff sanity
+        run: git diff --check
+      - name: Commit UI polish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Unterbrechungszaehler
+          git commit -m "Polish RF mode labels in hardware diagnostics"
+          git push origin HEAD:design/433mhz-multisource
