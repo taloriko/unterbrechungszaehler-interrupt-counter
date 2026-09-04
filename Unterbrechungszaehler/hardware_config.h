@@ -10,6 +10,7 @@ constexpr bool ENABLE_GPIO = true;
 constexpr bool ENABLE_RTC_DS3231 = true;
 constexpr bool ENABLE_DISPLAY_SH1106 = true;
 constexpr bool ENABLE_AUDIO_DY_SV17F = true;
+constexpr bool ENABLE_RF433_CC1101 = true;
 
 // Shared I2C bus: DS3231 + SH1106.
 constexpr int8_t I2C_SDA_PIN = 21;
@@ -46,6 +47,17 @@ constexpr uint16_t AUDIO_BOOT_TONE_TRACK = 1;
 constexpr uint32_t AUDIO_BOOT_TONE_DELAY_MS = 350;
 constexpr uint16_t AUDIO_TEST_TRACK = 1;
 
+// CC1101 / RF1100SE prototype: 433.92 MHz OOK fixed-code receiver.
+// These pins come from currently disabled generic DI/DO channels. Disabled
+// channels are not configured by GpioModule, so they remain free for SPI/GDO.
+constexpr int8_t RF433_SCK_PIN = 14;
+constexpr int8_t RF433_MISO_PIN = 32;
+constexpr int8_t RF433_MOSI_PIN = 23;
+constexpr int8_t RF433_CS_PIN = 25;
+constexpr int8_t RF433_GDO0_PIN = 26;  // asynchronous demodulated data
+constexpr int8_t RF433_GDO2_PIN = 27;  // carrier sense
+constexpr uint32_t RF433_FREQUENCY_HZ = 433920000UL;
+
 // CON3/BUSY is also a mode selection input during roughly the first 30 ms of
 // DY-SV17F power-up. Hardware wiring must hold it HIGH during that interval;
 // GPIO39 cannot provide an internal pull-up. Use an external ~10 kOhm pull-up
@@ -78,7 +90,8 @@ struct GpioChannelConfig {
 // Project profile: only DI1 is currently consumed by the interruption button.
 // The remaining generic base channels stay defined but disabled, so their pins
 // are free for later project extensions and do not create unnecessary runtime
-// scanning or output configuration.
+// scanning or output configuration. In this prototype GPIO14/32/23/25/26/27
+// are consumed by the CC1101 and must therefore remain disabled here.
 constexpr GpioChannelConfig GPIO_CHANNELS[] = {
     {"di1", GpioDirection::Input,  13, PullMode::Up, false, false, 25, true,  -1, PullMode::None, true, 0, true},
     {"di2", GpioDirection::Input,  14, PullMode::Up, false, false, 25, false, -1, PullMode::None, true, 0, false},
