@@ -61,6 +61,7 @@ void appendProjectPreferencesObjectInternal(String &out) {
   fieldUInt(out, "soundTrack", ProjectPreferences::soundTrack());
   fieldString(out, "soundMode", ProjectPreferences::soundModeName());
   fieldUInt(out, "soundTrackCount", AudioDySv17f::musicCount());
+  fieldString(out, "rfMode", ProjectPreferences::radioModeName());
   fieldString(out, "language", ProjectPreferences::language());
   fieldBool(out, "languageStored", ProjectPreferences::languageStored());
   fieldBool(out, "displayEnabled", ProjectPreferences::displayEnabled());

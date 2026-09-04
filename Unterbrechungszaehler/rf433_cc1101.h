@@ -33,7 +33,7 @@ struct Info {
   uint32_t rejectedFrames = 0;
   uint32_t overflowFrames = 0;
   Frame lastFrame{};
-  const char *error = "none";
+  const char *error = "";
 };
 
 bool begin();
@@ -47,6 +47,9 @@ StatusRegistry::State health();
 uint32_t lastCheckMs();
 const char *lastError();
 HardwareTypes::FeedbackType feedbackType();
+
+bool setOperatingProtocol(Protocol protocol);
+Protocol operatingProtocol();
 
 bool startReceiveTest();
 void cancelReceiveTest();

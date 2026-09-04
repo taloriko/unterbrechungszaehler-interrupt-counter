@@ -20,7 +20,7 @@ struct StoredEntry {
   uint8_t flags = 0;
   uint8_t bitCount = 0;
   uint8_t pulseBucket = 0;
-  uint8_t reserved = 0;
+  uint8_t protocol = 0;  // v1 previously reserved this byte; zero means legacy Fixed OOK.
   uint32_t code = 0;
   char name[SOURCE_NAME_MAX_BYTES + 1]{};
 };
@@ -75,6 +75,9 @@ void decodeEntries() {
     entry.sourceId = static_cast<uint8_t>(SOURCE_ID_RADIO_FIRST + i);
     entry.assigned = (stored.flags & FLAG_ASSIGNED) != 0;
     entry.bound = (stored.flags & FLAG_BOUND) != 0;
+    entry.protocol = stored.protocol == static_cast<uint8_t>(RadioProtocol::SomfyRts)
+                         ? RadioProtocol::SomfyRts
+                         : RadioProtocol::FixedOok;
     entry.bitCount = stored.bitCount;
     entry.pulseBucket = stored.pulseBucket;
     entry.code = stored.code;
@@ -237,7 +240,8 @@ void cancelLearn() {
 
 const LearnState &learnState() { return learn; }
 
-bool consumeFrame(uint32_t code,
+bool consumeFrame(RadioProtocol protocol,
+                  uint32_t code,
                   uint8_t bitCount,
                   uint8_t pulseBucket,
                   uint8_t &sourceIdOut,
@@ -245,7 +249,16 @@ bool consumeFrame(uint32_t code,
   begin();
   sourceIdOut = SOURCE_ID_UNKNOWN;
   learnedOut = false;
-  if (bitCount < 16 || bitCount > 32 || code == 0) return false;
+  if (code == 0) return false;
+  if (protocol == RadioProtocol::FixedOok && (bitCount < 16 || bitCount > 32)) return false;
+  if (protocol == RadioProtocol::SomfyRts && bitCount != 56) return false;
+
+  const uint8_t protocolByte = static_cast<uint8_t>(protocol);
+  auto matches = [&](const StoredEntry &stored) {
+    if (stored.protocol != protocolByte || stored.code != code) return false;
+    if (protocol == RadioProtocol::SomfyRts) return true;  // stable 24-bit address is the identity.
+    return stored.bitCount == bitCount && pulseBucketMatches(stored.pulseBucket, pulseBucket);
+  };
 
   if (learn.active) {
     uint8_t target = learn.targetSourceId;
@@ -260,7 +273,7 @@ bool consumeFrame(uint32_t code,
       const StoredEntry &existing = registry.entries[i];
       const uint8_t existingId = static_cast<uint8_t>(SOURCE_ID_RADIO_FIRST + i);
       if ((existing.flags & FLAG_BOUND) == 0 || existingId == target) continue;
-      if (existing.code == code && existing.bitCount == bitCount && pulseBucketMatches(existing.pulseBucket, pulseBucket)) {
+      if (matches(existing)) {
         learn.error = "already_bound";
         return false;
       }
@@ -270,8 +283,9 @@ bool consumeFrame(uint32_t code,
     StoredEntry before = registry.entries[index];
     StoredEntry &stored = registry.entries[index];
     stored.flags = FLAG_ASSIGNED | FLAG_BOUND;
+    stored.protocol = protocolByte;
     stored.bitCount = bitCount;
-    stored.pulseBucket = pulseBucket;
+    stored.pulseBucket = protocol == RadioProtocol::SomfyRts ? 0U : pulseBucket;
     stored.code = code;
     if (learn.pendingName[0]) {
       copyName(stored.name, learn.pendingName);
@@ -291,21 +305,25 @@ bool consumeFrame(uint32_t code,
     learn.error = "none";
     sourceIdOut = target;
     learnedOut = true;
-    SerialLog::successf("RF433", "Button learned | source=%u | name=%s | bits=%u | code=0x%08lX",
-                        static_cast<unsigned int>(target), sourceName(target), static_cast<unsigned int>(bitCount),
-                        static_cast<unsigned long>(code));
+    SerialLog::successf("RF433", "Button learned | source=%u | name=%s | protocol=%s | bits=%u | code=0x%08lX",
+                        static_cast<unsigned int>(target), sourceName(target), radioProtocolName(protocol),
+                        static_cast<unsigned int>(bitCount), static_cast<unsigned long>(code));
     return true;
   }
 
   for (uint8_t i = 0; i < RADIO_SOURCE_CAPACITY; ++i) {
     const StoredEntry &stored = registry.entries[i];
     if ((stored.flags & FLAG_BOUND) == 0) continue;
-    if (stored.code == code && stored.bitCount == bitCount && pulseBucketMatches(stored.pulseBucket, pulseBucket)) {
+    if (matches(stored)) {
       sourceIdOut = static_cast<uint8_t>(SOURCE_ID_RADIO_FIRST + i);
       return true;
     }
   }
   return false;
+}
+
+const char *radioProtocolName(RadioProtocol protocol) {
+  return protocol == RadioProtocol::SomfyRts ? "somfy" : "universal";
 }
 
 bool renameSource(uint8_t sourceId, const char *name) {
@@ -324,6 +342,7 @@ bool unbindSource(uint8_t sourceId) {
   if (index < 0 || (registry.entries[index].flags & FLAG_ASSIGNED) == 0) return false;
   StoredEntry before = registry.entries[index];
   registry.entries[index].flags &= static_cast<uint8_t>(~FLAG_BOUND);
+  registry.entries[index].protocol = static_cast<uint8_t>(RadioProtocol::FixedOok);
   registry.entries[index].bitCount = 0;
   registry.entries[index].pulseBucket = 0;
   registry.entries[index].code = 0;

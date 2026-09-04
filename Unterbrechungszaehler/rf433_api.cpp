@@ -4,6 +4,7 @@
 #include "interruption_service.h"
 #include "interruption_store.h"
 #include "json_utils.h"
+#include "project_preferences.h"
 #include "rf433_cc1101.h"
 #include "rf433_service.h"
 #include "source_registry.h"
@@ -48,6 +49,7 @@ void appendSource(String &out, uint8_t sourceId, bool assigned, bool bound, uint
 
   const SourceRegistry::Entry *entry = SourceRegistry::entryForSource(sourceId);
   if (entry && entry->assigned) {
+    fieldString(out, "protocol", SourceRegistry::radioProtocolName(entry->protocol));
     fieldUInt(out, "bitCount", entry->bitCount);
     fieldUInt(out, "pulseBucket", entry->pulseBucket);
     fieldUInt(out, "code", entry->code, false);
@@ -102,14 +104,18 @@ String buildSourcesJson(bool includeRetainedCounts) {
   out += '{';
   fieldBool(out, "ready", radio.ready);
   fieldString(out, "error", radio.error);
-  fieldUInt(out, "frequencyHz", 433920000UL);
+  fieldString(out, "mode", ProjectPreferences::radioModeName());
+  fieldUInt(out, "frequencyHz", radio.activeFrequencyHz);
   fieldUInt(out, "partNumber", radio.partNumber);
   fieldUInt(out, "version", radio.version);
   fieldUInt(out, "decodedFrames", radio.decodedFrames);
   fieldUInt(out, "rejectedFrames", radio.rejectedFrames);
   fieldUInt(out, "overflowFrames", radio.overflowFrames);
   fieldUInt(out, "lastCode", radio.lastFrame.code);
+  fieldString(out, "lastProtocol", radio.lastFrame.protocol == Rf433Cc1101::Protocol::SomfyRts ? "somfy" : "universal");
   fieldUInt(out, "lastBits", radio.lastFrame.bitCount);
+  fieldUInt(out, "lastRollingCode", radio.lastFrame.rollingCode);
+  fieldUInt(out, "lastCommand", radio.lastFrame.command);
   fieldUInt(out, "lastPulseBucket", radio.lastFrame.pulseBucket, false);
   out += "},";
 

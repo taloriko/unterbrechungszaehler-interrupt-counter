@@ -1224,6 +1224,47 @@
       'rf433.error': 'Funkaktion isch schief ganga', 'rf433.capacity': '{n} vo 10 Source-IDs vergebba', 'rf433.learned': '{n} vo 10 Knöpf anglernt'
     }
   };
+  Object.assign(RF433_I18N.de, {
+    'hardware.info.rfMode': 'Betriebsart', 'rf433.mode': 'Funkmodus',
+    'rf433.mode.universal': 'Universal 433', 'rf433.mode.somfy': 'Somfy RTS',
+    'rf433.mode.hint': 'Es ist immer genau ein Empfangsmodus aktiv. Vorhandene Bindungen des anderen Modus bleiben gespeichert.',
+    'rf433.protocol': 'Protokoll', 'action.rf433Test': 'Empfang testen (10 s)',
+    'rf433.test.waiting': 'Aktiven Funkmodus testen – Taste mehrfach drücken …',
+    'rf433.test.timeout': 'Im aktiven Funkmodus wurde kein gültiges Telegramm empfangen.'
+  });
+  Object.assign(RF433_I18N.en, {
+    'hardware.info.rfMode': 'Operating mode', 'rf433.mode': 'Radio mode',
+    'rf433.mode.universal': 'Universal 433', 'rf433.mode.somfy': 'Somfy RTS',
+    'rf433.mode.hint': 'Exactly one receive mode is active. Existing bindings from the other mode remain stored.',
+    'rf433.protocol': 'Protocol', 'action.rf433Test': 'Test reception (10 s)',
+    'rf433.test.waiting': 'Testing the active radio mode – press repeatedly …',
+    'rf433.test.timeout': 'No valid telegram was received in the active radio mode.'
+  });
+  Object.assign(RF433_I18N.it, {
+    'hardware.info.rfMode': 'Modalità operativa', 'rf433.mode': 'Modalità radio',
+    'rf433.mode.universal': 'Universal 433', 'rf433.mode.somfy': 'Somfy RTS',
+    'rf433.mode.hint': 'È attiva una sola modalità di ricezione. Le associazioni dell’altra modalità restano memorizzate.',
+    'rf433.protocol': 'Protocollo', 'action.rf433Test': 'Test ricezione (10 s)',
+    'rf433.test.waiting': 'Test della modalità radio attiva – premere più volte …',
+    'rf433.test.timeout': 'Nessun telegramma valido ricevuto nella modalità radio attiva.'
+  });
+  Object.assign(RF433_I18N.fr, {
+    'hardware.info.rfMode': 'Mode de fonctionnement', 'rf433.mode': 'Mode radio',
+    'rf433.mode.universal': 'Universal 433', 'rf433.mode.somfy': 'Somfy RTS',
+    'rf433.mode.hint': 'Un seul mode de réception est actif. Les liaisons de l’autre mode restent enregistrées.',
+    'rf433.protocol': 'Protocole', 'action.rf433Test': 'Tester réception (10 s)',
+    'rf433.test.waiting': 'Test du mode radio actif – appuyer plusieurs fois …',
+    'rf433.test.timeout': 'Aucun télégramme valide reçu dans le mode radio actif.'
+  });
+  Object.assign(RF433_I18N.swg, {
+    'hardware.info.rfMode': 'Betriebsart', 'rf433.mode': 'Funkmodus',
+    'rf433.mode.universal': 'Universal 433', 'rf433.mode.somfy': 'Somfy RTS',
+    'rf433.mode.hint': 'Es isch immer bloß oi Empfangsmodus aktiv. D Bindunga vom andere Modus bleibet gspeichert.',
+    'rf433.protocol': 'Protokoll', 'action.rf433Test': 'Empfang testa (10 s)',
+    'rf433.test.waiting': 'Aktiva Funkmodus testa – Knopf mehrafach drucka …',
+    'rf433.test.timeout': 'Em aktiva Funkmodus isch koi gültigs Telegramm komma.'
+  });
+
   Object.assign(I18N.de, RF433_I18N.de);
   Object.assign(I18N.en, RF433_I18N.en);
   Object.assign(I18N.it, RF433_I18N.it);
@@ -1240,7 +1281,7 @@
     connection: { deviceLoading: false, deviceRequested: false, deviceLoaded: false },
     device: {}, wifi: {}, memory: {}, hardware: { checking: false, modules: [] }, ota: { supported: null, currentBytes: 0, maxBytes: 0, headroomBytes: 0, usedPercent: 0 },
     interruptions: { todayCount: 0, unassignedCount: 0, sequence: 0, persistedSequence: 0, pendingCount: 0, droppedCount: 0, storageState: 'unavailable', soundEnabled: true, last: { available: false } },
-    projectSettings: { soundEnabled: true, soundVolume: 100, soundMode: 'rotate', soundTrack: 2, soundTrackCount: 0, language: 'en', languageStored: false, displayEnabled: true, displayRotation180: false, displayFlashEnabled: true, displayMode: 'standard', displayBrightness: 65, displayDimAfterMinutes: 10, displayDimBrightness: 5 },
+    projectSettings: { soundEnabled: true, soundVolume: 100, soundMode: 'rotate', soundTrack: 2, soundTrackCount: 0, rfMode: 'universal', language: 'en', languageStored: false, displayEnabled: true, displayRotation180: false, displayFlashEnabled: true, displayMode: 'standard', displayBrightness: 65, displayDimAfterMinutes: 10, displayDimBrightness: 5 },
     rf433: { rf: { ready: false }, learn: { active: false }, sources: [], assignedRadio: 0, radioCapacity: 10 },
     analytics: { loaded: false, loading: false, dirty: false, error: '', storage: null, hourly: null, monthWeek: null, yearMonth: null, hourlyMode: 'week', metric: 'count' },
     time: { valid: false, source: 'relative', quality: 'relative', epochMs: 0, syncPerf: 0 },
@@ -2241,22 +2282,35 @@
     const capacity = el('strong', 'rf433-capacity');
     const refreshButton = el('button', 'button'); refreshButton.type = 'button'; refreshButton.dataset.rfAction = 'refresh'; refreshButton.textContent = t('rf433.refresh');
     head.append(capacity, refreshButton);
+    const modeRow = el('label', 'project-setting-row');
+    const modeLabel = el('span', 'project-setting-label'); modeLabel.textContent = t('rf433.mode');
+    const modeSelect = el('select', 'project-setting-input'); modeSelect.dataset.projectSetting = 'rfMode';
+    for (const value of ['universal', 'somfy']) {
+      const option = el('option'); option.value = value; option.textContent = t(`rf433.mode.${value}`); modeSelect.append(option);
+    }
+    modeRow.append(modeLabel, modeSelect);
+    const modeHint = el('div', 'form-note'); modeHint.textContent = t('rf433.mode.hint');
     const learnInfo = el('div', 'rf433-learn-info');
     const lastFrame = el('div', 'form-note rf433-last-frame');
     const list = el('div', 'rf433-source-list');
     const message = el('div', 'project-setting-message'); message.setAttribute('aria-live', 'polite'); message.dataset.rfMessage = '1';
-    root.append(head, learnInfo, lastFrame, list, message);
+    root.append(head, modeRow, modeHint, learnInfo, lastFrame, list, message);
 
     const update = () => {
       const data = state.rf433 || {};
       const rf = data.rf || {};
       const learn = data.learn || {};
+      const selectedMode = state.projectSettings?.rfMode || rf.mode || 'universal';
+      if (document.activeElement !== modeSelect) modeSelect.value = selectedMode;
+      modeSelect.disabled = !!learn.active || !rf.ready;
       capacity.textContent = t('rf433.capacity').replace('{n}', String(Number(data.assignedRadio || 0)));
       learnInfo.textContent = learn.active
         ? `${t('rf433.learning')} · ${t('rf433.pressButton')} (${Math.ceil(Number(learn.remainingMs || 0) / 1000)} s)`
         : '';
       if (Number(rf.lastCode || 0) > 0) {
-        lastFrame.textContent = `${t('rf433.lastFrame')}: 0x${Number(rf.lastCode).toString(16).toUpperCase().padStart(8, '0')} · ${Number(rf.lastBits || 0)} bit`;
+        const protocol = rf.lastProtocol || 'universal';
+        const codeText = `0x${Number(rf.lastCode).toString(16).toUpperCase().padStart(protocol === 'somfy' ? 6 : 8, '0')}`;
+        lastFrame.textContent = `${t('rf433.lastFrame')}: ${t(`rf433.mode.${protocol}`)} · ${codeText}${protocol === 'somfy' ? '' : ` · ${Number(rf.lastBits || 0)} bit`}`;
       } else lastFrame.textContent = '';
 
       list.replaceChildren();
@@ -2269,7 +2323,8 @@
         const meta = el('div', 'rf433-source-meta');
         const id = el('strong'); id.textContent = `${t('rf433.sourceId')} ${source.id}`;
         const bound = el('span'); bound.textContent = t(source.bound ? 'rf433.bound' : 'rf433.unbound');
-        meta.append(id, bound);
+        const protocol = el('span'); protocol.textContent = `${t('rf433.protocol')}: ${t(`rf433.mode.${source.protocol || 'universal'}`)}`;
+        meta.append(id, bound, protocol);
         const edit = el('div', 'rf433-source-edit');
         const input = el('input', 'project-setting-input'); input.type = 'text'; input.maxLength = 23; input.value = source.name || ''; input.dataset.rfSourceName = String(source.id);
         const rename = el('button', 'button'); rename.type = 'button'; rename.dataset.rfAction = 'rename'; rename.textContent = t('rf433.rename');
@@ -2669,13 +2724,17 @@
           Bindings.notify('projectSettings');
         }
         if (data.summary) applyInterruptionSummary(data.summary);
-        const message = document.querySelector('[data-project-setting-message]');
+        if (field === 'rfMode') {
+          await this.loadRfSources(true);
+          if (state.activeView === 'device') await this.refreshHardwareState();
+        }
+        const message = document.querySelector(field === 'rfMode' ? '[data-rf-message]' : '[data-project-setting-message]');
         if (message) { message.textContent = ''; message.dataset.state = 'ok'; }
         return true;
       } catch (error) {
         console.warn('Project preference failed:', field, error);
         Bindings.notify('projectSettings');
-        const message = document.querySelector('[data-project-setting-message]');
+        const message = document.querySelector(field === 'rfMode' ? '[data-rf-message]' : '[data-project-setting-message]');
         if (message) { message.textContent = t('project.preferenceError'); message.dataset.state = 'error'; }
         return false;
       } finally { if (input) input.disabled = false; }

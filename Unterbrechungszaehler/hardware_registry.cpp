@@ -8,6 +8,7 @@
 #include "hardware_config.h"
 #include "hardware_types.h"
 #include "json_utils.h"
+#include "project_preferences.h"
 #include "rtc_ds3231.h"
 #include "rf433_cc1101.h"
 #include "source_registry.h"
@@ -272,8 +273,10 @@ void begin() {
   GpioModule::begin();
   RtcDs3231::begin();
   DisplaySh1106::begin();
-  AudioDySv17f::begin();
+  // Configure the custom SPI routing before UART2. This leaves GPIO18/19 under
+  // the final ownership of the DY-SV17F UART after every optional bus is set up.
   Rf433Cc1101::begin();
+  AudioDySv17f::begin();
   SerialLog::info("HARDWARE", "Boot hardware checks dispatched | asynchronous modules finish in loop()");
 }
 
@@ -413,7 +416,8 @@ void appendJson(String &out) {
     bool first = true;
     const auto &rf = Rf433Cc1101::info();
     appendInfoString(out, first, "hardware.info.model", "CC1101 / RF1100SE");
-    appendInfoString(out, first, "hardware.info.transport", "SPI / OOK: 433.92 MHz + Somfy RTS 433.42 MHz Test");
+    appendInfoString(out, first, "hardware.info.transport", "SPI / OOK");
+    appendInfoString(out, first, "hardware.info.rfMode", ProjectPreferences::radioModeName(), "rfMode");
     appendInfoString(out, first, "hardware.info.pins",
                      String("SCK GPIO") + String(static_cast<int>(HardwareConfig::RF433_SCK_PIN)) +
                      ", MISO GPIO" + String(static_cast<int>(HardwareConfig::RF433_MISO_PIN)) +

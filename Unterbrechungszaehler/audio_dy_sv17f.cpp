@@ -25,6 +25,7 @@ uint16_t tracks = 0;
 bool uartReady = false;
 uint8_t desiredVolumePercent = 100;
 bool volumePending = true;
+uint8_t probePlayAttempts = 0;
 
 enum class WaitKind : uint8_t { None, ProbePlay, ProbeDevices, ProbeCount, VerifyPlay };
 enum class VerifyExpectation : uint8_t { Any, Playing, Stopped };
@@ -33,7 +34,7 @@ VerifyExpectation verifyExpectation = VerifyExpectation::Any;
 uint8_t expectedCommand = 0;
 uint32_t responseDeadlineMs = 0;
 
-enum class DeferredAction : uint8_t { None, StartProbe, QueryDevices, QueryCount, VerifyPlay, BootTone };
+enum class DeferredAction : uint8_t { None, StartProbe, RetryProbePlay, QueryDevices, QueryCount, VerifyPlay, BootTone };
 DeferredAction deferredAction = DeferredAction::None;
 uint32_t deferredAtMs = 0;
 
@@ -78,6 +79,11 @@ void startWait(WaitKind kind, uint8_t command) {
 void sendQuery(WaitKind kind, uint8_t command) {
   sendFrame(command);
   startWait(kind, command);
+}
+
+void sendProbePlayQuery() {
+  if (probePlayAttempts < 0xFFU) ++probePlayAttempts;
+  sendQuery(WaitKind::ProbePlay, 0x01);
 }
 
 bool applyDesiredVolume();
@@ -239,9 +245,29 @@ void handleTimeout() {
   waitingFor = WaitKind::None;
 
   if (timedOut == WaitKind::ProbePlay) {
-    isDetected = false;
-    currentPlayState = PlayState::Unknown;
-    finishProbe(StatusRegistry::State::NoResponse, "play-state query timeout");
+    if (probePlayAttempts < HardwareConfig::AUDIO_PROBE_MAX_ATTEMPTS) {
+      deferredAction = DeferredAction::RetryProbePlay;
+      deferredAtMs = millis() + HardwareConfig::AUDIO_PROBE_RETRY_DELAY_MS;
+      SerialLog::warningf("AUDIO", "Play-state query timeout | retry %u/%u scheduled",
+                          static_cast<unsigned int>(probePlayAttempts + 1U),
+                          static_cast<unsigned int>(HardwareConfig::AUDIO_PROBE_MAX_ATTEMPTS));
+      return;
+    }
+
+    // BUSY is an independent hardware feedback line. If UART replies were lost
+    // but the module is demonstrably playing, report a warning instead of the
+    // misleading hard NO RESPONSE state. An idle BUSY line still requires a
+    // valid UART reply and therefore remains a real transport failure.
+    updateBusyPin();
+    if (busyStateKnown && busyState) {
+      isDetected = true;
+      currentPlayState = PlayState::Playing;
+      finishProbe(StatusRegistry::State::Warning, "UART response missing; BUSY confirms active playback");
+    } else {
+      isDetected = false;
+      currentPlayState = PlayState::Unknown;
+      finishProbe(StatusRegistry::State::NoResponse, "play-state query timeout after retry");
+    }
     return;
   }
   if (timedOut == WaitKind::ProbeDevices) {
@@ -298,8 +324,9 @@ bool startProbe(bool bootProbe) {
   probeActive = true;
   probeWasBoot = bootProbe;
   probeHadSecondaryFailure = false;
+  probePlayAttempts = 0;
   setHealth(StatusRegistry::State::Checking);
-  sendQuery(WaitKind::ProbePlay, 0x01);
+  sendProbePlayQuery();
   SerialLog::info("AUDIO", bootProbe ? "DY-SV17F boot health check started | querying play state"
                                     : "DY-SV17F health check started | querying play state");
   return true;
@@ -348,6 +375,8 @@ void update() {
 
     if (action == DeferredAction::StartProbe) {
       if (!probeActive && waitingFor == WaitKind::None) startProbe(true);
+    } else if (action == DeferredAction::RetryProbePlay) {
+      if (probeActive && waitingFor == WaitKind::None) sendProbePlayQuery();
     } else if (action == DeferredAction::QueryDevices) {
       if (probeActive && waitingFor == WaitKind::None) sendQuery(WaitKind::ProbeDevices, 0x09);
     } else if (action == DeferredAction::QueryCount) {
@@ -372,6 +401,7 @@ bool detected() { return isDetected; }
 bool checking() {
   return probeActive || waitingFor != WaitKind::None ||
          deferredAction == DeferredAction::StartProbe ||
+         deferredAction == DeferredAction::RetryProbePlay ||
          deferredAction == DeferredAction::QueryDevices ||
          deferredAction == DeferredAction::QueryCount ||
          deferredAction == DeferredAction::VerifyPlay;

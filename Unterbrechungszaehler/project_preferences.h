@@ -9,6 +9,11 @@ enum class SoundMode : uint8_t {
   Rotate = 1
 };
 
+enum class RadioMode : uint8_t {
+  Universal433 = 0,
+  SomfyRts = 1
+};
+
 enum class DisplayMode : uint8_t {
   Standard = 0,
   CountOnly = 1,
@@ -29,6 +34,11 @@ SoundMode soundMode();
 const char *soundModeName();
 bool setSoundMode(SoundMode mode);
 bool parseSoundMode(const char *value, SoundMode &mode);
+
+RadioMode radioMode();
+const char *radioModeName();
+bool setRadioMode(RadioMode mode);
+bool parseRadioMode(const char *value, RadioMode &mode);
 
 const char *language();
 bool languageStored();

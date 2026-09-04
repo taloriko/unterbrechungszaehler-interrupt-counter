@@ -16,10 +16,16 @@ constexpr uint8_t SOURCE_ID_MAX = 15;
 constexpr uint8_t RADIO_SOURCE_CAPACITY = SOURCE_ID_RADIO_LAST - SOURCE_ID_RADIO_FIRST + 1;
 constexpr size_t SOURCE_NAME_MAX_BYTES = 23;
 
+enum class RadioProtocol : uint8_t {
+  FixedOok = 0,
+  SomfyRts = 1
+};
+
 struct Entry {
   uint8_t sourceId = SOURCE_ID_UNKNOWN;
   bool assigned = false;
   bool bound = false;
+  RadioProtocol protocol = RadioProtocol::FixedOok;
   uint8_t bitCount = 0;
   uint8_t pulseBucket = 0;
   uint32_t code = 0;
@@ -53,12 +59,14 @@ const LearnState &learnState();
 // Returns a stable logical source id for a received fixed-code frame.
 // During learn mode the first confirmed frame is bound but deliberately not
 // emitted as an interruption, so setup does not pollute the statistics.
-bool consumeFrame(uint32_t code,
+bool consumeFrame(RadioProtocol protocol,
+                  uint32_t code,
                   uint8_t bitCount,
                   uint8_t pulseBucket,
                   uint8_t &sourceIdOut,
                   bool &learnedOut);
 
+const char *radioProtocolName(RadioProtocol protocol);
 bool renameSource(uint8_t sourceId, const char *name);
 bool unbindSource(uint8_t sourceId);
 

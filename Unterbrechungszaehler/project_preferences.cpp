@@ -14,6 +14,7 @@ bool sound = ProjectConfig::INTERRUPTION_SOUND_DEFAULT;
 uint8_t soundVolume = ProjectConfig::SOUND_VOLUME_DEFAULT_PERCENT;
 uint16_t track = ProjectConfig::INTERRUPTION_SOUND_TRACK_DEFAULT;
 SoundMode soundModeValue = ProjectConfig::INTERRUPTION_SOUND_MODE_DEFAULT;
+RadioMode radioModeValue = ProjectConfig::RF_MODE_DEFAULT;
 char languageValue[12]{};
 bool languageStoredValue = false;
 bool displayEnabledValue = ProjectConfig::DISPLAY_ENABLED_DEFAULT;
@@ -77,6 +78,12 @@ SoundMode sanitizedSoundMode(uint8_t raw) {
              : ProjectConfig::INTERRUPTION_SOUND_MODE_DEFAULT;
 }
 
+RadioMode sanitizedRadioMode(uint8_t raw) {
+  return raw <= static_cast<uint8_t>(RadioMode::SomfyRts)
+             ? static_cast<RadioMode>(raw)
+             : ProjectConfig::RF_MODE_DEFAULT;
+}
+
 DisplayMode sanitizedMode(uint8_t raw) {
   return raw <= static_cast<uint8_t>(DisplayMode::Focus)
              ? static_cast<DisplayMode>(raw)
@@ -100,6 +107,7 @@ void begin() {
   track = prefs.getUShort("sndtrack", ProjectConfig::INTERRUPTION_SOUND_TRACK_DEFAULT);
   if (track < 2) track = ProjectConfig::INTERRUPTION_SOUND_TRACK_DEFAULT;
   soundModeValue = sanitizedSoundMode(prefs.getUChar("sndmode", static_cast<uint8_t>(ProjectConfig::INTERRUPTION_SOUND_MODE_DEFAULT)));
+  radioModeValue = sanitizedRadioMode(prefs.getUChar("rfmode", static_cast<uint8_t>(ProjectConfig::RF_MODE_DEFAULT)));
 
   const String storedLanguage = prefs.getString("lang", "");
   if (validLanguage(storedLanguage.c_str())) {
@@ -128,6 +136,7 @@ void begin() {
   SerialLog::infof("PROJECT", "Display settings | language=%s | brightness=%u%% | dim-after=%u min | dim-brightness=%u%%",
                    languageValue, static_cast<unsigned int>(brightness), static_cast<unsigned int>(dimAfterMinutes),
                    static_cast<unsigned int>(dimBrightness));
+  SerialLog::infof("PROJECT", "RF settings | mode=%s", radioModeName());
 }
 
 bool soundEnabled() { return sound; }
@@ -185,6 +194,28 @@ bool setSoundMode(SoundMode value) {
   if (!persistUChar("sndmode", static_cast<uint8_t>(value))) return false;
   soundModeValue = value;
   SerialLog::infof("PROJECT", "Interruption sound mode changed | %s", soundModeName());
+  return true;
+}
+
+RadioMode radioMode() { return radioModeValue; }
+
+const char *radioModeName() {
+  return radioModeValue == RadioMode::SomfyRts ? "somfy" : "universal";
+}
+
+bool parseRadioMode(const char *value, RadioMode &parsed) {
+  if (!value) return false;
+  if (strcmp(value, "universal") == 0) parsed = RadioMode::Universal433;
+  else if (strcmp(value, "somfy") == 0) parsed = RadioMode::SomfyRts;
+  else return false;
+  return true;
+}
+
+bool setRadioMode(RadioMode value) {
+  if (radioModeValue == value) return true;
+  if (!persistUChar("rfmode", static_cast<uint8_t>(value))) return false;
+  radioModeValue = value;
+  SerialLog::infof("PROJECT", "RF operating mode changed | %s", radioModeName());
   return true;
 }
 

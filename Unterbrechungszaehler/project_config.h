@@ -21,6 +21,7 @@ constexpr uint16_t INTERRUPTION_SOUND_TRACK_DEFAULT = 2;
 constexpr ProjectPreferences::SoundMode INTERRUPTION_SOUND_MODE_DEFAULT = ProjectPreferences::SoundMode::Rotate;
 constexpr bool INTERRUPTION_SOUND_DEFAULT = true;
 constexpr uint8_t SOUND_VOLUME_DEFAULT_PERCENT = 100;
+constexpr ProjectPreferences::RadioMode RF_MODE_DEFAULT = ProjectPreferences::RadioMode::Universal433;
 constexpr bool DISPLAY_ENABLED_DEFAULT = true;
 constexpr bool DISPLAY_ROTATION_180_DEFAULT = false;
 constexpr bool DISPLAY_FLASH_DEFAULT = true;

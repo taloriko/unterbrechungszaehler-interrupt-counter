@@ -27,7 +27,6 @@ constexpr uint32_t FORCE_FRAME_GAP_US = 7000;
 constexpr uint32_t REPEAT_WINDOW_MS = 650;
 constexpr uint32_t PRESS_DEDUPE_MS = 550;
 constexpr uint32_t RECEIVE_TEST_MS = 10000;
-constexpr uint32_t RECEIVE_TEST_SWITCH_MS = 1500;
 constexpr uint32_t SOMFY_HALF_MIN_US = 448;
 constexpr uint32_t SOMFY_HALF_MAX_US = 832;
 constexpr uint32_t SOMFY_SYMBOL_MIN_US = 896;
@@ -105,8 +104,7 @@ Frame receiveTestFrame;
 
 enum class CaptureMode : uint8_t { FixedOok = 0, SomfyRts = 1 };
 volatile CaptureMode captureMode = CaptureMode::FixedOok;
-bool receiveTestSomfyPhase = false;
-uint32_t receiveTestPhaseStartedMs = 0;
+Protocol operatingProtocolValue = Protocol::FixedOok;
 
 volatile bool somfyReceiving = false;
 volatile bool somfyWaitingHalf = false;
@@ -180,12 +178,13 @@ uint8_t readConfigRegister(uint8_t address) {
   return value;
 }
 
-bool verifyFixedConfiguration() {
+bool verifyConfiguration(CaptureMode mode) {
+  const bool somfy = mode == CaptureMode::SomfyRts;
   return readConfigRegister(0x02) == 0x0D &&
          readConfigRegister(0x08) == 0x32 &&
          readConfigRegister(0x0D) == 0x10 &&
-         readConfigRegister(0x0E) == 0xB0 &&
-         readConfigRegister(0x0F) == 0x71 &&
+         readConfigRegister(0x0E) == (somfy ? 0xAB : 0xB0) &&
+         readConfigRegister(0x0F) == (somfy ? 0x85 : 0x71) &&
          readConfigRegister(0x12) == 0x30;
 }
 
@@ -350,7 +349,11 @@ bool similarBucket(uint8_t a, uint8_t b) {
 }
 
 bool sameFrame(const Frame &a, const Frame &b) {
-  return a.code == b.code && a.bitCount == b.bitCount && similarBucket(a.pulseBucket, b.pulseBucket);
+  if (a.protocol != b.protocol || a.code != b.code) return false;
+  if (a.protocol == Protocol::SomfyRts) {
+    return a.rollingCode == b.rollingCode && a.command == b.command;
+  }
+  return a.bitCount == b.bitCount && similarBucket(a.pulseBucket, b.pulseBucket);
 }
 
 bool decodeFrame(const uint16_t *timings, uint16_t count, Frame &out) {
@@ -449,21 +452,32 @@ void processSomfyReady() {
     return;
   }
 
-  receiveTestFrame = candidate;
-  receiveTestActiveFlag = false;
-  receiveTestResultText = "somfy_received";
-  checkedAtMs = millis();
-  setHealth(StatusRegistry::State::Ok);
-  SerialLog::successf("RF433", "Somfy RTS test passed | sync=%u | address=0x%06lX | rolling=%u | command=%s",
-                      static_cast<unsigned int>(syncCount),
-                      static_cast<unsigned long>(candidate.code),
-                      static_cast<unsigned int>(candidate.rollingCode),
-                      somfyCommandName(candidate.command));
-  if (!applyCaptureMode(CaptureMode::FixedOok)) {
-    failReceiver("cc1101_restore_fixed_failed", StatusRegistry::State::Error);
-  } else {
-    currentInfo.configVerified = verifyFixedConfiguration();
+  const uint32_t nowMs = millis();
+  if (sameFrame(candidate, currentInfo.lastFrame) && static_cast<uint32_t>(nowMs - lastEmitMs) < PRESS_DEDUPE_MS) {
+    return;  // repeated RTS telegram of the same physical press
   }
+
+  const bool diagnostic = receiveTestActiveFlag;
+  if (diagnostic) {
+    receiveTestActiveFlag = false;
+    receiveTestResultText = "somfy_received";
+    receiveTestFrame = candidate;
+    checkedAtMs = nowMs;
+    currentInfo.error = "";
+    setHealth(StatusRegistry::State::Ok);
+    SerialLog::successf("RF433", "Somfy RTS test passed | sync=%u | address=0x%06lX | rolling=%u | command=%s",
+                        static_cast<unsigned int>(syncCount),
+                        static_cast<unsigned long>(candidate.code),
+                        static_cast<unsigned int>(candidate.rollingCode),
+                        somfyCommandName(candidate.command));
+  }
+
+  emittedFrame = candidate;
+  emittedFrame.diagnostic = diagnostic;
+  emittedAvailable = true;
+  currentInfo.lastFrame = emittedFrame;
+  ++currentInfo.decodedFrames;
+  lastEmitMs = nowMs;
 }
 
 void processCandidate(const Frame &candidate) {
@@ -485,6 +499,7 @@ void processCandidate(const Frame &candidate) {
     receiveTestResultText = "received";
     receiveTestFrame = candidate;
     checkedAtMs = nowMs;
+    currentInfo.error = "";
     setHealth(StatusRegistry::State::Ok);
     SerialLog::successf("RF433", "Receive test passed | bits=%u | code=0x%08lX",
                         static_cast<unsigned int>(candidate.bitCount),
@@ -581,7 +596,7 @@ bool begin() {
     failReceiver("cc1101_rx_failed", StatusRegistry::State::Error);
     return false;
   }
-  currentInfo.configVerified = verifyFixedConfiguration();
+  currentInfo.configVerified = verifyConfiguration(CaptureMode::FixedOok);
   if (!currentInfo.configVerified) {
     failReceiver("cc1101_config_readback_failed", StatusRegistry::State::Error);
     SerialLog::error("RF433", "CC1101 configuration readback failed; SPI wiring/register writes not confirmed");
@@ -589,11 +604,12 @@ bool begin() {
   }
 
   captureMode = CaptureMode::FixedOok;
+  operatingProtocolValue = Protocol::FixedOok;
   currentInfo.activeFrequencyHz = HardwareConfig::RF433_FREQUENCY_HZ;
   lastEdgeUs = micros();
   attachInterrupt(digitalPinToInterrupt(HardwareConfig::RF433_GDO0_PIN), onDataEdge, CHANGE);
   currentInfo.ready = true;
-  currentInfo.error = "none";
+  currentInfo.error = "";
   checkedAtMs = millis();
   setHealth(StatusRegistry::State::Ok);
   SerialLog::successf("RF433", "CC1101 ready | 433.92 MHz OOK async | part=0x%02X | version=0x%02X | GDO0=%d GDO2=%d",
@@ -624,20 +640,24 @@ bool probe() {
     failReceiver("cc1101_probe_rx_failed", StatusRegistry::State::Error);
     return true;
   }
-  if (!verifyFixedConfiguration()) {
+  const CaptureMode activeMode = captureMode;
+  if (!verifyConfiguration(activeMode)) {
     failReceiver("cc1101_probe_readback_failed", StatusRegistry::State::Error);
     SerialLog::error("RF433", "Manual probe: configuration register readback failed");
     return true;
   }
 
   currentInfo.configVerified = true;
-  currentInfo.activeFrequencyHz = HardwareConfig::RF433_FREQUENCY_HZ;
+  currentInfo.activeFrequencyHz = activeMode == CaptureMode::SomfyRts
+                                      ? HardwareConfig::RF433_SOMFY_FREQUENCY_HZ
+                                      : HardwareConfig::RF433_FREQUENCY_HZ;
   currentInfo.partNumber = part;
   currentInfo.version = version;
-  currentInfo.error = "none";
+  currentInfo.error = "";
   checkedAtMs = millis();
   setHealth(StatusRegistry::State::Ok);
-  SerialLog::successf("RF433", "Manual probe: OK | part=0x%02X | version=0x%02X", part, version);
+  SerialLog::successf("RF433", "Manual probe: OK | part=0x%02X | version=0x%02X | mode=%s",
+                      part, version, protocolName(operatingProtocolValue));
   return true;
 }
 
@@ -670,26 +690,58 @@ const char *somfyCommandName(uint8_t command) {
   }
 }
 
+bool setOperatingProtocol(Protocol protocol) {
+  if (!enabled() || !currentInfo.ready) return false;
+  if (receiveTestActiveFlag) cancelReceiveTest();
+
+  const CaptureMode nextMode = protocol == Protocol::SomfyRts ? CaptureMode::SomfyRts : CaptureMode::FixedOok;
+  const CaptureMode previousMode = captureMode;
+  const Protocol previousProtocol = operatingProtocolValue;
+  if (nextMode == previousMode) {
+    operatingProtocolValue = protocol;
+    currentInfo.activeFrequencyHz = nextMode == CaptureMode::SomfyRts
+                                        ? HardwareConfig::RF433_SOMFY_FREQUENCY_HZ
+                                        : HardwareConfig::RF433_FREQUENCY_HZ;
+    currentInfo.configVerified = verifyConfiguration(nextMode);
+    if (!currentInfo.configVerified) return false;
+    currentInfo.error = "";
+    setHealth(StatusRegistry::State::Ok);
+    return true;
+  }
+
+  if (!applyCaptureMode(nextMode) || !verifyConfiguration(nextMode)) {
+    const bool restored = applyCaptureMode(previousMode) && verifyConfiguration(previousMode);
+    operatingProtocolValue = previousProtocol;
+    currentInfo.configVerified = restored;
+    currentInfo.error = restored ? "cc1101_mode_switch_failed" : "cc1101_mode_restore_failed";
+    checkedAtMs = millis();
+    setHealth(restored ? StatusRegistry::State::Warning : StatusRegistry::State::Error);
+    return false;
+  }
+
+  operatingProtocolValue = protocol;
+  currentInfo.configVerified = true;
+  currentInfo.error = "";
+  checkedAtMs = millis();
+  setHealth(StatusRegistry::State::Ok);
+  SerialLog::successf("RF433", "Operating mode active | protocol=%s | frequency=%lu Hz",
+                      protocolName(protocol), static_cast<unsigned long>(currentInfo.activeFrequencyHz));
+  return true;
+}
+
+Protocol operatingProtocol() { return operatingProtocolValue; }
+
 bool startReceiveTest() {
   if (!enabled() || !currentInfo.ready || receiveTestActiveFlag) return false;
   receiveTestActiveFlag = true;
   receiveTestStartedMs = millis();
-  receiveTestPhaseStartedMs = receiveTestStartedMs;
-  receiveTestSomfyPhase = true;
   receiveTestResultText = "waiting";
   receiveTestFrame = Frame{};
   checkedAtMs = receiveTestStartedMs;
   setHealth(StatusRegistry::State::Checking);
-
-  // Start on Somfy's 433.42 MHz because a normal 433.92 MHz fixed-code sender
-  // is already covered by the production receive path. The test alternates both.
-  if (!applyCaptureMode(CaptureMode::SomfyRts)) {
-    receiveTestActiveFlag = false;
-    failReceiver("cc1101_test_retune_failed", StatusRegistry::State::Error);
-    return false;
-  }
-  SerialLog::infof("RF433", "Auto receive test started | window=%lu ms | scans 433.92 fixed OOK + 433.42 Somfy RTS | press repeatedly",
-                   static_cast<unsigned long>(RECEIVE_TEST_MS));
+  SerialLog::infof("RF433", "Receive test started | window=%lu ms | mode=%s | frequency=%lu Hz | press repeatedly",
+                   static_cast<unsigned long>(RECEIVE_TEST_MS), protocolName(operatingProtocolValue),
+                   static_cast<unsigned long>(currentInfo.activeFrequencyHz));
   return true;
 }
 
@@ -698,11 +750,7 @@ void cancelReceiveTest() {
   receiveTestActiveFlag = false;
   receiveTestResultText = "cancelled";
   checkedAtMs = millis();
-  if (captureMode != CaptureMode::FixedOok && !applyCaptureMode(CaptureMode::FixedOok)) {
-    failReceiver("cc1101_restore_fixed_failed", StatusRegistry::State::Error);
-    return;
-  }
-  currentInfo.configVerified = verifyFixedConfiguration();
+  currentInfo.error = "";
   setHealth(currentInfo.ready ? StatusRegistry::State::Ok : StatusRegistry::State::Error);
   SerialLog::info("RF433", "Receive test cancelled");
 }
@@ -723,29 +771,15 @@ void update() {
 
   if (!receiveTestActiveFlag) return;
   const uint32_t nowMs = millis();
-  if (static_cast<uint32_t>(nowMs - receiveTestStartedMs) >= RECEIVE_TEST_MS) {
-    receiveTestActiveFlag = false;
-    receiveTestResultText = "timeout";
-    checkedAtMs = nowMs;
-    if (captureMode != CaptureMode::FixedOok && !applyCaptureMode(CaptureMode::FixedOok)) {
-      failReceiver("cc1101_restore_fixed_failed", StatusRegistry::State::Error);
-      return;
-    }
-    currentInfo.configVerified = verifyFixedConfiguration();
-    setHealth(StatusRegistry::State::Ok);
-    SerialLog::warning("RF433", "Auto receive test finished without valid fixed-code or Somfy RTS frame");
-    return;
-  }
+  if (static_cast<uint32_t>(nowMs - receiveTestStartedMs) < RECEIVE_TEST_MS) return;
 
-  if (static_cast<uint32_t>(nowMs - receiveTestPhaseStartedMs) < RECEIVE_TEST_SWITCH_MS) return;
-  const CaptureMode nextMode = receiveTestSomfyPhase ? CaptureMode::FixedOok : CaptureMode::SomfyRts;
-  if (!applyCaptureMode(nextMode)) {
-    receiveTestActiveFlag = false;
-    failReceiver("cc1101_test_retune_failed", StatusRegistry::State::Error);
-    return;
-  }
-  receiveTestSomfyPhase = nextMode == CaptureMode::SomfyRts;
-  receiveTestPhaseStartedMs = nowMs;
+  receiveTestActiveFlag = false;
+  receiveTestResultText = "timeout";
+  checkedAtMs = nowMs;
+  currentInfo.error = "";
+  setHealth(StatusRegistry::State::Ok);
+  SerialLog::warningf("RF433", "Receive test finished without valid frame | mode=%s",
+                      protocolName(operatingProtocolValue));
 }
 
 bool pollFrame(Frame &frameOut) {

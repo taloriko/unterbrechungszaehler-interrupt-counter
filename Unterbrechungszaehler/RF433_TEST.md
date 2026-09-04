@@ -78,3 +78,17 @@ CSV enthält die numerische `source_id`; Namen werden nicht pro Event gespeicher
 - Sender ersetzen muss dieselbe Source-ID behalten.
 
 Wenn ein Sender nicht erkannt wird, sind `lastCode`, `lastBits`, `rejectedFrames` und `overflowFrames` über `/api/interruptions/sources` als Diagnosewerte verfügbar.
+
+
+## Funkmodus Universal 433 / Somfy RTS
+
+Unter **Gerät → Hardware → Angelernte Funkbuttons** wird genau ein normaler Empfangsmodus gewählt:
+
+- **Universal 433**: 433,92 MHz, typische ASK/OOK-Festcode-Taster.
+- **Somfy RTS**: 433,42 MHz, klassische 56-Bit-RTS-Sender. Die stabile 24-Bit-Senderadresse ist die Bindungs-ID; Rolling Code und Befehl werden nicht als Identität gespeichert.
+
+Beim Umschalten bleiben bestehende Bindungen des jeweils anderen Protokolls erhalten. Anlernen und Unterbrechungserfassung verwenden ausschließlich den aktuell gewählten Modus. Der Hardware-Empfangstest testet ebenfalls nur diesen Modus und speichert sein Testtelegramm nicht als Unterbrechung.
+
+### DY-SV17F-Koexistenztest
+
+Nach Einbau des CC1101 Audio mehrfach mit **Prüfen** und **Ton testen** testen. Der Audiotreiber wiederholt eine ausgebliebene Play-State-UART-Abfrage einmal nicht blockierend. Ist danach keine UART-Antwort vorhanden, BUSY aber aktiv, wird dies als Warnung mit bestätigter Wiedergabe statt fälschlich als vollständige Nichterreichbarkeit dargestellt. Ein inaktiver BUSY-Pin ersetzt keine UART-Antwort.

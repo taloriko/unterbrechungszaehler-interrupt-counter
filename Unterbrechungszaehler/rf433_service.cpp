@@ -9,13 +9,30 @@
 namespace Rf433Service {
 namespace {
 bool started = false;
+
+Rf433Cc1101::Protocol driverProtocol(ProjectPreferences::RadioMode mode) {
+  return mode == ProjectPreferences::RadioMode::SomfyRts
+             ? Rf433Cc1101::Protocol::SomfyRts
+             : Rf433Cc1101::Protocol::FixedOok;
 }
+
+SourceRegistry::RadioProtocol registryProtocol(Rf433Cc1101::Protocol protocol) {
+  return protocol == Rf433Cc1101::Protocol::SomfyRts
+             ? SourceRegistry::RadioProtocol::SomfyRts
+             : SourceRegistry::RadioProtocol::FixedOok;
+}
+}  // namespace
 
 bool begin() {
   if (started) return Rf433Cc1101::info().ready;
   started = true;
   SourceRegistry::begin();
-  return Rf433Cc1101::begin();
+  if (!Rf433Cc1101::begin()) return false;
+  if (!Rf433Cc1101::setOperatingProtocol(driverProtocol(ProjectPreferences::radioMode()))) {
+    SerialLog::error("RF433", "Persisted RF mode could not be applied");
+    return false;
+  }
+  return true;
 }
 
 void update() {
@@ -25,32 +42,52 @@ void update() {
   Rf433Cc1101::Frame frame;
   while (Rf433Cc1101::pollFrame(frame)) {
     if (frame.diagnostic) {
-      SerialLog::infof("RF433", "Diagnostic frame consumed without interruption | bits=%u | code=0x%08lX",
-                       static_cast<unsigned int>(frame.bitCount), static_cast<unsigned long>(frame.code));
+      SerialLog::infof("RF433", "Diagnostic frame consumed without interruption | protocol=%s | bits=%u | code=0x%08lX",
+                       Rf433Cc1101::protocolName(frame.protocol), static_cast<unsigned int>(frame.bitCount),
+                       static_cast<unsigned long>(frame.code));
       continue;
     }
+
     uint8_t sourceId = SourceRegistry::SOURCE_ID_UNKNOWN;
     bool learned = false;
-    const bool known = SourceRegistry::consumeFrame(frame.code, frame.bitCount, frame.pulseBucket, sourceId, learned);
+    const SourceRegistry::RadioProtocol protocol = registryProtocol(frame.protocol);
+    const bool known = SourceRegistry::consumeFrame(protocol, frame.code, frame.bitCount, frame.pulseBucket, sourceId, learned);
     if (learned) {
       // The learning press is configuration, not an interruption event.
       continue;
     }
     if (!known || sourceId < SourceRegistry::SOURCE_ID_RADIO_FIRST) {
-      SerialLog::infof("RF433", "Unassigned fixed-code frame | bits=%u | code=0x%08lX | pulse=%u",
-                       static_cast<unsigned int>(frame.bitCount), static_cast<unsigned long>(frame.code),
-                       static_cast<unsigned int>(frame.pulseBucket));
+      SerialLog::infof("RF433", "Unassigned radio frame | protocol=%s | bits=%u | code=0x%08lX",
+                       SourceRegistry::radioProtocolName(protocol), static_cast<unsigned int>(frame.bitCount),
+                       static_cast<unsigned long>(frame.code));
       continue;
     }
 
-    SerialLog::infof("RF433", "Matched button | source=%u | name=%s | code=0x%08lX",
+    SerialLog::infof("RF433", "Matched button | source=%u | name=%s | protocol=%s | code=0x%08lX",
                      static_cast<unsigned int>(sourceId), SourceRegistry::sourceName(sourceId),
-                     static_cast<unsigned long>(frame.code));
+                     SourceRegistry::radioProtocolName(protocol), static_cast<unsigned long>(frame.code));
     InterruptionService::capture(InterruptionTypes::EventSource::Radio, sourceId);
   }
 }
 
 bool ready() { return Rf433Cc1101::info().ready; }
+
+bool setOperatingMode(ProjectPreferences::RadioMode mode) {
+  if (!ready() || SourceRegistry::learnState().active) return false;
+  const ProjectPreferences::RadioMode previous = ProjectPreferences::radioMode();
+  if (mode == previous) return true;
+
+  if (Rf433Cc1101::receiveTestActive()) Rf433Cc1101::cancelReceiveTest();
+  if (!Rf433Cc1101::setOperatingProtocol(driverProtocol(mode))) return false;
+
+  // Hardware first, NVS second. If persistence fails, restore the previously
+  // active receiver mode so runtime and stored configuration cannot diverge.
+  if (!ProjectPreferences::setRadioMode(mode)) {
+    Rf433Cc1101::setOperatingProtocol(driverProtocol(previous));
+    return false;
+  }
+  return true;
+}
 
 bool startLearn(const char *name, uint8_t targetSourceId) {
   if (!ready()) return false;
