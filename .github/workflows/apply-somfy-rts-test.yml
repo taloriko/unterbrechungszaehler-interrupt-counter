@@ -1,0 +1,43 @@
+name: Apply Somfy RTS diagnostic refinement
+
+on:
+  push:
+    branches:
+      - design/433mhz-multisource
+    paths:
+      - .github/workflows/apply-somfy-rts-test.yml
+      - Unterbrechungszaehler/tools/apply_somfy_rts_test.py
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: design/433mhz-multisource
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply Somfy RTS diagnostic patch
+        run: python Unterbrechungszaehler/tools/apply_somfy_rts_test.py
+      - name: Rebuild embedded web UI
+        run: python Unterbrechungszaehler/tools/build_web.py
+      - name: Portable release checks
+        run: python Unterbrechungszaehler/tools/release_check.py
+      - name: Verify JavaScript syntax
+        run: node --check Unterbrechungszaehler/ui-src/app.js
+      - name: Diff sanity
+        run: git diff --check
+      - name: Commit refinement
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Unterbrechungszaehler
+          git commit -m "Add Somfy RTS receive diagnostic and stronger CC1101 checks"
+          git push origin HEAD:design/433mhz-multisource
