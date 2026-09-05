@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
 
+# Temporary one-shot workflow; removed before the final draft build.
 jobs:
   fix:
     if: github.event.head_commit.message == 'Run refactor release-check correction'
