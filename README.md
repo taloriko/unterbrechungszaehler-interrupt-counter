@@ -3,7 +3,7 @@
 > [!WARNING]
 > **KI-Hinweis:** Dieses Projekt wurde maßgeblich mit Unterstützung von KI erstellt, anschließend aber praktisch getestet, überarbeitet und weiterentwickelt. Wer KI-generierten Code grundsätzlich nicht mag, darf natürlich trotzdem den Taster drücken. ;-)
 
-> **Aktueller Stand:** `3.2.0`
+> **Aktueller Stand:** `3.3.0`
 
 [Deutsch](docs/de/README.md) · [English](docs/en/README.md) · [Schwäbisch](docs/swg/README.md)
 
@@ -267,3 +267,9 @@ Ob das die internationale Verbreitung des Projekts beschleunigt oder massiv behi
 MIT. Benutzen, verändern, erweitern und daraus etwas Eigenes bauen ist ausdrücklich erlaubt. Wenn daraus irgendwann ein millionenschweres Produkt entsteht, freue ich mich weiterhin über eine Postkarte.
 
 GitHub: [taloriko](https://github.com/taloriko)
+
+## Datenpflege & Herkunftsfilter in 3.3.0
+
+Die Heatmaps lassen sich zusätzlich nach der Herkunft filtern: **Beides** (Standard), **Knopf / GPIO** oder **Web**. Die Herkunft steckt bereits im kompakten Rohdatensatz. Sobald nach einer einzelnen Herkunft gefiltert wird, wertet das Gerät deshalb den noch vorhandenen Roh-Ringspeicher aus und weist auf eine eventuell unvollständige Abdeckung hin. Das Datenformat wird dafür nicht aufgebläht und bleibt offen für spätere Quellen wie API.
+
+Unter **Daten & Export** kann die komplette Ereignisdatenbank bewusst gelöscht werden. Als Schutz gegen versehentliches Löschen muss exakt der Projektname `Unterbrechungszähler` eingegeben werden. Danach werden Rohereignisse und Tagesaggregate entfernt und das Gerät startet neu. Unter **Gerät → Speicher** wird bei einem Speicherproblem zusätzlich die konkrete interne Fehlerursache angezeigt.

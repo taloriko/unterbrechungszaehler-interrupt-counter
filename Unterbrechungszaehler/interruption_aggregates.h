@@ -34,5 +34,7 @@ bool apply(const InterruptionTypes::CapturedEvent &event, uint64_t sequence);
 bool find(uint16_t dayIndex, DailyRecord &recordOut);
 bool forEach(DailyVisitor visitor, void *context);
 uint32_t countForDay(uint16_t dayIndex);
+// Destructive maintenance operation; the caller restarts the device afterwards.
+bool eraseAll();
 
 }  // namespace InterruptionAggregates

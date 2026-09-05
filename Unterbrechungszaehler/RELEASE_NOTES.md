@@ -1,3 +1,10 @@
+# Release 3.3.0
+
+- Passwortgeschütztes vollständiges Löschen der Ereignisdatenbank (Bestätigung = Projektname)
+- Heatmap-Herkunftsfilter für Beides / Knopf-GPIO / Web, mit offenem API-Modell für spätere Quellen
+- konkrete Speicherfehler in Gerät → Speicher
+- bestehende 3.1/3.2-Regeln für Ø-Abstand, Raw-Ring-Coverage, Embedded-Effizienz und nicht blockierende Bedienung bleiben erhalten
+
 # Unterbrechungszähler 3.2.0
 
 - OLED folgt der gewählten UI-Sprache mit ressourcenschonender Transliteration für Sonderzeichen

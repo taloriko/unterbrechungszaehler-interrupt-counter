@@ -44,3 +44,7 @@ Siehe [SOFTWARE.md](SOFTWARE.md).
 - [Testbericht](../../Unterbrechungszaehler/TEST_REPORT.md)
 
 [English](../en/README.md) · [Schwäbisch](../swg/README.md) · [Projektstartseite](../../README.md)
+
+## Neu in 3.3.0
+
+Heatmaps können nach **Beides**, **Knopf / GPIO** oder **Web** gefiltert werden. Einzelne Herkunftsfilter arbeiten aus dem noch vorhandenen Roh-Ringspeicher und zeigen eine unvollständige Abdeckung offen an. Die komplette Datenbank kann nach Eingabe des Projektnamens `Unterbrechungszähler` gelöscht werden; danach startet das Gerät neu. Gerät → Speicher zeigt bei Fehlern die konkrete Ursache für Rohdaten oder Tagesstatistik.

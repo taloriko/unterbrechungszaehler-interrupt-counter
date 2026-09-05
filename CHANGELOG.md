@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.3.0
+
+- Datenbank kann nach Eingabe des exakten Projektnamens vollständig gelöscht werden; Rohdaten und Tagesaggregate werden entfernt und das Gerät startet sauber neu
+- Heatmaps erhalten einen Herkunftsfilter: **Beides** (Standard), **Knopf / GPIO** oder **Web**; das API-Modell bleibt für weitere Quellen wie API/Software/Hardware erweiterbar
+- Herkunft ist weiterhin Bestandteil jedes kompakten 9-Byte-Rohdatensatzes; gefilterte Heatmaps werden ehrlich aus dem retained Raw-Ring berechnet und melden unvollständige Abdeckung
+- Ø-Abstand behält die 3.1-Regel bei: der Filter bezieht sich auf die Start-Unterbrechung, der letzte Druck des Tages bleibt ausgeschlossen und es wird nie über Mitternacht gerechnet
+- Gerät → Speicher zeigt bei Fehlern die konkrete Rohdaten-/Statistik-Ursache statt nur einen allgemeinen Fehlerzustand
+- Webbundle, API-Routen und Releasechecks auf 3.3.0 erweitert
+
 ## 3.2.0
 
 - OLED-Inhalte folgen der persistent synchronisierten UI-Sprache; kompakte OLED-Transliteration für Umlaute und Akzente

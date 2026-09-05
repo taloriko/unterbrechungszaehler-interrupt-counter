@@ -346,6 +346,37 @@ void handleInterruptionStorage() {
   sendJson(InterruptionApi::buildStorageJson());
 }
 
+void restartAfterDatabaseMaintenance() {
+  delay(250);
+  ESP.restart();
+}
+
+void handleInterruptionStorageReset() {
+  const String password = server.arg("password");
+  if (password != AppConfig::PROJECT_NAME) {
+    server.send(403, "application/json; charset=utf-8", "{\"ok\":false,\"error\":\"invalid_database_password\"}");
+    return;
+  }
+
+  // Remove derived data first. If raw deletion then fails, a reboot can rebuild
+  // the derived store from the still-preserved raw ring instead of leaving a
+  // stale aggregate database behind.
+  if (!InterruptionAggregates::eraseAll()) {
+    server.send(500, "application/json; charset=utf-8", "{\"ok\":false,\"error\":\"aggregate_database_delete_failed\"}");
+    restartAfterDatabaseMaintenance();
+    return;
+  }
+  if (!InterruptionStore::eraseAll()) {
+    server.send(500, "application/json; charset=utf-8", "{\"ok\":false,\"error\":\"raw_database_delete_failed\"}");
+    restartAfterDatabaseMaintenance();
+    return;
+  }
+
+  server.sendHeader("Cache-Control", "no-store");
+  server.send(200, "application/json; charset=utf-8", "{\"ok\":true,\"restarting\":true}");
+  restartAfterDatabaseMaintenance();
+}
+
 void sendProjectDataUnavailable(const char *reason) {
   String json;
   json.reserve(96);
@@ -363,6 +394,7 @@ void handleAnalyticsBundle() {
   }
 
   const String metric = server.arg("metric");
+  const String source = server.arg("source");
   const String mode = server.arg("hourlyMode");
   const uint16_t hourlyYear = static_cast<uint16_t>(server.arg("hourlyYear").toInt());
   const uint8_t hourlyWeek = static_cast<uint8_t>(server.arg("hourlyWeek").toInt());
@@ -372,7 +404,7 @@ void handleAnalyticsBundle() {
   bool valid = false;
   const String json = InterruptionApi::buildAnalyticsBundleJson(
       metric.length() ? metric.c_str() : "count", mode.c_str(), hourlyYear, hourlyWeek,
-      from.c_str(), to.c_str(), monthWeekYear, valid);
+      from.c_str(), to.c_str(), monthWeekYear, source.length() ? source.c_str() : "all", valid);
 
   if (!InterruptionAggregates::ready()) {
     sendProjectDataUnavailable("statistics_rebuilding");
@@ -478,6 +510,7 @@ void registerRoutes() {
   server.on("/api/interruptions/sound", HTTP_POST, handleInterruptionSound);
   server.on("/api/interruptions/preferences", HTTP_POST, handleProjectPreferences);
   server.on("/api/interruptions/storage", HTTP_GET, handleInterruptionStorage);
+  server.on("/api/interruptions/storage/reset", HTTP_POST, handleInterruptionStorageReset);
   server.on("/api/interruptions/analytics", HTTP_GET, handleAnalyticsBundle);
   server.on("/api/interruptions/heatmap/hourly", HTTP_GET, handleHeatmapHourly);
   server.on("/api/interruptions/heatmap/month-week", HTTP_GET, handleHeatmapMonthWeek);
