@@ -448,10 +448,70 @@ def test_daily_full_ring_metadata_rollback() -> None:
     assert slots[before[0]] == new_day
     assert write_index == (before[0] + 1) % capacity
 
+
+V3_HEADER_ENCODE = [
+    5,6,7,13,14,15,21,22,23,29,30,31,37,38,39,45,
+    46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,
+    62,63,69,70,71,77,78,79,85,86,87,93,94,95,101,102,
+    103,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,
+]
+V3_HEADER_DECODE = {header: ordinal for ordinal, header in enumerate(V3_HEADER_ENCODE)}
+
+
+def legacy_header_valid(header: int) -> bool:
+    time_source = header & 0x07
+    event_source = (header >> 3) & 0x07
+    return time_source <= 4 and event_source <= 5
+
+
+def encode_record_v3(time_value: int, delta: int, source_id: int, time_code: int, sequence: int) -> bytes:
+    assert 0 <= source_id <= 15 and 0 <= time_code <= 3
+    header = V3_HEADER_ENCODE[source_id * 4 + time_code]
+    packed = (delta & 0x1FFFF) | (header << 17)
+    payload = bytearray(RAW_RECORD_SIZE)
+    payload[0:4] = int(time_value).to_bytes(4, "little")
+    payload[4:7] = int(packed).to_bytes(3, "little")
+    payload[7] = sequence & 0xFF
+    payload[8] = crc8(payload[:8])
+    return bytes(payload)
+
+
+def decode_mixed(record: bytes) -> tuple[int, int, int, int, int]:
+    assert len(record) == RAW_RECORD_SIZE and crc8(record[:8]) == record[8]
+    packed = int.from_bytes(record[4:7], "little")
+    header = (packed >> 17) & 0x7F
+    legacy_time = header & 0x07
+    legacy_source = (header >> 3) & 0x07
+    if legacy_header_valid(header):
+        return (2, legacy_source, legacy_time, packed & 0x1FFFF, record[7])
+    ordinal = V3_HEADER_DECODE[header]
+    return (3, ordinal >> 2, ordinal & 0x03, packed & 0x1FFFF, record[7])
+
+
+def test_multisource_v3_self_describing_codec() -> None:
+    assert len(V3_HEADER_ENCODE) == 64
+    assert len(set(V3_HEADER_ENCODE)) == 64
+    assert all(0 <= header < 128 for header in V3_HEADER_ENCODE)
+    assert all(not legacy_header_valid(header) for header in V3_HEADER_ENCODE)
+    assert 15 - 6 + 1 == 10
+
+    for source_id in range(16):
+        for time_code in range(4):
+            record = encode_record_v3(1_788_339_733, 1234, source_id, time_code, 0x3456)
+            assert len(record) == 9
+            assert decode_mixed(record) == (3, source_id, time_code, 1234, 0x56)
+
+    # Existing v2 bytes remain byte-for-byte decodable with their legacy source.
+    legacy = encode_record(1_788_339_733, 900, 1, 5, True, 0x77)
+    version, source_id, time_source, delta, tag = decode_mixed(legacy)
+    assert (version, source_id, time_source, delta, tag) == (2, 5, 1, 900, 0x77)
+
+
 def main() -> None:
     tests = [
         test_partition_budget,
         test_record_layout,
+        test_multisource_v3_self_describing_codec,
         test_ring_wrap_100k,
         test_delta_and_aggregate,
         test_dst_calendar_behavior,

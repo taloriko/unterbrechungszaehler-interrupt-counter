@@ -10,6 +10,10 @@ constexpr bool ENABLE_GPIO = true;
 constexpr bool ENABLE_RTC_DS3231 = true;
 constexpr bool ENABLE_DISPLAY_SH1106 = true;
 constexpr bool ENABLE_AUDIO_DY_SV17F = true;
+// Temporary PR-only isolation test: keep the CC1101 physically wired and
+// powered, but do not initialize SPI, RMT or any RF runtime path. This lets us
+// distinguish RF software/peripheral interference from wiring/power coupling.
+constexpr bool ENABLE_RF433_CC1101 = false;
 
 // Shared I2C bus: DS3231 + SH1106.
 constexpr int8_t I2C_SDA_PIN = 21;
@@ -37,14 +41,49 @@ constexpr int8_t AUDIO_RX_PIN = 18;  // ESP32 RX <- DY-SV17F TXD/IO0
 constexpr int8_t AUDIO_TX_PIN = 19;  // ESP32 TX -> DY-SV17F RXD/IO1
 constexpr int8_t AUDIO_BUSY_PIN = 39; // DY-SV17F CON3/BUSY, active LOW while playing
 constexpr uint32_t AUDIO_BAUD_RATE = 9600;
-constexpr uint32_t AUDIO_RESPONSE_TIMEOUT_MS = 1000;
-constexpr uint32_t AUDIO_COMMAND_VERIFY_DELAY_MS = 220;
-constexpr uint32_t AUDIO_INTER_COMMAND_DELAY_MS = 120;
+constexpr uint32_t AUDIO_RESPONSE_TIMEOUT_MS = 900;
+constexpr uint8_t AUDIO_PROBE_MAX_ATTEMPTS = 2;
+// DY-SV17F commands are intentionally paced. Playback is higher priority than
+// diagnostics, while volume is repeated idempotently because command 0x13 has
+// no protocol response according to the UART guide.
+constexpr uint32_t AUDIO_MIN_COMMAND_GAP_MS = 120;
+constexpr uint32_t AUDIO_VOLUME_REPEAT_DELAY_MS = 150;
+constexpr uint8_t AUDIO_VOLUME_SEND_REPEATS = 2;
+// BUSY is diagnostic feedback only. Never resend a play command merely because
+// the decoder/amplifier needs longer to assert BUSY; duplicate play commands can
+// themselves restart or delay a track.
+constexpr uint32_t AUDIO_PLAY_BUSY_CONFIRM_MS = 1200;
+constexpr uint8_t AUDIO_PLAY_MAX_ATTEMPTS = 1;
 constexpr uint32_t AUDIO_BOOT_GRACE_MS = 1200;
 constexpr bool AUDIO_BOOT_TONE_ENABLED = true;
 constexpr uint16_t AUDIO_BOOT_TONE_TRACK = 1;
 constexpr uint32_t AUDIO_BOOT_TONE_DELAY_MS = 350;
+// Keep the startup path quiet. UART diagnostics are deliberately delayed and
+// remain lower priority than every real playback request.
+constexpr uint32_t AUDIO_AUTO_PROBE_DELAY_MS = 15000;
 constexpr uint16_t AUDIO_TEST_TRACK = 1;
+
+// CC1101 / RF1100SE prototype: 433.92 MHz OOK fixed-code receiver.
+// These pins come from currently disabled generic DI/DO channels. Disabled
+// channels are not configured by GpioModule, so they remain free for SPI/GDO.
+constexpr int8_t RF433_SCK_PIN = 14;
+constexpr int8_t RF433_MISO_PIN = 32;
+constexpr int8_t RF433_MOSI_PIN = 23;
+constexpr int8_t RF433_CS_PIN = 25;
+constexpr int8_t RF433_GDO0_PIN = 26;  // asynchronous demodulated data
+constexpr int8_t RF433_GDO2_PIN = 27;  // carrier sense
+constexpr uint32_t RF433_FREQUENCY_HZ = 433920000UL;
+constexpr uint32_t RF433_SOMFY_FREQUENCY_HZ = 433420000UL;
+// Raw OOK/RTS timing is captured by the ESP32 RMT peripheral, not by a GPIO
+// CHANGE ISR. 1 MHz gives one-microsecond symbols. On the classic ESP32 the
+// RMT RX hardware glitch filter is clocked from the 80 MHz APB clock and only
+// accepts a few microseconds of threshold. Protocol-level rejection of the
+// much longer 433 MHz glitches therefore stays in the bounded loop decoder.
+constexpr uint32_t RF433_RMT_RESOLUTION_HZ = 1000000UL;
+constexpr uint16_t RF433_RMT_MEM_BLOCK_SYMBOLS = 128;
+constexpr uint16_t RF433_RMT_CAPTURE_SYMBOLS = 160;
+constexpr uint32_t RF433_RMT_GLITCH_MIN_NS = 2000UL;
+constexpr uint32_t RF433_RMT_IDLE_MAX_NS = 8000000UL;
 
 // CON3/BUSY is also a mode selection input during roughly the first 30 ms of
 // DY-SV17F power-up. Hardware wiring must hold it HIGH during that interval;
@@ -78,7 +117,8 @@ struct GpioChannelConfig {
 // Project profile: only DI1 is currently consumed by the interruption button.
 // The remaining generic base channels stay defined but disabled, so their pins
 // are free for later project extensions and do not create unnecessary runtime
-// scanning or output configuration.
+// scanning or output configuration. In this prototype GPIO14/32/23/25/26/27
+// are consumed by the CC1101 and must therefore remain disabled here.
 constexpr GpioChannelConfig GPIO_CHANNELS[] = {
     {"di1", GpioDirection::Input,  13, PullMode::Up, false, false, 25, true,  -1, PullMode::None, true, 0, true},
     {"di2", GpioDirection::Input,  14, PullMode::Up, false, false, 25, false, -1, PullMode::None, true, 0, false},

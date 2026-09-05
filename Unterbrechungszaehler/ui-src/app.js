@@ -915,6 +915,67 @@
     'common.no': 'Nai'
   };
 
+  const HARDWARE_DIAG_LABELS = {
+    de: {
+      'hardware.info.currentDevice': 'Aktiver Datenträger', 'hardware.info.currentTrack': 'Aktueller Track',
+      'hardware.info.volume': 'Soll-Lautstärke', 'hardware.info.volumeStep': 'Gesendete Lautstärkestufe (0–30)',
+      'hardware.info.uartResponses': 'UART-Antworten', 'hardware.info.uartTimeouts': 'UART-Timeouts',
+      'hardware.info.checksumErrors': 'UART-Prüfsummenfehler', 'hardware.info.playCommands': 'Play-Kommandos',
+      'hardware.info.busyConfirmedPlays': 'Per BUSY bestätigte Starts', 'hardware.info.playRetries': 'Play-Wiederholungen',
+      'hardware.info.busyEdges': 'BUSY-Flanken', 'hardware.info.captureBackend': 'Pulserfassung',
+      'hardware.info.captureReady': 'RMT-Empfang bereit', 'hardware.info.carrierSense': 'Trägersignal aktiv',
+      'hardware.info.captureFrames': 'RMT-Aufnahmen', 'hardware.info.lastCaptureSymbols': 'Symbole letzte Aufnahme',
+      'hardware.info.captureErrors': 'RMT-Fehler'
+    },
+    en: {
+      'hardware.info.currentDevice': 'Active storage device', 'hardware.info.currentTrack': 'Current track',
+      'hardware.info.volume': 'Requested volume', 'hardware.info.volumeStep': 'Sent volume step (0–30)',
+      'hardware.info.uartResponses': 'UART responses', 'hardware.info.uartTimeouts': 'UART timeouts',
+      'hardware.info.checksumErrors': 'UART checksum errors', 'hardware.info.playCommands': 'Play commands',
+      'hardware.info.busyConfirmedPlays': 'Starts confirmed by BUSY', 'hardware.info.playRetries': 'Play retries',
+      'hardware.info.busyEdges': 'BUSY edges', 'hardware.info.captureBackend': 'Pulse capture',
+      'hardware.info.captureReady': 'RMT receiver ready', 'hardware.info.carrierSense': 'Carrier sense active',
+      'hardware.info.captureFrames': 'RMT captures', 'hardware.info.lastCaptureSymbols': 'Symbols in last capture',
+      'hardware.info.captureErrors': 'RMT errors'
+    },
+    it: {
+      'hardware.info.currentDevice': 'Supporto attivo', 'hardware.info.currentTrack': 'Traccia attuale',
+      'hardware.info.volume': 'Volume richiesto', 'hardware.info.volumeStep': 'Livello volume inviato (0–30)',
+      'hardware.info.uartResponses': 'Risposte UART', 'hardware.info.uartTimeouts': 'Timeout UART',
+      'hardware.info.checksumErrors': 'Errori checksum UART', 'hardware.info.playCommands': 'Comandi play',
+      'hardware.info.busyConfirmedPlays': 'Avvii confermati da BUSY', 'hardware.info.playRetries': 'Ripetizioni play',
+      'hardware.info.busyEdges': 'Fronti BUSY', 'hardware.info.captureBackend': 'Acquisizione impulsi',
+      'hardware.info.captureReady': 'Ricezione RMT pronta', 'hardware.info.carrierSense': 'Portante attiva',
+      'hardware.info.captureFrames': 'Acquisizioni RMT', 'hardware.info.lastCaptureSymbols': 'Simboli ultima acquisizione',
+      'hardware.info.captureErrors': 'Errori RMT'
+    },
+    fr: {
+      'hardware.info.currentDevice': 'Support actif', 'hardware.info.currentTrack': 'Piste actuelle',
+      'hardware.info.volume': 'Volume demandé', 'hardware.info.volumeStep': 'Niveau de volume envoyé (0–30)',
+      'hardware.info.uartResponses': 'Réponses UART', 'hardware.info.uartTimeouts': 'Timeouts UART',
+      'hardware.info.checksumErrors': 'Erreurs checksum UART', 'hardware.info.playCommands': 'Commandes lecture',
+      'hardware.info.busyConfirmedPlays': 'Démarrages confirmés par BUSY', 'hardware.info.playRetries': 'Répétitions lecture',
+      'hardware.info.busyEdges': 'Fronts BUSY', 'hardware.info.captureBackend': 'Capture des impulsions',
+      'hardware.info.captureReady': 'Réception RMT prête', 'hardware.info.carrierSense': 'Porteuse active',
+      'hardware.info.captureFrames': 'Captures RMT', 'hardware.info.lastCaptureSymbols': 'Symboles dernière capture',
+      'hardware.info.captureErrors': 'Erreurs RMT'
+    },
+    swg: {
+      'hardware.info.currentDevice': 'Aktiver Datenträger', 'hardware.info.currentTrack': 'Aktueller Track',
+      'hardware.info.volume': 'Soll-Lautstärk', 'hardware.info.volumeStep': 'Gsendete Lautstärkstuf (0–30)',
+      'hardware.info.uartResponses': 'UART-Antworta', 'hardware.info.uartTimeouts': 'UART-Timeouts',
+      'hardware.info.checksumErrors': 'UART-Prüfsummafehler', 'hardware.info.playCommands': 'Play-Kommandos',
+      'hardware.info.busyConfirmedPlays': 'Per BUSY bestätigte Starts', 'hardware.info.playRetries': 'Play-Wiederholunga',
+      'hardware.info.busyEdges': 'BUSY-Flanka', 'hardware.info.captureBackend': 'Pulserfassig',
+      'hardware.info.captureReady': 'RMT-Empfang bereit', 'hardware.info.carrierSense': 'Trägersignal aktiv',
+      'hardware.info.captureFrames': 'RMT-Aufnahma', 'hardware.info.lastCaptureSymbols': 'Symbol letzte Aufnahm',
+      'hardware.info.captureErrors': 'RMT-Fehler'
+    }
+  };
+  HARDWARE_DIAG_LABELS['swg-alb'] = HARDWARE_DIAG_LABELS.swg;
+  HARDWARE_DIAG_LABELS['swg-ob'] = HARDWARE_DIAG_LABELS.swg;
+  Object.entries(HARDWARE_DIAG_LABELS).forEach(([code, labels]) => Object.assign(I18N[code], labels));
+
   const LANGUAGE_LABELS = {
     de: { 'lang.it': 'Italienisch', 'lang.fr': 'Französisch', 'lang.swgAlb': 'Alb-Schwäbisch', 'lang.swgOb': 'Oberschwäbisch' },
     en: { 'lang.it': 'Italian', 'lang.fr': 'French', 'lang.swgAlb': 'Swabian (Alb)', 'lang.swgOb': 'Upper Swabian' },
@@ -969,6 +1030,9 @@
           ] },
           { id: 'project-settings', titleKey: 'project.settings.title', descriptionKey: 'project.settings.desc', icon: 'settings', width: 'full', components: [
             { type: 'projectSettings' }
+          ] },
+          { id: 'rf433-learn', titleKey: 'card.rf433.learn', descriptionKey: 'card.rf433.learn.desc', icon: 'hardware', width: 'full', components: [
+            { type: 'rfLearn' }
           ] }
         ]
       },
@@ -1024,6 +1088,9 @@
             { type: 'action', actions: [
               { id: 'hardware-check-all', labelKey: 'action.hardwareCheckAll', icon: 'refresh' }
             ] }
+          ] },
+          { id: 'rf433-sources', titleKey: 'card.rf433.sources', descriptionKey: 'card.rf433.sources.desc', icon: 'hardware', width: 'full', components: [
+            { type: 'rfSources' }
           ] },
           { id: 'ota', titleKey: 'card.ota', descriptionKey: 'card.ota.desc', icon: 'upload', width: 'full', components: [
             { type: 'kv', items: [
@@ -1140,6 +1207,133 @@
     'card.language.desc': 'D Sproch gilt fürs Web ond OLED ond bleibt em ESP32 gspeichert.'
   });
 
+
+  const RF433_I18N = {
+    de: {
+      'status.rf433': '433 MHz', 'event.source.radio': 'Funk',
+      'card.rf433.learn': 'Funkbutton anlernen', 'card.rf433.learn.desc': 'Hier wird nur angelernt. Status, Test und die Tasterverwaltung liegen unter Gerät / Hardware.',
+      'card.rf433.sources': 'Angelernte Funkbuttons', 'card.rf433.sources.desc': 'Namen, stabile Source-IDs und Senderbindungen verwalten. Die Funkempfänger-Diagnose steht direkt in der Hardwareliste darüber.',
+      'hardware.rf433': 'CC1101 Funkempfänger', 'hardware.info.frequency': 'Frequenz', 'hardware.info.partNumber': 'Chip Part', 'hardware.info.chipVersion': 'Chip-Version',
+      'hardware.info.decodedFrames': 'Dekodierte Frames', 'hardware.info.rejectedFrames': 'Verworfene Frames', 'hardware.info.overflowFrames': 'Pufferüberläufe',
+      'hardware.info.rfTestResult': 'Empfangstest', 'hardware.info.rfTestFrame': 'Test-Frame', 'hardware.info.configVerified': 'Registerprüfung', 'action.rf433Test': 'Empfang testen (Auto 10 s)',
+      'rf433.test.idle': 'Noch nicht getestet', 'rf433.test.waiting': 'Scanne 433,92 MHz und Somfy RTS 433,42 MHz – Taste mehrfach drücken …', 'rf433.test.received': '433,92-MHz-Funktelegramm empfangen', 'rf433.test.somfy_received': 'Somfy RTS auf 433,42 MHz empfangen', 'rf433.test.timeout': 'Kein gültiges Festcode- oder Somfy-RTS-Telegramm empfangen', 'rf433.test.cancelled': 'Test abgebrochen',
+      'rf433.ready': 'Empfänger bereit', 'rf433.offline': 'Empfänger nicht bereit', 'rf433.learning': 'Anlernen aktiv',
+      'rf433.newName': 'Name des neuen Buttons', 'rf433.learnNew': 'Neuen Button anlernen', 'rf433.cancel': 'Abbrechen', 'rf433.refresh': 'Aktualisieren',
+      'rf433.pressButton': 'Jetzt den gewünschten Funkbutton mehrfach drücken.', 'rf433.noSources': 'Noch kein Funkbutton angelernt.',
+      'rf433.sourceId': 'Source-ID', 'rf433.retained': 'Rohereignisse im Ring', 'rf433.bound': 'Gebunden', 'rf433.unbound': 'Nicht gebunden',
+      'rf433.rename': 'Umbenennen', 'rf433.replace': 'Sender ersetzen', 'rf433.unbind': 'Sender lösen', 'rf433.lastFrame': 'Letzter Funkcode',
+      'rf433.error': 'Funkaktion fehlgeschlagen', 'rf433.capacity': '{n} von 10 Source-IDs belegt', 'rf433.learned': '{n} von 10 Tastern eingelernt'
+    },
+    en: {
+      'status.rf433': '433 MHz', 'event.source.radio': 'Radio',
+      'card.rf433.learn': 'Learn radio button', 'card.rf433.learn.desc': 'Only learning happens here. Receiver status, testing and button management are under Device / Hardware.',
+      'card.rf433.sources': 'Learned radio buttons', 'card.rf433.sources.desc': 'Manage names, stable source IDs and transmitter bindings. Receiver diagnostics are shown in the hardware list above.',
+      'hardware.rf433': 'CC1101 radio receiver', 'hardware.info.frequency': 'Frequency', 'hardware.info.partNumber': 'Chip part', 'hardware.info.chipVersion': 'Chip version',
+      'hardware.info.decodedFrames': 'Decoded frames', 'hardware.info.rejectedFrames': 'Rejected frames', 'hardware.info.overflowFrames': 'Buffer overflows',
+      'hardware.info.rfTestResult': 'Receive test', 'hardware.info.rfTestFrame': 'Test frame', 'hardware.info.configVerified': 'Register verification', 'action.rf433Test': 'Test reception (auto 10 s)',
+      'rf433.test.idle': 'Not tested yet', 'rf433.test.waiting': 'Scanning 433.92 MHz and Somfy RTS 433.42 MHz – press repeatedly …', 'rf433.test.received': '433.92 MHz radio frame received', 'rf433.test.somfy_received': 'Somfy RTS received at 433.42 MHz', 'rf433.test.timeout': 'No valid fixed-code or Somfy RTS frame received', 'rf433.test.cancelled': 'Test cancelled',
+      'rf433.ready': 'Receiver ready', 'rf433.offline': 'Receiver not ready', 'rf433.learning': 'Learn mode active',
+      'rf433.newName': 'Name of new button', 'rf433.learnNew': 'Learn new button', 'rf433.cancel': 'Cancel', 'rf433.refresh': 'Refresh',
+      'rf433.pressButton': 'Press the desired radio button several times now.', 'rf433.noSources': 'No radio button learned yet.',
+      'rf433.sourceId': 'Source ID', 'rf433.retained': 'Raw events retained', 'rf433.bound': 'Bound', 'rf433.unbound': 'Not bound',
+      'rf433.rename': 'Rename', 'rf433.replace': 'Replace transmitter', 'rf433.unbind': 'Unbind transmitter', 'rf433.lastFrame': 'Last radio code',
+      'rf433.error': 'Radio action failed', 'rf433.capacity': '{n} of 10 source IDs assigned', 'rf433.learned': '{n} of 10 buttons learned'
+    },
+    it: {
+      'status.rf433': '433 MHz', 'event.source.radio': 'Radio',
+      'card.rf433.learn': 'Apprendi pulsante radio', 'card.rf433.learn.desc': 'Qui avviene solo l’apprendimento. Stato, test e gestione dei pulsanti sono in Dispositivo / Hardware.',
+      'card.rf433.sources': 'Pulsanti radio appresi', 'card.rf433.sources.desc': 'Gestione di nomi, ID sorgente stabili e associazioni. La diagnostica del ricevitore è nella lista hardware sopra.',
+      'hardware.rf433': 'Ricevitore radio CC1101', 'hardware.info.frequency': 'Frequenza', 'hardware.info.partNumber': 'Parte chip', 'hardware.info.chipVersion': 'Versione chip',
+      'hardware.info.decodedFrames': 'Frame decodificati', 'hardware.info.rejectedFrames': 'Frame scartati', 'hardware.info.overflowFrames': 'Overflow buffer',
+      'hardware.info.rfTestResult': 'Test ricezione', 'hardware.info.rfTestFrame': 'Frame di test', 'hardware.info.configVerified': 'Verifica registri', 'action.rf433Test': 'Test ricezione (auto 10 s)',
+      'rf433.test.idle': 'Non ancora testato', 'rf433.test.waiting': 'Scansione 433,92 MHz e Somfy RTS 433,42 MHz – premere più volte …', 'rf433.test.received': 'Frame radio 433,92 MHz ricevuto', 'rf433.test.somfy_received': 'Somfy RTS ricevuto a 433,42 MHz', 'rf433.test.timeout': 'Nessun frame fixed-code o Somfy RTS valido ricevuto', 'rf433.test.cancelled': 'Test annullato',
+      'rf433.ready': 'Ricevitore pronto', 'rf433.offline': 'Ricevitore non pronto', 'rf433.learning': 'Apprendimento attivo',
+      'rf433.newName': 'Nome del nuovo pulsante', 'rf433.learnNew': 'Apprendi nuovo pulsante', 'rf433.cancel': 'Annulla', 'rf433.refresh': 'Aggiorna',
+      'rf433.pressButton': 'Premere ora più volte il pulsante radio desiderato.', 'rf433.noSources': 'Nessun pulsante radio appreso.',
+      'rf433.sourceId': 'ID sorgente', 'rf433.retained': 'Eventi grezzi nel ring', 'rf433.bound': 'Associato', 'rf433.unbound': 'Non associato',
+      'rf433.rename': 'Rinomina', 'rf433.replace': 'Sostituisci trasmettitore', 'rf433.unbind': 'Scollega trasmettitore', 'rf433.lastFrame': 'Ultimo codice radio',
+      'rf433.error': 'Azione radio non riuscita', 'rf433.capacity': '{n} di 10 ID sorgente assegnati', 'rf433.learned': '{n} di 10 pulsanti appresi'
+    },
+    fr: {
+      'status.rf433': '433 MHz', 'event.source.radio': 'Radio',
+      'card.rf433.learn': 'Apprendre un bouton radio', 'card.rf433.learn.desc': 'Seul l’apprentissage se fait ici. État, test et gestion des boutons sont sous Appareil / Matériel.',
+      'card.rf433.sources': 'Boutons radio appris', 'card.rf433.sources.desc': 'Gérer les noms, ID source stables et liaisons émetteur. Le diagnostic du récepteur est dans la liste matérielle ci-dessus.',
+      'hardware.rf433': 'Récepteur radio CC1101', 'hardware.info.frequency': 'Fréquence', 'hardware.info.partNumber': 'Référence puce', 'hardware.info.chipVersion': 'Version puce',
+      'hardware.info.decodedFrames': 'Trames décodées', 'hardware.info.rejectedFrames': 'Trames rejetées', 'hardware.info.overflowFrames': 'Débordements tampon',
+      'hardware.info.rfTestResult': 'Test réception', 'hardware.info.rfTestFrame': 'Trame de test', 'hardware.info.configVerified': 'Vérification registres', 'action.rf433Test': 'Tester réception (auto 10 s)',
+      'rf433.test.idle': 'Pas encore testé', 'rf433.test.waiting': 'Balayage 433,92 MHz et Somfy RTS 433,42 MHz – appuyer plusieurs fois …', 'rf433.test.received': 'Trame radio 433,92 MHz reçue', 'rf433.test.somfy_received': 'Somfy RTS reçu à 433,42 MHz', 'rf433.test.timeout': 'Aucune trame fixed-code ou Somfy RTS valide reçue', 'rf433.test.cancelled': 'Test annulé',
+      'rf433.ready': 'Récepteur prêt', 'rf433.offline': 'Récepteur indisponible', 'rf433.learning': 'Apprentissage actif',
+      'rf433.newName': 'Nom du nouveau bouton', 'rf433.learnNew': 'Apprendre un bouton', 'rf433.cancel': 'Annuler', 'rf433.refresh': 'Actualiser',
+      'rf433.pressButton': 'Appuyer maintenant plusieurs fois sur le bouton radio souhaité.', 'rf433.noSources': 'Aucun bouton radio appris.',
+      'rf433.sourceId': 'ID source', 'rf433.retained': 'Événements bruts conservés', 'rf433.bound': 'Associé', 'rf433.unbound': 'Non associé',
+      'rf433.rename': 'Renommer', 'rf433.replace': 'Remplacer émetteur', 'rf433.unbind': 'Dissocier émetteur', 'rf433.lastFrame': 'Dernier code radio',
+      'rf433.error': 'Action radio échouée', 'rf433.capacity': '{n} sur 10 ID source attribués', 'rf433.learned': '{n} sur 10 boutons appris'
+    },
+    swg: {
+      'status.rf433': '433 MHz', 'event.source.radio': 'Funk',
+      'card.rf433.learn': 'Funkknopf anlerna', 'card.rf433.learn.desc': 'Do wird bloß anglernt. Status, Test ond Knopfverwaltung send bei Grät / Hardware.',
+      'card.rf433.sources': 'Anglernte Funkknöpf', 'card.rf433.sources.desc': 'Nama, stabile Source-IDs ond Senderbindunga verwalta. D Empfängerdiagnose steht oba in dr Hardwarelist.',
+      'hardware.rf433': 'CC1101 Funkempfänger', 'hardware.info.frequency': 'Frequenz', 'hardware.info.partNumber': 'Chip-Part', 'hardware.info.chipVersion': 'Chip-Version',
+      'hardware.info.decodedFrames': 'Dekodierte Frames', 'hardware.info.rejectedFrames': 'Verworfene Frames', 'hardware.info.overflowFrames': 'Pufferüberläuf',
+      'hardware.info.rfTestResult': 'Empfangstest', 'hardware.info.rfTestFrame': 'Test-Frame', 'hardware.info.configVerified': 'Registerprüfig', 'action.rf433Test': 'Empfang testa (Auto 10 s)',
+      'rf433.test.idle': 'No net testet', 'rf433.test.waiting': 'Scannt 433,92 MHz ond Somfy RTS 433,42 MHz – Knopf mehrafach drucka …', 'rf433.test.received': '433,92-MHz-Funktelegramm empfangen', 'rf433.test.somfy_received': 'Somfy RTS auf 433,42 MHz empfangen', 'rf433.test.timeout': 'Koi gültigs Festcode- oder Somfy-RTS-Telegramm empfangen', 'rf433.test.cancelled': 'Test abbrocha',
+      'rf433.ready': 'Empfänger bereit', 'rf433.offline': 'Empfänger net bereit', 'rf433.learning': 'Anlerna läuft',
+      'rf433.newName': 'Name vom neia Knopf', 'rf433.learnNew': 'Neia Knopf anlerna', 'rf433.cancel': 'Abbrecha', 'rf433.refresh': 'Neu lada',
+      'rf433.pressButton': 'Jetzt dr gewünschte Funkknopf mehrafach drucka.', 'rf433.noSources': 'No koi Funkknopf anglernt.',
+      'rf433.sourceId': 'Source-ID', 'rf433.retained': 'Rohereignis em Ring', 'rf433.bound': 'Gebunda', 'rf433.unbound': 'Net gebunda',
+      'rf433.rename': 'Umbenenna', 'rf433.replace': 'Sender ersetza', 'rf433.unbind': 'Sender lösa', 'rf433.lastFrame': 'Letschter Funkcode',
+      'rf433.error': 'Funkaktion isch schief ganga', 'rf433.capacity': '{n} vo 10 Source-IDs vergebba', 'rf433.learned': '{n} vo 10 Knöpf anglernt'
+    }
+  };
+  Object.assign(RF433_I18N.de, {
+    'hardware.info.rfMode': 'Betriebsart', 'rf433.mode': 'Funkmodus',
+    'rf433.mode.universal': 'Universal 433', 'rf433.mode.somfy': 'Somfy RTS',
+    'rf433.mode.hint': 'Es ist immer genau ein Empfangsmodus aktiv. Vorhandene Bindungen des anderen Modus bleiben gespeichert.',
+    'rf433.protocol': 'Protokoll', 'action.rf433Test': 'Empfang testen (10 s)',
+    'rf433.test.waiting': 'Aktiven Funkmodus testen – Taste mehrfach drücken …',
+    'rf433.test.timeout': 'Im aktiven Funkmodus wurde kein gültiges Telegramm empfangen.'
+  });
+  Object.assign(RF433_I18N.en, {
+    'hardware.info.rfMode': 'Operating mode', 'rf433.mode': 'Radio mode',
+    'rf433.mode.universal': 'Universal 433', 'rf433.mode.somfy': 'Somfy RTS',
+    'rf433.mode.hint': 'Exactly one receive mode is active. Existing bindings from the other mode remain stored.',
+    'rf433.protocol': 'Protocol', 'action.rf433Test': 'Test reception (10 s)',
+    'rf433.test.waiting': 'Testing the active radio mode – press repeatedly …',
+    'rf433.test.timeout': 'No valid telegram was received in the active radio mode.'
+  });
+  Object.assign(RF433_I18N.it, {
+    'hardware.info.rfMode': 'Modalità operativa', 'rf433.mode': 'Modalità radio',
+    'rf433.mode.universal': 'Universal 433', 'rf433.mode.somfy': 'Somfy RTS',
+    'rf433.mode.hint': 'È attiva una sola modalità di ricezione. Le associazioni dell’altra modalità restano memorizzate.',
+    'rf433.protocol': 'Protocollo', 'action.rf433Test': 'Test ricezione (10 s)',
+    'rf433.test.waiting': 'Test della modalità radio attiva – premere più volte …',
+    'rf433.test.timeout': 'Nessun telegramma valido ricevuto nella modalità radio attiva.'
+  });
+  Object.assign(RF433_I18N.fr, {
+    'hardware.info.rfMode': 'Mode de fonctionnement', 'rf433.mode': 'Mode radio',
+    'rf433.mode.universal': 'Universal 433', 'rf433.mode.somfy': 'Somfy RTS',
+    'rf433.mode.hint': 'Un seul mode de réception est actif. Les liaisons de l’autre mode restent enregistrées.',
+    'rf433.protocol': 'Protocole', 'action.rf433Test': 'Tester réception (10 s)',
+    'rf433.test.waiting': 'Test du mode radio actif – appuyer plusieurs fois …',
+    'rf433.test.timeout': 'Aucun télégramme valide reçu dans le mode radio actif.'
+  });
+  Object.assign(RF433_I18N.swg, {
+    'hardware.info.rfMode': 'Betriebsart', 'rf433.mode': 'Funkmodus',
+    'rf433.mode.universal': 'Universal 433', 'rf433.mode.somfy': 'Somfy RTS',
+    'rf433.mode.hint': 'Es isch immer bloß oi Empfangsmodus aktiv. D Bindunga vom andere Modus bleibet gspeichert.',
+    'rf433.protocol': 'Protokoll', 'action.rf433Test': 'Empfang testa (10 s)',
+    'rf433.test.waiting': 'Aktiva Funkmodus testa – Knopf mehrafach drucka …',
+    'rf433.test.timeout': 'Em aktiva Funkmodus isch koi gültigs Telegramm komma.'
+  });
+
+  Object.assign(I18N.de, RF433_I18N.de);
+  Object.assign(I18N.en, RF433_I18N.en);
+  Object.assign(I18N.it, RF433_I18N.it);
+  Object.assign(I18N.fr, RF433_I18N.fr);
+  Object.assign(I18N.swg, RF433_I18N.swg);
+  Object.assign(I18N['swg-alb'], RF433_I18N.swg);
+  Object.assign(I18N['swg-ob'], RF433_I18N.swg);
+
   const state = {
     project: { name: 'ESP32 UI', icon: 'chip', version: '', footerComment: '', githubUser: '', githubUserUrl: '', projectUrl: '', timeZone: 'Europe/Berlin' },
     firmware: {},
@@ -1148,7 +1342,8 @@
     connection: { deviceLoading: false, deviceRequested: false, deviceLoaded: false },
     device: {}, wifi: {}, memory: {}, hardware: { checking: false, modules: [] }, ota: { supported: null, currentBytes: 0, maxBytes: 0, headroomBytes: 0, usedPercent: 0 },
     interruptions: { todayCount: 0, unassignedCount: 0, sequence: 0, persistedSequence: 0, pendingCount: 0, droppedCount: 0, storageState: 'unavailable', soundEnabled: true, last: { available: false } },
-    projectSettings: { soundEnabled: true, soundVolume: 100, soundMode: 'rotate', soundTrack: 2, soundTrackCount: 0, language: 'en', languageStored: false, displayEnabled: true, displayRotation180: false, displayFlashEnabled: true, displayMode: 'standard', displayBrightness: 65, displayDimAfterMinutes: 10, displayDimBrightness: 5 },
+    projectSettings: { soundEnabled: true, soundVolume: 100, soundMode: 'rotate', soundTrack: 2, soundTrackCount: 0, rfMode: 'universal', language: 'en', languageStored: false, displayEnabled: true, displayRotation180: false, displayFlashEnabled: true, displayMode: 'standard', displayBrightness: 65, displayDimAfterMinutes: 10, displayDimBrightness: 5 },
+    rf433: { rf: { ready: false }, learn: { active: false }, sources: [], assignedRadio: 0, radioCapacity: 10 },
     analytics: { loaded: false, loading: false, dirty: false, error: '', storage: null, hourly: null, monthWeek: null, yearMonth: null, hourlyMode: 'week', metric: 'count' },
     time: { valid: false, source: 'relative', quality: 'relative', epochMs: 0, syncPerf: 0 },
     timeManagement: { activeSource: 'relative', quality: 'relative', valid: false, ntpServer: '', browserFallbackAllowed: false, ntp: {}, rtc: {}, browser: {}, system: {} },
@@ -1314,6 +1509,8 @@
     },
     bool(value) { return value === true ? t('common.yes') : value === false ? t('common.no') : t('common.none'); },
     stateKey(value) { return t(`hardware.play.${value || 'unknown'}`); },
+    rfTest(value) { return t(`rf433.test.${value || 'idle'}`); },
+    rfMode(value) { return t(`rf433.mode.${value === 'somfy' ? 'somfy' : 'universal'}`); },
     checkTime(value) {
       const ms = Number(value);
       if (!Number.isFinite(ms) || ms <= 0) return t('common.none');
@@ -1409,7 +1606,7 @@
 
   function applyStatusProviders(providers) {
     const apiProvider = { id: 'api', path: 'status.api', key: 'status.api', icon: 'server', visible: true };
-    const order = { wifi: 10, time: 15, gpio: 20, rtc: 30, display: 40, audio: 50, data: 55 };
+    const order = { wifi: 10, time: 15, gpio: 20, rtc: 30, display: 40, rf433: 45, audio: 50, data: 55 };
     const mapped = Array.isArray(providers) ? providers.filter(item => item && item.visible !== false).map(item => ({
       id: item.id, path: `status.${item.id}`, key: item.key || `status.${item.id}`, icon: item.icon || 'hardware', visible: true
     })).sort((a, b) => (order[a.id] || 100) - (order[b.id] || 100)) : [];
@@ -1989,7 +2186,8 @@
       lastValue.textContent = interruptionAgeText();
       const last = state.interruptions.last || {};
       const eventSourceKey = `event.source.${last.eventSource || 'unknown'}`;
-      lastMeta.textContent = last.available ? `${t(`time.source.${last.timeSource || 'relative'}`)} · ${t(eventSourceKey)}` : '';
+      const sourceLabel = last.sourceName || t(eventSourceKey);
+      lastMeta.textContent = last.available ? `${t(`time.source.${last.timeSource || 'relative'}`)} · ${sourceLabel}` : '';
       const pending = Number(state.interruptions.pendingCount || 0);
       const dropped = Number(state.interruptions.droppedCount || 0);
       status.textContent = dropped > 0 ? translatedCount('interruptions.dropped', dropped) : pending > 0 ? `${t('interruptions.pending')} (${pending})` : '';
@@ -2106,6 +2304,100 @@
         : `${t('project.soundTrackHint')} ${t('project.soundTracksUnknown')}`;
     };
     Bindings.add('projectSettings', update);
+    return root;
+  }
+
+
+  function renderRfLearn() {
+    const root = el('div', 'rf433-panel');
+    const capacity = el('strong', 'rf433-capacity');
+    const learnInfo = el('div', 'rf433-learn-info');
+    const toolbar = el('div', 'rf433-toolbar');
+    const nameInput = el('input', 'project-setting-input');
+    nameInput.type = 'text'; nameInput.maxLength = 23; nameInput.placeholder = t('rf433.newName'); nameInput.dataset.rfNewName = '1';
+    const learnButton = el('button', 'button'); learnButton.type = 'button'; learnButton.dataset.rfAction = 'learn-new'; learnButton.textContent = t('rf433.learnNew');
+    const cancelButton = el('button', 'button'); cancelButton.type = 'button'; cancelButton.dataset.rfAction = 'cancel'; cancelButton.textContent = t('rf433.cancel');
+    toolbar.append(nameInput, learnButton, cancelButton);
+    const message = el('div', 'project-setting-message'); message.setAttribute('aria-live', 'polite'); message.dataset.rfMessage = '1';
+    root.append(capacity, learnInfo, toolbar, message);
+
+    const update = () => {
+      const data = state.rf433 || {};
+      const rf = data.rf || {};
+      const learn = data.learn || {};
+      capacity.textContent = t('rf433.learned').replace('{n}', String(Number(data.boundRadio || 0)));
+      learnInfo.textContent = learn.active
+        ? `${t('rf433.learning')} · ${t('rf433.pressButton')} (${Math.ceil(Number(learn.remainingMs || 0) / 1000)} s)`
+        : '';
+      cancelButton.hidden = !learn.active;
+      learnButton.disabled = !rf.ready || !!learn.active || Number(data.assignedRadio || 0) >= Number(data.radioCapacity || 10);
+      nameInput.disabled = !rf.ready || !!learn.active;
+    };
+    Bindings.add('rf433', update);
+    queueMicrotask(() => Transport.loadRfSources(true));
+    return root;
+  }
+
+  function renderRfSourceList() {
+    const root = el('div', 'rf433-panel');
+    const head = el('div', 'rf433-head');
+    const capacity = el('strong', 'rf433-capacity');
+    const refreshButton = el('button', 'button'); refreshButton.type = 'button'; refreshButton.dataset.rfAction = 'refresh'; refreshButton.textContent = t('rf433.refresh');
+    head.append(capacity, refreshButton);
+    const modeRow = el('label', 'project-setting-row');
+    const modeLabel = el('span', 'project-setting-label'); modeLabel.textContent = t('rf433.mode');
+    const modeSelect = el('select', 'project-setting-input'); modeSelect.dataset.projectSetting = 'rfMode';
+    for (const value of ['universal', 'somfy']) {
+      const option = el('option'); option.value = value; option.textContent = t(`rf433.mode.${value}`); modeSelect.append(option);
+    }
+    modeRow.append(modeLabel, modeSelect);
+    const modeHint = el('div', 'form-note'); modeHint.textContent = t('rf433.mode.hint');
+    const learnInfo = el('div', 'rf433-learn-info');
+    const lastFrame = el('div', 'form-note rf433-last-frame');
+    const list = el('div', 'rf433-source-list');
+    const message = el('div', 'project-setting-message'); message.setAttribute('aria-live', 'polite'); message.dataset.rfMessage = '1';
+    root.append(head, modeRow, modeHint, learnInfo, lastFrame, list, message);
+
+    const update = () => {
+      const data = state.rf433 || {};
+      const rf = data.rf || {};
+      const learn = data.learn || {};
+      const selectedMode = state.projectSettings?.rfMode || rf.mode || 'universal';
+      if (document.activeElement !== modeSelect) modeSelect.value = selectedMode;
+      modeSelect.disabled = !!learn.active || !rf.ready;
+      capacity.textContent = t('rf433.capacity').replace('{n}', String(Number(data.assignedRadio || 0)));
+      learnInfo.textContent = learn.active
+        ? `${t('rf433.learning')} · ${t('rf433.pressButton')} (${Math.ceil(Number(learn.remainingMs || 0) / 1000)} s)`
+        : '';
+      if (Number(rf.lastCode || 0) > 0) {
+        const protocol = rf.lastProtocol || 'universal';
+        const codeText = `0x${Number(rf.lastCode).toString(16).toUpperCase().padStart(protocol === 'somfy' ? 6 : 8, '0')}`;
+        lastFrame.textContent = `${t('rf433.lastFrame')}: ${t(`rf433.mode.${protocol}`)} · ${codeText}${protocol === 'somfy' ? '' : ` · ${Number(rf.lastBits || 0)} bit`}`;
+      } else lastFrame.textContent = '';
+
+      list.replaceChildren();
+      const sources = Array.isArray(data.sources) ? data.sources.filter(source => source.kind === 'radio') : [];
+      if (!sources.length) {
+        const empty = el('div', 'form-note'); empty.textContent = t('rf433.noSources'); list.append(empty); return;
+      }
+      for (const source of sources) {
+        const row = el('article', 'rf433-source-row'); row.dataset.rfSourceId = String(source.id);
+        const meta = el('div', 'rf433-source-meta');
+        const id = el('strong'); id.textContent = `${t('rf433.sourceId')} ${source.id}`;
+        const bound = el('span'); bound.textContent = t(source.bound ? 'rf433.bound' : 'rf433.unbound');
+        const protocol = el('span'); protocol.textContent = `${t('rf433.protocol')}: ${t(`rf433.mode.${source.protocol || 'universal'}`)}`;
+        meta.append(id, bound, protocol);
+        const edit = el('div', 'rf433-source-edit');
+        const input = el('input', 'project-setting-input'); input.type = 'text'; input.maxLength = 23; input.value = source.name || ''; input.dataset.rfSourceName = String(source.id);
+        const rename = el('button', 'button'); rename.type = 'button'; rename.dataset.rfAction = 'rename'; rename.textContent = t('rf433.rename');
+        const replace = el('button', 'button'); replace.type = 'button'; replace.dataset.rfAction = 'replace'; replace.textContent = t('rf433.replace');
+        const unbind = el('button', 'button'); unbind.type = 'button'; unbind.dataset.rfAction = 'unbind'; unbind.textContent = t('rf433.unbind'); unbind.disabled = !source.bound;
+        edit.append(input, rename, replace, unbind);
+        row.append(meta, edit); list.append(row);
+      }
+    };
+    Bindings.add('rf433', update);
+    queueMicrotask(() => Transport.loadRfSources(true));
     return root;
   }
 
@@ -2303,7 +2595,7 @@
   }
 
   function renderComponent(def) {
-    const renderers = { kv: renderKv, status: renderStatus, meter: renderMeter, select: renderSelect, switch: renderSwitch, action: renderAction, upload: renderUpload, hardware: renderHardware, timeManagement: renderTimeManagement, notice: renderNotice, list: renderList, interruptionHome: renderInterruptionHome, projectSettings: renderProjectSettings, heatmapHourly: renderHeatmapHourly, heatmapMonthWeek: renderHeatmapMonthWeek, heatmapYearMonth: renderHeatmapYearMonth, analyticsStorage: renderAnalyticsStorage };
+    const renderers = { kv: renderKv, status: renderStatus, meter: renderMeter, select: renderSelect, switch: renderSwitch, action: renderAction, upload: renderUpload, hardware: renderHardware, timeManagement: renderTimeManagement, notice: renderNotice, list: renderList, interruptionHome: renderInterruptionHome, projectSettings: renderProjectSettings, rfLearn: renderRfLearn, rfSources: renderRfSourceList, heatmapHourly: renderHeatmapHourly, heatmapMonthWeek: renderHeatmapMonthWeek, heatmapYearMonth: renderHeatmapYearMonth, analyticsStorage: renderAnalyticsStorage };
     const renderer = renderers[def.type];
     return renderer ? renderer(def) : null;
   }
@@ -2494,16 +2786,58 @@
           Bindings.notify('projectSettings');
         }
         if (data.summary) applyInterruptionSummary(data.summary);
-        const message = document.querySelector('[data-project-setting-message]');
+        if (field === 'rfMode') {
+          await this.loadRfSources(true);
+          if (state.activeView === 'device') await this.refreshHardwareState();
+        }
+        const message = document.querySelector(field === 'rfMode' ? '[data-rf-message]' : '[data-project-setting-message]');
         if (message) { message.textContent = ''; message.dataset.state = 'ok'; }
         return true;
       } catch (error) {
         console.warn('Project preference failed:', field, error);
         Bindings.notify('projectSettings');
-        const message = document.querySelector('[data-project-setting-message]');
+        const message = document.querySelector(field === 'rfMode' ? '[data-rf-message]' : '[data-project-setting-message]');
         if (message) { message.textContent = t('project.preferenceError'); message.dataset.state = 'error'; }
         return false;
       } finally { if (input) input.disabled = false; }
+    },
+
+    async loadRfSources(compact = true) {
+      if (this._rfBusy) return;
+      this._rfBusy = true;
+      try {
+        const data = await this.requestResult(`/api/interruptions/sources${compact ? '?compact=1' : ''}`);
+        patchState({ rf433: data });
+        Bindings.notify('rf433');
+      } catch (error) {
+        console.warn('RF433 source load failed:', error);
+        const message = document.querySelector('[data-rf-message]');
+        if (message) { message.textContent = t('rf433.error'); message.dataset.state = 'error'; }
+      } finally { this._rfBusy = false; }
+    },
+    async startRfLearn(sourceId, name) {
+      const parts = [`name=${encodeURIComponent(String(name || '').trim())}`, 'compact=1'];
+      if (Number(sourceId) > 0) parts.push(`sourceId=${encodeURIComponent(sourceId)}`);
+      try {
+        const data = await this.requestResult(`/api/interruptions/rf/learn?${parts.join('&')}`, { method: 'POST' });
+        patchState({ rf433: data }); Bindings.notify('rf433');
+      } catch (error) { console.warn('RF433 learn failed:', error); alert(`${t('rf433.error')}: ${error.code || 'unknown'}`); }
+    },
+    async cancelRfLearn() {
+      try { const data = await this.requestResult('/api/interruptions/rf/cancel?compact=1', { method: 'POST' }); patchState({ rf433: data }); Bindings.notify('rf433'); }
+      catch (error) { console.warn('RF433 cancel failed:', error); }
+    },
+    async renameRfSource(sourceId, name) {
+      try {
+        const data = await this.requestResult(`/api/interruptions/sources/rename?sourceId=${encodeURIComponent(sourceId)}&name=${encodeURIComponent(String(name || '').trim())}&compact=1`, { method: 'POST' });
+        patchState({ rf433: data }); Bindings.notify('rf433');
+      } catch (error) { console.warn('RF433 rename failed:', error); alert(t('rf433.error')); }
+    },
+    async unbindRfSource(sourceId) {
+      try {
+        const data = await this.requestResult(`/api/interruptions/sources/unbind?sourceId=${encodeURIComponent(sourceId)}&compact=1`, { method: 'POST' });
+        patchState({ rf433: data }); Bindings.notify('rf433');
+      } catch (error) { console.warn('RF433 unbind failed:', error); alert(t('rf433.error')); }
     },
     async liveInterruptionTick() {
       if (this._liveBusy || !['home', 'analytics'].includes(state.activeView) || document.visibilityState !== 'visible') return;
@@ -2631,6 +2965,9 @@
         this.liveInterruptionTick();
       }
       if (state.activeView === 'analytics' && state.analytics.dirty && !state.analytics.loading) this.loadAnalytics(true);
+      if (['home', 'device'].includes(state.activeView) && state.rf433?.learn?.active && (!this._lastRfTick || now - this._lastRfTick >= 1000)) {
+        this._lastRfTick = now; this.loadRfSources(true);
+      }
     },
     async loadBootstrap() {
       state.status.api = 'busy'; updateStatusBar();
@@ -2731,7 +3068,7 @@
       await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 380 : 300));
       try {
         const data = await this.refreshHardwareState();
-        if (data.hardware?.checking && attempt < 4) this.followHardwareCheck(attempt + 1);
+        if (data.hardware?.checking && attempt < 40) this.followHardwareCheck(attempt + 1);
       } catch (error) {
         console.warn('Hardware check follow-up failed:', error);
       }
@@ -2974,6 +3311,21 @@
       } finally {
         timeButton.disabled = false;
       }
+      return;
+    }
+    const rfButton = event.target.closest('[data-rf-action]');
+    if (rfButton) {
+      const action = rfButton.dataset.rfAction || '';
+      const row = rfButton.closest('[data-rf-source-id]');
+      const sourceId = row ? Number(row.dataset.rfSourceId || 0) : 0;
+      const sourceNameInput = row ? row.querySelector('[data-rf-source-name]') : null;
+      const root = rfButton.closest('.rf433-panel');
+      if (action === 'learn-new') await Transport.startRfLearn(0, root?.querySelector('[data-rf-new-name]')?.value || '');
+      else if (action === 'cancel') await Transport.cancelRfLearn();
+      else if (action === 'refresh') await Transport.loadRfSources();
+      else if (action === 'rename') await Transport.renameRfSource(sourceId, sourceNameInput?.value || '');
+      else if (action === 'replace') await Transport.startRfLearn(sourceId, sourceNameInput?.value || '');
+      else if (action === 'unbind') await Transport.unbindRfSource(sourceId);
       return;
     }
     const hardwareActionButton = event.target.closest('[data-hardware-action]');

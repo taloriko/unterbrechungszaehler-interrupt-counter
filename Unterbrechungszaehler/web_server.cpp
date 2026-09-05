@@ -19,6 +19,9 @@
 #include "project_preferences.h"
 #include "project_config.h"
 #include "display_views.h"
+#include "rf433_api.h"
+#include "rf433_service.h"
+#include "source_registry.h"
 
 namespace {
 
@@ -220,6 +223,7 @@ void handleProjectPreferences() {
   const bool hasVolume = server.hasArg("soundVolume");
   const bool hasTrack = server.hasArg("soundTrack");
   const bool hasSoundMode = server.hasArg("soundMode");
+  const bool hasRfMode = server.hasArg("rfMode");
   const bool hasLanguage = server.hasArg("language");
   const bool hasDisplayEnabled = server.hasArg("displayEnabled");
   const bool hasRotation = server.hasArg("displayRotation180");
@@ -230,7 +234,7 @@ void handleProjectPreferences() {
   const bool hasDimBrightness = server.hasArg("displayDimBrightness");
   const uint8_t fields = static_cast<uint8_t>(hasSound) + static_cast<uint8_t>(hasVolume) +
                          static_cast<uint8_t>(hasTrack) + static_cast<uint8_t>(hasSoundMode) +
-                         static_cast<uint8_t>(hasLanguage) + static_cast<uint8_t>(hasDisplayEnabled) +
+                         static_cast<uint8_t>(hasRfMode) + static_cast<uint8_t>(hasLanguage) + static_cast<uint8_t>(hasDisplayEnabled) +
                          static_cast<uint8_t>(hasRotation) + static_cast<uint8_t>(hasFlash) +
                          static_cast<uint8_t>(hasMode) + static_cast<uint8_t>(hasBrightness) +
                          static_cast<uint8_t>(hasDimAfter) + static_cast<uint8_t>(hasDimBrightness);
@@ -269,6 +273,13 @@ void handleProjectPreferences() {
       return;
     }
     ok = ProjectPreferences::setSoundMode(value);
+  } else if (hasRfMode) {
+    ProjectPreferences::RadioMode value = ProjectPreferences::RadioMode::Universal433;
+    if (!ProjectPreferences::parseRadioMode(server.arg("rfMode").c_str(), value)) {
+      server.send(400, "application/json; charset=utf-8", "{\"ok\":false,\"error\":\"invalid_rf_mode\"}");
+      return;
+    }
+    ok = Rf433Service::setOperatingMode(value);
   } else if (hasLanguage) {
     ok = ProjectPreferences::setLanguage(server.arg("language").c_str());
     if (!ok) {
@@ -340,6 +351,73 @@ void handleProjectPreferences() {
   }
   if (displayChanged) DisplayViews::settingsChanged();
   sendJson(InterruptionApi::buildProjectPreferencesJson(true));
+}
+
+void sendRfError(int status, const char *error) {
+  String json;
+  json.reserve(96);
+  json += F("{\"ok\":false,\"error\":\"");
+  json += error ? error : "rf_error";
+  json += F("\"}");
+  server.sendHeader("Cache-Control", "no-store");
+  server.send(status, "application/json; charset=utf-8", json);
+}
+
+void handleRfSources() {
+  sendJson(Rf433Api::buildSourcesJson(server.arg("compact") != "1"));
+}
+
+void handleRfLearn() {
+  uint32_t sourceId = 0;
+  if (server.hasArg("sourceId") && server.arg("sourceId").length() &&
+      !parseUnsignedArg(server.arg("sourceId"), 0, SourceRegistry::SOURCE_ID_RADIO_LAST, sourceId)) {
+    sendRfError(400, "invalid_source_id");
+    return;
+  }
+  if (sourceId != 0U && sourceId < SourceRegistry::SOURCE_ID_RADIO_FIRST) {
+    sendRfError(400, "invalid_source_id");
+    return;
+  }
+  const String name = server.arg("name");
+  if (!Rf433Service::startLearn(name.c_str(), static_cast<uint8_t>(sourceId))) {
+    sendRfError(409, SourceRegistry::learnState().error);
+    return;
+  }
+  sendJson(Rf433Api::buildSourcesJson(server.arg("compact") != "1"));
+}
+
+void handleRfCancel() {
+  Rf433Service::cancelLearn();
+  sendJson(Rf433Api::buildSourcesJson(server.arg("compact") != "1"));
+}
+
+void handleRfRename() {
+  uint32_t sourceId = 0;
+  const String name = server.arg("name");
+  if (!parseUnsignedArg(server.arg("sourceId"), SourceRegistry::SOURCE_ID_RADIO_FIRST,
+                        SourceRegistry::SOURCE_ID_RADIO_LAST, sourceId) || !name.length()) {
+    sendRfError(400, "invalid_source");
+    return;
+  }
+  if (!Rf433Service::renameSource(static_cast<uint8_t>(sourceId), name.c_str())) {
+    sendRfError(409, "rename_failed");
+    return;
+  }
+  sendJson(Rf433Api::buildSourcesJson(server.arg("compact") != "1"));
+}
+
+void handleRfUnbind() {
+  uint32_t sourceId = 0;
+  if (!parseUnsignedArg(server.arg("sourceId"), SourceRegistry::SOURCE_ID_RADIO_FIRST,
+                        SourceRegistry::SOURCE_ID_RADIO_LAST, sourceId)) {
+    sendRfError(400, "invalid_source");
+    return;
+  }
+  if (!Rf433Service::unbindSource(static_cast<uint8_t>(sourceId))) {
+    sendRfError(409, "unbind_failed");
+    return;
+  }
+  sendJson(Rf433Api::buildSourcesJson(server.arg("compact") != "1"));
 }
 
 void handleInterruptionStorage() {
@@ -477,6 +555,11 @@ void registerRoutes() {
   server.on("/api/interruptions/live", HTTP_GET, handleInterruptionLive);
   server.on("/api/interruptions/sound", HTTP_POST, handleInterruptionSound);
   server.on("/api/interruptions/preferences", HTTP_POST, handleProjectPreferences);
+  server.on("/api/interruptions/sources", HTTP_GET, handleRfSources);
+  server.on("/api/interruptions/rf/learn", HTTP_POST, handleRfLearn);
+  server.on("/api/interruptions/rf/cancel", HTTP_POST, handleRfCancel);
+  server.on("/api/interruptions/sources/rename", HTTP_POST, handleRfRename);
+  server.on("/api/interruptions/sources/unbind", HTTP_POST, handleRfUnbind);
   server.on("/api/interruptions/storage", HTTP_GET, handleInterruptionStorage);
   server.on("/api/interruptions/analytics", HTTP_GET, handleAnalyticsBundle);
   server.on("/api/interruptions/heatmap/hourly", HTTP_GET, handleHeatmapHourly);

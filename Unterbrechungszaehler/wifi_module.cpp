@@ -31,6 +31,16 @@ bool elapsed(uint32_t now, uint32_t since, uint32_t interval) {
   return static_cast<uint32_t>(now - since) >= interval;
 }
 
+bool applyProjectHostname() {
+  // DHCP hostnames must stay ASCII-safe. FIRMWARE_NAME is the network-safe
+  // project name (PROJECT_NAME may contain UTF-8 such as ä). Set it before
+  // WiFi.begin() so routers such as FRITZ!Box show a useful device name.
+  const bool ok = WiFi.setHostname(AppConfig::FIRMWARE_NAME);
+  if (ok) SerialLog::infof("WIFI", "Station hostname=%s", AppConfig::FIRMWARE_NAME);
+  else SerialLog::warningf("WIFI", "Could not set station hostname=%s", AppConfig::FIRMWARE_NAME);
+  return ok;
+}
+
 bool wifiCredentialsConfigured() {
   return std::strcmp(AppConfig::WIFI_SSID, "WIFI_SSID") != 0 && AppConfig::WIFI_SSID[0] != '\0';
 }
@@ -100,6 +110,7 @@ bool startFallbackAccessPoint() {
   // If credentials exist, AP+STA keeps automatic station reconnection alive.
   // Without credentials, AP-only avoids running an unused station interface.
   WiFi.mode(credentialsAvailable ? WIFI_AP_STA : WIFI_AP);
+  if (credentialsAvailable) applyProjectHostname();
   const bool started = WiFi.softAP(apName, AppConfig::FALLBACK_AP_PASSWORD);
   lastFallbackAttemptMs = millis();
 
@@ -123,6 +134,7 @@ void stopFallbackAccessPoint() {
   WiFi.softAPdisconnect(false);
   apActive = false;
   WiFi.mode(WIFI_STA);
+  applyProjectHostname();
   const String currentIp = WiFi.localIP().toString();
   SerialLog::successf("WIFI", "Station reconnected | fallback AP stopped | IP=%s | RSSI=%ld dBm",
                       currentIp.c_str(), static_cast<long>(WiFi.RSSI()));
@@ -199,6 +211,7 @@ bool begin() {
   }
 
   WiFi.mode(WIFI_STA);
+  applyProjectHostname();
   WiFi.setAutoReconnect(true);
   SerialLog::infof("WIFI", "Connecting to station network asynchronously | SSID=%s", stationSsid.c_str());
   stationAttemptStartedMs = millis();

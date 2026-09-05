@@ -1,0 +1,109 @@
+# 433-MHz-/CC1101-Prototyp testen
+
+> **Entwicklungsstand `3.3.0-dev433` – kein Release.** Der Code liegt nur im Draft-PR #12. Die OTA aus GitHub Actions ist ausschließlich für Hardwaretests gedacht.
+
+## Ziel
+
+Der ESP32 bleibt Master. Der lokale DI1-Taster auf GPIO13 funktioniert weiter. Ein CC1101/RF1100SE empfängt zusätzlich 433,92-MHz-OOK-Festcode-Taster. Jeder angelernte Sender wird einer **stabilen Source-ID** zugeordnet; der frei vergebene Name steht nur einmal in der SourceRegistry und wird nicht in jedem Event dupliziert.
+
+## Verdrahtung CC1101 / RF1100SE
+
+| CC1101 | ESP32 |
+|---|---:|
+| VCC | **3,3 V** |
+| GND | GND |
+| SCK | GPIO14 |
+| MISO / SO | GPIO32 |
+| MOSI / SI | GPIO23 |
+| CSN / SS | GPIO25 |
+| GDO0 | GPIO26 |
+| GDO2 | GPIO27 |
+
+**CC1101 nur mit 3,3 V versorgen.** Eine passende 433-MHz-Antenne verbessert den Test erheblich.
+
+## Welche Taster unterstützt der erste Prototyp?
+
+Bewusst eng: gängige **433,92-MHz-ASK/OOK-Festcode-Sender** mit etwa 20–32 Bit und kurzen/langen Pulspaaren. Zusätzlich besitzt der Hardwaretest jetzt einen **passiven Somfy-RTS-Decoder für 56-Bit-RTS auf 433,42 MHz**. Dieser RTS-Pfad dient zunächst nur zur Diagnose: Er liest Senderadresse, Rolling Code und Befehl, sendet selbst nichts und erzeugt beim Test keine Unterbrechung. Rolling-Code-Protokolle außerhalb Somfy RTS, Keeloq und unbekannte/proprietäre Protokolle sind nicht zugesichert.
+
+Die Firmware verlangt zwei übereinstimmende empfangene Frames, bevor ein Tastendruck akzeptiert wird, und unterdrückt die Wiederholungen eines einzelnen Funk-Tastendrucks anschließend kurz. Damit soll ein typischer Sender mit mehreren identischen Wiederholtelegrammen genau eine Unterbrechung erzeugen.
+
+## Test-OTA
+
+Die OTA wird nicht als GitHub Release veröffentlicht. Sie entsteht ausschließlich als Artefakt des erfolgreichen PR-Builds. Nach jeder weiteren Codeänderung im Draft-PR gilt immer das Artefakt des neuesten grünen `Firmware build`.
+
+ZIP des erfolgreichen Builds herunterladen, entpacken und die enthaltene `Unterbrechungszaehler-3.3.0-dev433-OTA.bin` über die bestehende OTA-Seite hochladen.
+
+## Anlernen
+
+1. `3.3.0-dev433` OTA installieren.
+2. Weboberfläche → **Home → Funkbutton anlernen**. Dort stehen absichtlich nur Anlernen und die Anzahl der aktuell gebundenen Taster.
+3. Namen eingeben, z. B. `Anna`.
+4. **Neuen Button anlernen** wählen.
+5. Gewünschten Funkbutton innerhalb von 30 Sekunden mehrfach drücken.
+6. Der Anlerndruck wird absichtlich **nicht** als Unterbrechung gezählt.
+7. Danach normal drücken. Der Event läuft über denselben `InterruptionService` wie Master/Web und bekommt seine stabile Source-ID.
+
+Es stehen im ersten Prototyp genau **10 Funk-IDs (6–15)** zur Verfügung. IDs 0–5 bleiben für Unknown/Master/Web/Software/API/Technik reserviert.
+
+## Hardwarestatus und Empfangstest
+
+Unter **Gerät → Hardware** erscheint der CC1101 wie RTC, Display und Sound als normales Hardwaremodul. Dort werden Status, SPI-/Chipdaten, Pins, Registerprüfung sowie Frame-Zähler angezeigt. **Hardware prüfen** fragt den CC1101 über SPI erneut ab und verifiziert zusätzlich ausgewählte Konfigurationsregister per Readback. **Empfang testen (Auto 10 s)** wechselt während des Tests zwischen normalem 433,92-MHz-Festcodeempfang und **Somfy RTS 433,42 MHz**. Während der zehn Sekunden die Fernbedienung mehrfach drücken. Ein Testtelegramm wird absichtlich nicht als Unterbrechung gespeichert. Bei Somfy RTS zeigt `Test-Frame` die stabile 24-Bit-Senderadresse, den Befehl und den Rolling Code.
+
+Die vollständige Liste der angelernten Funkbuttons befindet sich ebenfalls unter **Gerät → Hardware**. Dort werden Namen geändert, Sender gelöst oder ersetzt.
+
+## Sender ersetzen ohne Historie umzubenennen
+
+Bei einem defekten Sender in derselben Quellenzeile **Sender ersetzen** wählen und den neuen Sender drücken. Die Source-ID und damit die Zuordnung aller historischen Events bleibt gleich; nur die physische RF-Bindung wird aktualisiert.
+
+**Sender lösen** entfernt nur die Funkbindung. Die Source-ID und der Name werden absichtlich nicht automatisch freigegeben oder wiederverwendet.
+
+## Speicherung
+
+Das Raw-Event bleibt **9 Byte** groß, der Ring bleibt bei **100.000 Events**. Neue Records tragen eine 4-Bit-Source-ID in einem selbstidentifizierenden v3-Bitlayout. Alte v2-Records werden unverändert weitergelesen. Namen/RF-Codes liegen in einer kleinen CRC-geschützten NVS-Registry.
+
+CSV enthält die numerische `source_id`; Namen werden nicht pro Event gespeichert. Die Weboberfläche löst Namen über die SourceRegistry auf.
+
+## Was beim Hardwaretest beobachten?
+
+- Bootlog: `CC1101 ready ...`
+- Headerstatus `433 MHz` sollte OK sein.
+- Unter Gerät / Hardware muss der CC1101 mit denselben Status-/Prüfmechanismen wie die übrige Hardware erscheinen.
+- Der Auto-10-s-Empfangstest muss bei einem passenden Tastendruck ein Test-Frame melden, ohne den Unterbrechungszähler zu erhöhen. Für Somfy RTS mehrfach während des Tests drücken; Erfolg wird ausdrücklich als `Somfy RTS auf 433,42 MHz empfangen` angezeigt.
+- `Registerprüfung` sollte `Ja` zeigen. Das bestätigt SPI-Schreib-/Lesezugriff deutlich stärker als nur ein nicht-`0xFF` Chipwert; GDO-Leitungen und Antennen-/RF-Pfad gelten trotzdem erst nach einem erfolgreichen Empfangstest als praktisch bestätigt.
+- Im Heimnetz meldet sich die WLAN-Station als `Unterbrechungszaehler` statt als generischer ESP32-Hostname.
+- Beim Anlernen sollte die neue Quelle erscheinen.
+- Ein einzelner menschlicher Tastendruck darf trotz RF-Wiederholtelegrammen nur **ein** Event ergeben.
+- Master-DI1 und Webbutton müssen parallel weiter funktionieren.
+- Nach Neustart müssen Name, Source-ID und Senderbindung erhalten bleiben.
+- Sender ersetzen muss dieselbe Source-ID behalten.
+
+Wenn ein Sender nicht erkannt wird, sind `lastCode`, `lastBits`, `rejectedFrames` und `overflowFrames` über `/api/interruptions/sources` als Diagnosewerte verfügbar.
+
+
+## Funkmodus Universal 433 / Somfy RTS
+
+Unter **Gerät → Hardware → Angelernte Funkbuttons** wird genau ein normaler Empfangsmodus gewählt:
+
+- **Universal 433**: 433,92 MHz, typische ASK/OOK-Festcode-Taster.
+- **Somfy RTS**: 433,42 MHz, klassische 56-Bit-RTS-Sender. Die stabile 24-Bit-Senderadresse ist die Bindungs-ID; Rolling Code und Befehl werden nicht als Identität gespeichert.
+
+Beim Umschalten bleiben bestehende Bindungen des jeweils anderen Protokolls erhalten. Anlernen und Unterbrechungserfassung verwenden ausschließlich den aktuell gewählten Modus. Der Hardware-Empfangstest testet ebenfalls nur diesen Modus und speichert sein Testtelegramm nicht als Unterbrechung.
+
+### DY-SV17F-Koexistenztest
+
+Nach Einbau des CC1101 Audio mehrfach mit **Prüfen** und **Ton testen** testen. Der Audiotreiber wiederholt eine ausgebliebene Play-State-UART-Abfrage einmal nicht blockierend. Ist danach keine UART-Antwort vorhanden, BUSY aber aktiv, wird dies als Warnung mit bestätigter Wiedergabe statt fälschlich als vollständige Nichterreichbarkeit dargestellt. Ein inaktiver BUSY-Pin ersetzt keine UART-Antwort.
+
+
+## Kombitest Funk + Audio
+
+Dieser Test ist nach der RMT-Umstellung besonders wichtig:
+
+1. CC1101 angeschlossen lassen und passenden Modus wählen.
+2. Unter Hardware prüfen: `Pulserfassung = ESP32 RMT RX`, `RMT-Empfang bereit = Ja`.
+3. DY-SV17F auf 0 % stellen, mindestens eine Sekunde warten und `Ton testen` drücken. BUSY darf aktiv werden, hörbar sollte bei wirksamem Volume-Kommando nichts sein.
+4. Danach 25 %, 50 % und 100 % testen. Die Karte zeigt Soll-Lautstärke und die gesendete Modulstufe 0…30.
+5. 20 normale Töne mit Funkempfänger angeschlossen auslösen. `Per BUSY bestätigte Starts` muss entsprechend steigen; `Play-Wiederholungen` sollte normalerweise 0 bleiben.
+6. Parallel mehrfach den Funkbutton drücken. Audio und Funk müssen unabhängig bleiben.
+7. `Prüfen` beim Audio startet ausschließlich die UART-Diagnose. Fehlende optionale Antworten dürfen ein reales BUSY-bestätigtes Playback nicht als verschwunden darstellen.
+
+Bei einem Fehler Screenshot der Audio- **und** Funkkarte zusammen sichern. Relevant sind besonders UART-Timeouts, Prüfsummenfehler, Play-Wiederholungen, BUSY-Flanken, RMT-Aufnahmen und RMT-Fehler.

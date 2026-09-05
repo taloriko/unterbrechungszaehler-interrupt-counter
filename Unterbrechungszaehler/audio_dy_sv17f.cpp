@@ -11,31 +11,60 @@ namespace {
 
 HardwareSerial audioSerial(HardwareConfig::AUDIO_UART_PORT);
 StatusRegistry::State moduleHealth = StatusRegistry::State::Unknown;
+Diagnostics diag;
+bool uartReady = false;
 bool isDetected = false;
-bool probeActive = false;
-bool probeHadSecondaryFailure = false;
-bool probeWasBoot = false;
 bool busyStateKnown = false;
 bool busyState = false;
+PlayState currentPlayState = PlayState::Unknown;
 uint32_t checkedAtMs = 0;
 const char *errorText = "";
-PlayState currentPlayState = PlayState::Unknown;
-uint8_t devicesOnline = 0;
-uint16_t tracks = 0;
-bool uartReady = false;
+uint32_t nextTxAllowedMs = 0;
+
 uint8_t desiredVolumePercent = 100;
-bool volumePending = true;
+uint8_t volumeRepeatsPending = 0;
+uint32_t volumeNotBeforeMs = 0;
+bool volumePrimed = false;  // current desired volume was sent at least once
+uint16_t queuedPlayTrack = 0;
 
-enum class WaitKind : uint8_t { None, ProbePlay, ProbeDevices, ProbeCount, VerifyPlay };
-enum class VerifyExpectation : uint8_t { Any, Playing, Stopped };
-WaitKind waitingFor = WaitKind::None;
-VerifyExpectation verifyExpectation = VerifyExpectation::Any;
-uint8_t expectedCommand = 0;
-uint32_t responseDeadlineMs = 0;
+bool bootTonePending = false;
+uint32_t bootToneEarliestMs = 0;
+bool autoProbePending = false;
+uint32_t autoProbeEarliestMs = 0;
 
-enum class DeferredAction : uint8_t { None, StartProbe, QueryDevices, QueryCount, VerifyPlay, BootTone };
-DeferredAction deferredAction = DeferredAction::None;
-uint32_t deferredAtMs = 0;
+bool playbackConfirmActive = false;
+bool playbackSawIdleSinceCommand = false;
+uint16_t playbackTrack = 0;
+uint8_t playbackAttempts = 0;
+uint32_t playbackDeadlineMs = 0;
+bool playbackBusyConfirmedEver = false;
+
+enum class QueryKind : uint8_t {
+  None,
+  PlayState,
+  OnlineDevice,
+  CurrentDevice,
+  TrackCount,
+  CurrentTrack
+};
+
+constexpr QueryKind PROBE_SEQUENCE[] = {
+    QueryKind::PlayState,
+    QueryKind::OnlineDevice,
+    QueryKind::CurrentDevice,
+    QueryKind::TrackCount,
+    QueryKind::CurrentTrack,
+};
+constexpr size_t PROBE_STEP_COUNT = sizeof(PROBE_SEQUENCE) / sizeof(PROBE_SEQUENCE[0]);
+
+bool probeActive = false;
+bool probeAutomatic = false;
+size_t probeIndex = 0;
+uint8_t probeSuccesses = 0;
+uint8_t probeFailures = 0;
+QueryKind waitingQuery = QueryKind::None;
+uint8_t queryAttempts = 0;
+uint32_t queryDeadlineMs = 0;
 
 uint8_t rxBuffer[16]{};
 size_t rxLength = 0;
@@ -54,332 +83,457 @@ void setHealth(StatusRegistry::State state, const char *message = "") {
 uint8_t checksum(const uint8_t *data, size_t length) {
   uint16_t sum = 0;
   for (size_t i = 0; i < length; ++i) sum += data[i];
-  return static_cast<uint8_t>(sum & 0xFF);
+  return static_cast<uint8_t>(sum & 0xFFU);
 }
 
-void sendFrame(uint8_t command, const uint8_t *data = nullptr, uint8_t length = 0) {
-  uint8_t frame[12];
-  const size_t total = static_cast<size_t>(length) + 4;
-  if (total > sizeof(frame)) return;
+bool txReady(uint32_t now) {
+  return uartReady && due(now, nextTxAllowedMs);
+}
+
+void markTx(uint8_t command, uint32_t nextGapMs = HardwareConfig::AUDIO_MIN_COMMAND_GAP_MS) {
+  const uint32_t now = millis();
+  diag.lastCommand = command;
+  diag.lastTxMs = now;
+  ++diag.txFrames;
+  nextTxAllowedMs = now + nextGapMs;
+}
+
+bool sendFrameNow(uint8_t command, const uint8_t *data = nullptr, uint8_t length = 0,
+                  uint32_t nextGapMs = HardwareConfig::AUDIO_MIN_COMMAND_GAP_MS) {
+  if (!uartReady) return false;
+  uint8_t frame[12]{};
+  const size_t total = static_cast<size_t>(length) + 4U;
+  if (total > sizeof(frame)) return false;
   frame[0] = 0xAA;
   frame[1] = command;
   frame[2] = length;
-  for (uint8_t i = 0; i < length; ++i) frame[3 + i] = data[i];
-  frame[3 + length] = checksum(frame, 3 + length);
-  audioSerial.write(frame, total);
-}
-
-void startWait(WaitKind kind, uint8_t command) {
-  waitingFor = kind;
-  expectedCommand = command;
-  responseDeadlineMs = millis() + HardwareConfig::AUDIO_RESPONSE_TIMEOUT_MS;
-}
-
-void sendQuery(WaitKind kind, uint8_t command) {
-  sendFrame(command);
-  startWait(kind, command);
-}
-
-bool applyDesiredVolume();
-
-void finishProbe(StatusRegistry::State state, const char *message = "") {
-  const bool shouldPlayBootTone = probeWasBoot && isDetected && HardwareConfig::AUDIO_BOOT_TONE_ENABLED;
-  probeWasBoot = false;
-  probeActive = false;
-  waitingFor = WaitKind::None;
-  checkedAtMs = millis();
-  setHealth(state, message);
-  if (state == StatusRegistry::State::Ok) {
-    SerialLog::successf("AUDIO", "DY-SV17F: OK | play=%s | online=0x%02X | files=%u | BUSY=%s",
-                        playStateName(), devicesOnline, tracks,
-                        busyStateKnown ? (busyState ? "active" : "idle") : "n/a");
-  } else if (state == StatusRegistry::State::Warning) {
-    SerialLog::warningf("AUDIO", "DY-SV17F: WARNING | communication confirmed | some optional information missing | play=%s",
-                        playStateName());
-  } else {
-    SerialLog::error("AUDIO", "DY-SV17F: NO RESPONSE | UART play-state query timed out");
+  for (uint8_t i = 0; i < length; ++i) frame[3U + i] = data[i];
+  frame[3U + length] = checksum(frame, 3U + length);
+  const size_t written = audioSerial.write(frame, total);
+  if (written != total) {
+    SerialLog::warningf("AUDIO", "UART short write | cmd=0x%02X | %u/%u bytes",
+                        command, static_cast<unsigned int>(written), static_cast<unsigned int>(total));
+    return false;
   }
-
-  // Apply the user volume before scheduling the boot tone. The command has
-  // no response frame, so this adds no blocking wait.
-  applyDesiredVolume();
-
-  if (shouldPlayBootTone) {
-    deferredAction = DeferredAction::BootTone;
-    deferredAtMs = millis() + HardwareConfig::AUDIO_BOOT_TONE_DELAY_MS;
-    SerialLog::infof("AUDIO", "Boot tone scheduled | track=%u | delay=%lu ms",
-                     HardwareConfig::AUDIO_BOOT_TONE_TRACK,
-                     static_cast<unsigned long>(HardwareConfig::AUDIO_BOOT_TONE_DELAY_MS));
-  }
+  markTx(command, nextGapMs);
+  return true;
 }
-
-void scheduleVerify(uint32_t delayMs, VerifyExpectation expectation) {
-  verifyExpectation = expectation;
-  deferredAction = DeferredAction::VerifyPlay;
-  deferredAtMs = millis() + delayMs;
-  setHealth(StatusRegistry::State::Checking);
-}
-
-bool commandPathIdle() {
-  return !probeActive && waitingFor == WaitKind::None && deferredAction == DeferredAction::None;
-}
-
 
 uint8_t moduleVolumeForPercent(uint8_t percent) {
   if (percent > 100U) percent = 100U;
   return static_cast<uint8_t>((static_cast<uint16_t>(percent) * 30U + 50U) / 100U);
 }
 
-bool applyDesiredVolume() {
-  if (!uartReady || !volumePending || !commandPathIdle()) return false;
-  const uint8_t moduleVolume = moduleVolumeForPercent(desiredVolumePercent);
-  sendFrame(0x13, &moduleVolume, 1);
-  volumePending = false;
-  SerialLog::infof("AUDIO", "Volume applied | ui=%u%% | module=%u/30",
-                   static_cast<unsigned int>(desiredVolumePercent), static_cast<unsigned int>(moduleVolume));
-  return true;
-}
-
-void updateBusyPin();
-
-void handleFrame(uint8_t command, const uint8_t *data, uint8_t length) {
-  if (command != expectedCommand || waitingFor == WaitKind::None) return;
-
-  switch (waitingFor) {
-    case WaitKind::ProbePlay:
-      if (length != 1) return;
-      isDetected = true;
-      currentPlayState = data[0] == 0x01 ? PlayState::Playing : data[0] == 0x02 ? PlayState::Paused : PlayState::Stopped;
-      waitingFor = WaitKind::None;
-      deferredAction = DeferredAction::QueryDevices;
-      deferredAtMs = millis() + HardwareConfig::AUDIO_INTER_COMMAND_DELAY_MS;
-      break;
-
-    case WaitKind::ProbeDevices:
-      if (length == 1) devicesOnline = data[0];
-      else probeHadSecondaryFailure = true;
-      waitingFor = WaitKind::None;
-      deferredAction = DeferredAction::QueryCount;
-      deferredAtMs = millis() + HardwareConfig::AUDIO_INTER_COMMAND_DELAY_MS;
-      break;
-
-    case WaitKind::ProbeCount:
-      if (length == 2) tracks = static_cast<uint16_t>((static_cast<uint16_t>(data[0]) << 8) | data[1]);
-      else probeHadSecondaryFailure = true;
-      finishProbe(probeHadSecondaryFailure ? StatusRegistry::State::Warning : StatusRegistry::State::Ok,
-                  probeHadSecondaryFailure ? "optional query failed" : "");
-      break;
-
-    case WaitKind::VerifyPlay:
-      if (length == 1) {
-        isDetected = true;
-        currentPlayState = data[0] == 0x01 ? PlayState::Playing : data[0] == 0x02 ? PlayState::Paused : PlayState::Stopped;
-        waitingFor = WaitKind::None;
-        const bool expectedPlaying = verifyExpectation == VerifyExpectation::Playing;
-        const bool expectedStopped = verifyExpectation == VerifyExpectation::Stopped;
-        const bool matches = (!expectedPlaying && !expectedStopped) ||
-                             (expectedPlaying && currentPlayState == PlayState::Playing) ||
-                             (expectedStopped && currentPlayState == PlayState::Stopped);
-        verifyExpectation = VerifyExpectation::Any;
-        if (matches) {
-          setHealth(StatusRegistry::State::Ok);
-          SerialLog::successf("AUDIO", "Command verification OK | play-state=%s", playStateName());
-        } else {
-          setHealth(StatusRegistry::State::Warning, "play-state does not match command");
-          SerialLog::warningf("AUDIO", "Command answered, but play-state does not match expectation | play-state=%s", playStateName());
-        }
-      }
-      break;
-
-    case WaitKind::None:
-    default:
-      break;
+uint8_t commandForQuery(QueryKind kind) {
+  switch (kind) {
+    case QueryKind::PlayState: return 0x01;
+    case QueryKind::OnlineDevice: return 0x09;
+    case QueryKind::CurrentDevice: return 0x0A;
+    case QueryKind::TrackCount: return 0x0C;
+    case QueryKind::CurrentTrack: return 0x0D;
+    case QueryKind::None:
+    default: return 0;
   }
 }
 
+uint8_t expectedLength(QueryKind kind) {
+  switch (kind) {
+    case QueryKind::PlayState:
+    case QueryKind::OnlineDevice:
+    case QueryKind::CurrentDevice: return 1;
+    case QueryKind::TrackCount:
+    case QueryKind::CurrentTrack: return 2;
+    case QueryKind::None:
+    default: return 0;
+  }
+}
+
+void resetParser() {
+  rxLength = 0;
+  rxExpected = 0;
+  while (audioSerial.available() > 0) audioSerial.read();
+}
+
+void finishProbe() {
+  probeActive = false;
+  waitingQuery = QueryKind::None;
+  queryAttempts = 0;
+  checkedAtMs = millis();
+  if (probeFailures == 0U && probeSuccesses == PROBE_STEP_COUNT) {
+    isDetected = true;
+    setHealth(StatusRegistry::State::Ok);
+    SerialLog::successf("AUDIO", "Diagnostic probe OK | device=%s | files=%u | current=%u | RX=%lu",
+                        deviceName(diag.currentDevice), static_cast<unsigned int>(diag.trackCount),
+                        static_cast<unsigned int>(diag.currentTrack),
+                        static_cast<unsigned long>(diag.rxFrames));
+  } else if (probeSuccesses > 0U || playbackBusyConfirmedEver) {
+    isDetected = true;
+    setHealth(StatusRegistry::State::Warning, "UART diagnostics partial; playback feedback remains independent");
+    SerialLog::warningf("AUDIO", "Diagnostic probe partial | success=%u | failed=%u | BUSY-confirmed=%s",
+                        static_cast<unsigned int>(probeSuccesses), static_cast<unsigned int>(probeFailures),
+                        playbackBusyConfirmedEver ? "yes" : "no");
+  } else {
+    isDetected = false;
+    setHealth(StatusRegistry::State::NoResponse, "no UART diagnostic response and no BUSY-confirmed playback");
+    SerialLog::error("AUDIO", "Diagnostic probe failed | no UART response and no BUSY-confirmed playback");
+  }
+  probeAutomatic = false;
+}
+
+void advanceProbe(bool success) {
+  if (!probeActive) return;
+  if (success) ++probeSuccesses;
+  else ++probeFailures;
+  ++probeIndex;
+  queryAttempts = 0;
+  waitingQuery = QueryKind::None;
+  if (probeIndex >= PROBE_STEP_COUNT) finishProbe();
+}
+
+bool sendCurrentProbeQuery() {
+  if (!probeActive || probeIndex >= PROBE_STEP_COUNT || waitingQuery != QueryKind::None) return false;
+  const uint32_t now = millis();
+  if (!txReady(now)) return false;
+  const QueryKind kind = PROBE_SEQUENCE[probeIndex];
+  const uint8_t command = commandForQuery(kind);
+  if (!sendFrameNow(command)) return false;
+  waitingQuery = kind;
+  ++queryAttempts;
+  queryDeadlineMs = millis() + HardwareConfig::AUDIO_RESPONSE_TIMEOUT_MS;
+  return true;
+}
+
+void cancelProbeForPriorityCommand(const char *reason) {
+  if (!probeActive && waitingQuery == QueryKind::None) return;
+  const bool retryAutomatic = probeAutomatic;
+  probeActive = false;
+  probeAutomatic = false;
+  waitingQuery = QueryKind::None;
+  queryAttempts = 0;
+  resetParser();
+  if (retryAutomatic) {
+    autoProbePending = true;
+    autoProbeEarliestMs = millis() + HardwareConfig::AUDIO_AUTO_PROBE_DELAY_MS;
+  }
+  SerialLog::infof("AUDIO", "Low-priority diagnostic probe pre-empted by %s", reason ? reason : "priority command");
+}
+
+bool startProbe(bool automatic) {
+  if (!enabled() || !uartReady || probeActive || playbackConfirmActive ||
+      queuedPlayTrack != 0U || volumeRepeatsPending != 0U) return false;
+  if (busyStateKnown && busyState && !automatic) {
+    SerialLog::warning("AUDIO", "Manual diagnostic rejected while track is playing");
+    return false;
+  }
+  resetParser();
+  probeActive = true;
+  probeAutomatic = automatic;
+  probeIndex = 0;
+  probeSuccesses = 0;
+  probeFailures = 0;
+  waitingQuery = QueryKind::None;
+  queryAttempts = 0;
+  setHealth(StatusRegistry::State::Checking);
+  SerialLog::info("AUDIO", automatic ? "Background diagnostic started" : "Manual diagnostic started");
+  return true;
+}
+
+void handleValidResponse(uint8_t command, const uint8_t *data, uint8_t length) {
+  ++diag.rxFrames;
+  diag.lastRxMs = millis();
+  diag.uartResponseSeen = true;
+  isDetected = true;
+
+  if (waitingQuery == QueryKind::None || command != commandForQuery(waitingQuery)) {
+    ++diag.unexpectedFrames;
+    return;
+  }
+  if (length != expectedLength(waitingQuery)) {
+    ++diag.unexpectedFrames;
+    return;
+  }
+
+  switch (waitingQuery) {
+    case QueryKind::PlayState:
+      currentPlayState = data[0] == 0x01 ? PlayState::Playing :
+                         data[0] == 0x02 ? PlayState::Paused : PlayState::Stopped;
+      break;
+    case QueryKind::OnlineDevice:
+      diag.onlineDevice = data[0];
+      diag.onlineDeviceKnown = true;
+      break;
+    case QueryKind::CurrentDevice:
+      diag.currentDevice = data[0];
+      diag.currentDeviceKnown = true;
+      break;
+    case QueryKind::TrackCount:
+      diag.trackCount = static_cast<uint16_t>((static_cast<uint16_t>(data[0]) << 8U) | data[1]);
+      diag.trackCountKnown = true;
+      break;
+    case QueryKind::CurrentTrack:
+      diag.currentTrack = static_cast<uint16_t>((static_cast<uint16_t>(data[0]) << 8U) | data[1]);
+      diag.currentTrackKnown = true;
+      break;
+    case QueryKind::None:
+    default:
+      break;
+  }
+  advanceProbe(true);
+}
+
 void feedParser(uint8_t value) {
-  if (rxLength == 0) {
-    if (value != 0xAA) return;
+  if (rxLength == 0U) {
+    if (value != 0xAAU) return;
     rxBuffer[rxLength++] = value;
     rxExpected = 0;
     return;
   }
-
   if (rxLength >= sizeof(rxBuffer)) {
     rxLength = 0;
     rxExpected = 0;
+    ++diag.unexpectedFrames;
     return;
   }
-
   rxBuffer[rxLength++] = value;
-  if (rxLength == 3) {
-    rxExpected = static_cast<size_t>(rxBuffer[2]) + 4;
-    if (rxExpected > sizeof(rxBuffer) || rxExpected < 4) {
+  if (rxLength == 3U) {
+    rxExpected = static_cast<size_t>(rxBuffer[2]) + 4U;
+    if (rxExpected < 4U || rxExpected > sizeof(rxBuffer)) {
       rxLength = 0;
       rxExpected = 0;
+      ++diag.unexpectedFrames;
       return;
     }
   }
+  if (rxExpected == 0U || rxLength < rxExpected) return;
 
-  if (rxExpected == 0 || rxLength < rxExpected) return;
-  const uint8_t expectedChecksum = checksum(rxBuffer, rxExpected - 1);
-  const uint8_t actualChecksum = rxBuffer[rxExpected - 1];
-  if (expectedChecksum == actualChecksum) {
-    handleFrame(rxBuffer[1], &rxBuffer[3], rxBuffer[2]);
-  } else {
+  const uint8_t wanted = checksum(rxBuffer, rxExpected - 1U);
+  const uint8_t got = rxBuffer[rxExpected - 1U];
+  if (wanted == got) handleValidResponse(rxBuffer[1], &rxBuffer[3], rxBuffer[2]);
+  else {
+    ++diag.checksumErrors;
     SerialLog::warning("AUDIO", "Ignored DY-SV17F frame with invalid checksum");
   }
   rxLength = 0;
   rxExpected = 0;
 }
 
-void handleTimeout() {
-  if (waitingFor == WaitKind::None || !due(millis(), responseDeadlineMs)) return;
-  const WaitKind timedOut = waitingFor;
-  waitingFor = WaitKind::None;
+void handleQueryTimeout() {
+  if (waitingQuery == QueryKind::None || !due(millis(), queryDeadlineMs)) return;
+  ++diag.queryTimeouts;
+  const QueryKind timedOut = waitingQuery;
+  waitingQuery = QueryKind::None;
+  if (queryAttempts < HardwareConfig::AUDIO_PROBE_MAX_ATTEMPTS) {
+    SerialLog::warningf("AUDIO", "Diagnostic query timeout | cmd=0x%02X | retry=%u/%u",
+                        commandForQuery(timedOut), static_cast<unsigned int>(queryAttempts + 1U),
+                        static_cast<unsigned int>(HardwareConfig::AUDIO_PROBE_MAX_ATTEMPTS));
+    return;
+  }
+  SerialLog::warningf("AUDIO", "Diagnostic query unavailable | cmd=0x%02X", commandForQuery(timedOut));
+  advanceProbe(false);
+}
 
-  if (timedOut == WaitKind::ProbePlay) {
-    isDetected = false;
-    currentPlayState = PlayState::Unknown;
-    finishProbe(StatusRegistry::State::NoResponse, "play-state query timeout");
-    return;
-  }
-  if (timedOut == WaitKind::ProbeDevices) {
-    probeHadSecondaryFailure = true;
-    devicesOnline = 0;
-    deferredAction = DeferredAction::QueryCount;
-    deferredAtMs = millis() + HardwareConfig::AUDIO_INTER_COMMAND_DELAY_MS;
-    return;
-  }
-  if (timedOut == WaitKind::ProbeCount) {
-    probeHadSecondaryFailure = true;
-    tracks = 0;
-    finishProbe(StatusRegistry::State::Warning, "optional query timeout");
-    return;
-  }
-  if (timedOut == WaitKind::VerifyPlay) {
-    updateBusyPin();
-    const VerifyExpectation expectation = verifyExpectation;
-    verifyExpectation = VerifyExpectation::Any;
-    if (expectation == VerifyExpectation::Playing && busyStateKnown && busyState) {
-      currentPlayState = PlayState::Playing;
-      setHealth(StatusRegistry::State::Warning, "UART response missing; BUSY confirms playback");
-      SerialLog::warning("AUDIO", "UART verification timed out, but BUSY is active | playback confirmed by BUSY");
-    } else if (expectation == VerifyExpectation::Stopped && busyStateKnown && !busyState) {
-      currentPlayState = PlayState::Stopped;
-      setHealth(StatusRegistry::State::Warning, "UART response missing; BUSY confirms idle/stopped");
-      SerialLog::warning("AUDIO", "UART verification timed out, but BUSY is idle | stop confirmed by BUSY");
-    } else {
-      setHealth(StatusRegistry::State::NoResponse, "command verification timeout");
-      SerialLog::error("AUDIO", "Command verification failed | no matching UART/BUSY feedback");
-    }
-  }
+void confirmPlayback() {
+  playbackConfirmActive = false;
+  playbackBusyConfirmedEver = true;
+  isDetected = true;
+  ++diag.busyConfirmedPlays;
+  checkedAtMs = millis();
+  setHealth(StatusRegistry::State::Ok);
+  SerialLog::successf("AUDIO", "Playback confirmed by BUSY edge | track=%u | attempt=%u",
+                      static_cast<unsigned int>(playbackTrack), static_cast<unsigned int>(playbackAttempts));
 }
 
 void updateBusyPin() {
   if (HardwareConfig::AUDIO_BUSY_PIN < 0) return;
-  busyStateKnown = true;
-  busyState = digitalRead(HardwareConfig::AUDIO_BUSY_PIN) == LOW;
+  const bool next = digitalRead(HardwareConfig::AUDIO_BUSY_PIN) == LOW;
+  if (!busyStateKnown) {
+    busyStateKnown = true;
+    busyState = next;
+    diag.lastBusyChangeMs = millis();
+    if (!busyState && currentPlayState == PlayState::Unknown) currentPlayState = PlayState::Stopped;
+    return;
+  }
+  if (next == busyState) return;
+  busyState = next;
+  ++diag.busyEdges;
+  diag.lastBusyChangeMs = millis();
+
+  if (busyState) {
+    currentPlayState = PlayState::Playing;
+    isDetected = true;
+    if (playbackConfirmActive && playbackSawIdleSinceCommand) confirmPlayback();
+  } else {
+    if (currentPlayState == PlayState::Playing) currentPlayState = PlayState::Stopped;
+    if (playbackConfirmActive) playbackSawIdleSinceCommand = true;
+  }
 }
 
-bool startProbe(bool bootProbe) {
-  if (!HardwareConfig::ENABLE_AUDIO_DY_SV17F) {
-    setHealth(StatusRegistry::State::Disabled);
-    return false;
+bool sendPlayNow(uint16_t track, bool retry) {
+  const uint32_t now = millis();
+  if (!txReady(now)) return false;
+  const bool busyBefore = busyStateKnown && busyState;
+  const uint8_t data[2] = {static_cast<uint8_t>((track >> 8U) & 0xFFU), static_cast<uint8_t>(track & 0xFFU)};
+  if (!sendFrameNow(0x07, data, sizeof(data))) return false;
+  ++diag.playCommands;
+  if (retry) ++diag.playRetries;
+  diag.lastRequestedTrack = track;
+  playbackTrack = track;
+  playbackSawIdleSinceCommand = !busyBefore;
+  playbackConfirmActive = HardwareConfig::AUDIO_BUSY_PIN >= 0 && !busyBefore;
+  playbackDeadlineMs = millis() + HardwareConfig::AUDIO_PLAY_BUSY_CONFIRM_MS;
+
+  if (HardwareConfig::AUDIO_BUSY_PIN < 0) {
+    setHealth(StatusRegistry::State::Warning, "play command sent without external BUSY feedback");
+  } else if (busyBefore) {
+    // DY-SV17F may switch/restart a track without releasing BUSY between two
+    // play commands. In that case a new start is not independently observable.
+    // Do not send duplicate retries just because BUSY was already active.
+    isDetected = true;
+    currentPlayState = PlayState::Playing;
+    checkedAtMs = millis();
+    setHealth(StatusRegistry::State::Ok);
+    SerialLog::infof("AUDIO", "Play command sent while BUSY already active | track=%u | no duplicate retry",
+                     static_cast<unsigned int>(track));
+  } else {
+    setHealth(StatusRegistry::State::Checking);
   }
-  if (!bootProbe && !commandPathIdle()) {
-    SerialLog::warning("AUDIO", "Health check rejected | audio command/verification is still active");
-    return false;
-  }
-  while (audioSerial.available() > 0) audioSerial.read();
-  rxLength = 0;
-  rxExpected = 0;
-  deferredAction = DeferredAction::None;
-  probeActive = true;
-  probeWasBoot = bootProbe;
-  probeHadSecondaryFailure = false;
-  setHealth(StatusRegistry::State::Checking);
-  sendQuery(WaitKind::ProbePlay, 0x01);
-  SerialLog::info("AUDIO", bootProbe ? "DY-SV17F boot health check started | querying play state"
-                                    : "DY-SV17F health check started | querying play state");
   return true;
+}
+
+void handlePlaybackConfirmation() {
+  if (!playbackConfirmActive || !due(millis(), playbackDeadlineMs)) return;
+  if (playbackAttempts < HardwareConfig::AUDIO_PLAY_MAX_ATTEMPTS) {
+    if (!txReady(millis())) return;
+    ++playbackAttempts;
+    if (sendPlayNow(playbackTrack, true)) {
+      SerialLog::warningf("AUDIO", "No BUSY start after play command | retry %u/%u | track=%u",
+                          static_cast<unsigned int>(playbackAttempts),
+                          static_cast<unsigned int>(HardwareConfig::AUDIO_PLAY_MAX_ATTEMPTS),
+                          static_cast<unsigned int>(playbackTrack));
+    }
+    return;
+  }
+  playbackConfirmActive = false;
+  checkedAtMs = millis();
+  setHealth(StatusRegistry::State::Warning, "play command not confirmed by BUSY start");
+  SerialLog::warningf("AUDIO", "Playback not confirmed by BUSY start | track=%u",
+                      static_cast<unsigned int>(playbackTrack));
+}
+
+void serviceVolume() {
+  if (volumeRepeatsPending == 0U) return;
+  const uint32_t now = millis();
+  if (!due(now, volumeNotBeforeMs) || !txReady(now)) return;
+  const uint8_t step = moduleVolumeForPercent(desiredVolumePercent);
+  if (!sendFrameNow(0x13, &step, 1, HardwareConfig::AUDIO_VOLUME_REPEAT_DELAY_MS)) return;
+  diag.desiredVolumePercent = desiredVolumePercent;
+  diag.lastVolumeStep = step;
+  volumePrimed = true;
+  ++diag.volumeCommands;
+  --volumeRepeatsPending;
+  SerialLog::infof("AUDIO", "Volume command sent | ui=%u%% | module=%u/30 | remaining-repeat=%u | BUSY=%s",
+                   static_cast<unsigned int>(desiredVolumePercent), static_cast<unsigned int>(step),
+                   static_cast<unsigned int>(volumeRepeatsPending),
+                   busyStateKnown ? (busyState ? "active" : "idle") : "unknown");
+}
+
+void serviceQueuedPlay() {
+  // A real playback request has priority over the redundant second volume send.
+  // Only the first volume command for the current setting must precede playback.
+  if (queuedPlayTrack == 0U || !volumePrimed || playbackConfirmActive) return;
+  if (!txReady(millis())) return;
+  const uint16_t track = queuedPlayTrack;
+  playbackAttempts = 1;
+  if (!sendPlayNow(track, false)) return;
+  queuedPlayTrack = 0;
+  SerialLog::infof("AUDIO", "Queued play command sent | track=%u | BUSY-before=%s",
+                   static_cast<unsigned int>(track),
+                   busyStateKnown ? (busyState ? "active" : "idle") : "unknown");
+}
+
+void serviceBootAndBackgroundProbe() {
+  const uint32_t now = millis();
+  if (bootTonePending && due(now, bootToneEarliestMs) && volumePrimed &&
+      queuedPlayTrack == 0U && !probeActive && !playbackConfirmActive && txReady(now)) {
+    if (playTrack(HardwareConfig::AUDIO_BOOT_TONE_TRACK)) {
+      bootTonePending = false;
+      SerialLog::infof("AUDIO", "Boot tone queued | track=%u", HardwareConfig::AUDIO_BOOT_TONE_TRACK);
+    }
+  }
+
+  if (autoProbePending && !bootTonePending && !playbackConfirmActive && queuedPlayTrack == 0U &&
+      volumeRepeatsPending == 0U && (!busyStateKnown || !busyState) && due(now, autoProbeEarliestMs)) {
+    if (startProbe(true)) autoProbePending = false;
+  }
 }
 
 }  // namespace
 
 bool begin() {
   StatusRegistry::registerProvider("audio", "status.audio", "audio", HardwareConfig::ENABLE_AUDIO_DY_SV17F);
-  if (!HardwareConfig::ENABLE_AUDIO_DY_SV17F) {
+  if (!enabled()) {
     setHealth(StatusRegistry::State::Disabled);
     StatusRegistry::setVisible("audio", false);
     return false;
   }
 
+  // configureVolumePercent() is called before HardwareRegistry::begin(). Keep
+  // that persisted project preference across transport initialization.
+  diag = Diagnostics{};
+  diag.desiredVolumePercent = desiredVolumePercent;
+  diag.lastVolumeStep = moduleVolumeForPercent(desiredVolumePercent);
+  queuedPlayTrack = 0;
   if (HardwareConfig::AUDIO_BUSY_PIN >= 0) pinMode(HardwareConfig::AUDIO_BUSY_PIN, INPUT);
   audioSerial.begin(HardwareConfig::AUDIO_BAUD_RATE, SERIAL_8N1,
                     HardwareConfig::AUDIO_RX_PIN, HardwareConfig::AUDIO_TX_PIN);
   uartReady = true;
-  volumePending = true;
-  SerialLog::infof("AUDIO", "DY-SV17F UART ready | UART%u | RX=%d | TX=%d | BUSY=%d | %lu baud",
+  nextTxAllowedMs = millis() + HardwareConfig::AUDIO_BOOT_GRACE_MS;
+  volumeNotBeforeMs = nextTxAllowedMs;
+  volumePrimed = false;
+  volumeRepeatsPending = HardwareConfig::AUDIO_VOLUME_SEND_REPEATS;
+  bootTonePending = HardwareConfig::AUDIO_BOOT_TONE_ENABLED;
+  bootToneEarliestMs = millis() + HardwareConfig::AUDIO_BOOT_GRACE_MS + HardwareConfig::AUDIO_BOOT_TONE_DELAY_MS;
+  autoProbePending = true;
+  autoProbeEarliestMs = millis() + HardwareConfig::AUDIO_AUTO_PROBE_DELAY_MS;
+  updateBusyPin();
+  setHealth(StatusRegistry::State::Checking);
+  SerialLog::infof("AUDIO", "DY-SV17F transport ready | UART%u RX=%d TX=%d BUSY=%d | %lu 8N1",
                    HardwareConfig::AUDIO_UART_PORT, HardwareConfig::AUDIO_RX_PIN,
                    HardwareConfig::AUDIO_TX_PIN, HardwareConfig::AUDIO_BUSY_PIN,
                    static_cast<unsigned long>(HardwareConfig::AUDIO_BAUD_RATE));
-  updateBusyPin();
-  setHealth(StatusRegistry::State::Checking);
-  deferredAction = DeferredAction::StartProbe;
-  deferredAtMs = millis() + HardwareConfig::AUDIO_BOOT_GRACE_MS;
-  SerialLog::infof("AUDIO", "DY-SV17F boot grace | first query in %lu ms",
-                   static_cast<unsigned long>(HardwareConfig::AUDIO_BOOT_GRACE_MS));
   return true;
 }
 
 void update() {
-  if (!HardwareConfig::ENABLE_AUDIO_DY_SV17F) return;
+  if (!enabled() || !uartReady) return;
   updateBusyPin();
-
   while (audioSerial.available() > 0) feedParser(static_cast<uint8_t>(audioSerial.read()));
-  handleTimeout();
-  if (volumePending && commandPathIdle()) applyDesiredVolume();
+  handleQueryTimeout();
 
-  const uint32_t now = millis();
-  if (deferredAction != DeferredAction::None && due(now, deferredAtMs)) {
-    const DeferredAction action = deferredAction;
-    deferredAction = DeferredAction::None;
+  // Priority: first apply the current volume once, then real playback, then
+  // redundant volume refresh and diagnostics. No user sound waits for the second
+  // volume transmission and BUSY never causes a duplicate play command.
+  if (!volumePrimed) serviceVolume();
+  handlePlaybackConfirmation();
+  serviceQueuedPlay();
+  if (queuedPlayTrack == 0U) serviceVolume();
 
-    if (action == DeferredAction::StartProbe) {
-      if (!probeActive && waitingFor == WaitKind::None) startProbe(true);
-    } else if (action == DeferredAction::QueryDevices) {
-      if (probeActive && waitingFor == WaitKind::None) sendQuery(WaitKind::ProbeDevices, 0x09);
-    } else if (action == DeferredAction::QueryCount) {
-      if (probeActive && waitingFor == WaitKind::None) sendQuery(WaitKind::ProbeCount, 0x0C);
-    } else if (action == DeferredAction::VerifyPlay) {
-      if (!probeActive && waitingFor == WaitKind::None) sendQuery(WaitKind::VerifyPlay, 0x01);
-    } else if (action == DeferredAction::BootTone) {
-      if (!probeActive && waitingFor == WaitKind::None) {
-        SerialLog::infof("AUDIO", "Boot tone | track=%u", HardwareConfig::AUDIO_BOOT_TONE_TRACK);
-        playTrack(HardwareConfig::AUDIO_BOOT_TONE_TRACK);
-      }
-    }
-  }
+  if (probeActive && volumeRepeatsPending == 0U && queuedPlayTrack == 0U) sendCurrentProbeQuery();
+  serviceBootAndBackgroundProbe();
 }
 
-bool probe() {
-  return startProbe(false);
-}
+bool probe() { return startProbe(false); }
 
 bool enabled() { return HardwareConfig::ENABLE_AUDIO_DY_SV17F; }
 bool detected() { return isDetected; }
 bool checking() {
-  return probeActive || waitingFor != WaitKind::None ||
-         deferredAction == DeferredAction::StartProbe ||
-         deferredAction == DeferredAction::QueryDevices ||
-         deferredAction == DeferredAction::QueryCount ||
-         deferredAction == DeferredAction::VerifyPlay;
+  return probeActive || waitingQuery != QueryKind::None || playbackConfirmActive ||
+         queuedPlayTrack != 0U || volumeRepeatsPending != 0U;
 }
 StatusRegistry::State health() { return moduleHealth; }
 uint32_t lastCheckMs() { return checkedAtMs; }
 const char *lastError() { return errorText; }
-HardwareTypes::FeedbackType feedbackType() { return HardwareTypes::FeedbackType::ProtocolResponse; }
+HardwareTypes::FeedbackType feedbackType() { return HardwareTypes::FeedbackType::ExternalFeedback; }
 PlayState playState() { return currentPlayState; }
 
 const char *playStateName() {
@@ -394,37 +548,48 @@ const char *playStateName() {
 
 bool busyKnown() { return busyStateKnown; }
 bool busy() { return busyState; }
-uint8_t onlineDevices() { return devicesOnline; }
-uint16_t musicCount() { return tracks; }
+uint8_t onlineDevices() { return diag.onlineDevice; }
+uint8_t currentDevice() { return diag.currentDevice; }
+uint16_t musicCount() { return diag.trackCount; }
+uint16_t currentTrack() { return diag.currentTrack; }
+const Diagnostics &diagnostics() { return diag; }
+
+const char *deviceName(uint8_t device) {
+  switch (device) {
+    case 0x00: return "USB";
+    case 0x01: return "SD";
+    case 0x02: return "FLASH";
+    case 0xFF: return "NO_DEVICE";
+    default: return "UNKNOWN";
+  }
+}
 
 void configureVolumePercent(uint8_t percent) {
   desiredVolumePercent = percent > 100U ? 100U : percent;
-  volumePending = true;
-  if (uartReady && commandPathIdle()) applyDesiredVolume();
+  diag.desiredVolumePercent = desiredVolumePercent;
+  volumePrimed = false;
+  if (uartReady && (probeActive || waitingQuery != QueryKind::None)) {
+    cancelProbeForPriorityCommand("volume change");
+  }
+  volumeRepeatsPending = HardwareConfig::AUDIO_VOLUME_SEND_REPEATS;
+  if (uartReady) volumeNotBeforeMs = millis();
 }
 
 bool setVolumePercent(uint8_t percent) {
   if (percent > 100U) return false;
-  desiredVolumePercent = percent;
-  volumePending = true;
-  if (!uartReady || !commandPathIdle()) return true;
-  return applyDesiredVolume();
+  configureVolumePercent(percent);
+  return true;
 }
 
 uint8_t volumePercent() { return desiredVolumePercent; }
 
 bool playTrack(uint16_t trackNumber) {
-  if (!HardwareConfig::ENABLE_AUDIO_DY_SV17F || trackNumber == 0 || !commandPathIdle()) return false;
-
-  // Do NOT send command 0x0B here. The DY-SV17F documentation states that
-  // switching the drive also starts the first track, which makes command
-  // verification ambiguous and can produce an unwanted sound. Track 0x07
-  // directly addresses the currently selected/internal FLASH sequence.
-  const uint8_t data[2] = {static_cast<uint8_t>((trackNumber >> 8) & 0xFF),
-                           static_cast<uint8_t>(trackNumber & 0xFF)};
-  sendFrame(0x07, data, sizeof(data));
-  SerialLog::infof("AUDIO", "Play track command sent | track=%u", trackNumber);
-  scheduleVerify(HardwareConfig::AUDIO_COMMAND_VERIFY_DELAY_MS, VerifyExpectation::Playing);
+  if (!enabled() || !uartReady || trackNumber == 0U) return false;
+  if (probeActive || waitingQuery != QueryKind::None) cancelProbeForPriorityCommand("playback");
+  // Any explicit project/test playback supersedes the cosmetic boot chime. This
+  // prevents a boot tone from appearing seconds later after an early button press.
+  bootTonePending = false;
+  queuedPlayTrack = trackNumber;
   return true;
 }
 
@@ -434,25 +599,27 @@ bool playTestTone() {
 }
 
 bool stop() {
-  if (!HardwareConfig::ENABLE_AUDIO_DY_SV17F || !commandPathIdle()) return false;
-  sendFrame(0x04);
-  scheduleVerify(HardwareConfig::AUDIO_COMMAND_VERIFY_DELAY_MS, VerifyExpectation::Stopped);
-  return true;
+  if (!enabled() || !uartReady) return false;
+  if (probeActive || waitingQuery != QueryKind::None) cancelProbeForPriorityCommand("stop");
+  if (!txReady(millis())) return false;
+  queuedPlayTrack = 0;
+  playbackConfirmActive = false;
+  return sendFrameNow(0x04);
 }
 
 bool pause() {
-  if (!HardwareConfig::ENABLE_AUDIO_DY_SV17F || !commandPathIdle()) return false;
-  sendFrame(0x03);
-  scheduleVerify(HardwareConfig::AUDIO_COMMAND_VERIFY_DELAY_MS, VerifyExpectation::Any);
-  return true;
+  if (!enabled() || !uartReady) return false;
+  if (probeActive || waitingQuery != QueryKind::None) cancelProbeForPriorityCommand("pause");
+  if (!txReady(millis())) return false;
+  queuedPlayTrack = 0;
+  playbackConfirmActive = false;
+  return sendFrameNow(0x03);
 }
 
 bool setVolume(uint8_t volume) {
-  if (!HardwareConfig::ENABLE_AUDIO_DY_SV17F || volume > 30 || !commandPathIdle()) return false;
-  sendFrame(0x13, &volume, 1);
-  // The documented volume command has no return value, so no missing response
-  // is interpreted as an error. Health remains based on real protocol queries.
-  SerialLog::infof("AUDIO", "Volume command sent | volume=%u | no protocol response expected", volume);
+  if (volume > 30U) return false;
+  const uint8_t percent = static_cast<uint8_t>((static_cast<uint16_t>(volume) * 100U + 15U) / 30U);
+  configureVolumePercent(percent);
   return true;
 }
 

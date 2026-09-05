@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.2.0."""
+"""Portable release checks for Unterbrechungszaehler 3.3.0-dev433."""
 from __future__ import annotations
 
 import gzip
@@ -60,7 +60,7 @@ def main() -> None:
     partitions = (ROOT / "partitions.csv").read_text(encoding="utf-8")
 
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.2.0"' in config, "project version 3.2.0")
+    check('SOFTWARE_VERSION[] = "3.3.0-dev433"' in config, "prototype version 3.3.0-dev433")
     check(
         'AVAILABLE_LANGUAGES_JSON[] = "[\\\"de\\\",\\\"en\\\",\\\"it\\\",\\\"fr\\\",\\\"swg\\\",\\\"swg-alb\\\",\\\"swg-ob\\\"]"' in config,
         "declared UI languages",
@@ -72,6 +72,21 @@ def main() -> None:
     check("RAW_RECORD_SIZE = 9" in project, "9-byte raw record")
     check("DAILY_AGGREGATE_CAPACITY = 2300" in project, "daily aggregate retention")
     check("PENDING_EVENT_CAPACITY = 64" in project, "64-event fixed persistence queue")
+    source_registry = (ROOT / "source_registry.h").read_text(encoding="utf-8")
+    raw_store = (ROOT / "interruption_store.cpp").read_text(encoding="utf-8")
+    check("SOURCE_ID_RADIO_FIRST = 6" in source_registry and "SOURCE_ID_RADIO_LAST = 15" in source_registry, "exactly ten RF logical source ids")
+    check("V3_HEADER_ENCODE[64]" in raw_store and "V3_HEADER_DECODE[128]" in raw_store, "self-describing mixed v2/v3 raw codec")
+    check("out.sourceId" in raw_store and "RAW_RECORD_SIZE = 9" in project, "source id stored without growing raw records")
+    check("RF433_SCK_PIN = 14" in hardware and "RF433_MISO_PIN = 32" in hardware and "RF433_MOSI_PIN = 23" in hardware and "RF433_CS_PIN = 25" in hardware and "RF433_GDO0_PIN = 26" in hardware and "RF433_GDO2_PIN = 27" in hardware, "CC1101 pin map")
+    check("RF433_SOMFY_FREQUENCY_HZ = 433420000UL" in hardware, "Somfy RTS 433.42 MHz frequency")
+    rf_driver = (ROOT / "rf433_cc1101.cpp").read_text(encoding="utf-8")
+    source_registry_cpp = (ROOT / "source_registry.cpp").read_text(encoding="utf-8")
+    preferences_cpp = (ROOT / "project_preferences.cpp").read_text(encoding="utf-8")
+    check("RF_MODE_DEFAULT = ProjectPreferences::RadioMode::Universal433" in project and '"rfmode"' in preferences_cpp, "persistent exclusive RF operating mode")
+    check("Protocol::SomfyRts" in rf_driver and "decodeSomfyPayload" in rf_driver and "setOperatingProtocol" in rf_driver, "Somfy RTS normal receive path")
+    check("RadioProtocol::SomfyRts" in source_registry_cpp and "uint8_t protocol = 0" in source_registry_cpp and "sizeof(StoredEntry) == 32" in source_registry_cpp, "RF protocol reuses reserved registry byte without growth")
+    check("verifyConfiguration" in rf_driver and "configVerified" in (ROOT / "rf433_cc1101.h").read_text(encoding="utf-8"), "CC1101 selected-mode register readback verification")
+    check((ROOT / "rf433_cc1101.cpp").exists() and (ROOT / "source_registry.cpp").exists(), "RF receiver and source registry modules")
     check("DISPLAY_ENABLED_DEFAULT = true" in project, "persistent display master default")
     check("DISPLAY_BOOT_SCREEN_MIN_MS = 4000" in hardware, "four-second nonblocking boot screen minimum")
     check("displayEnabled" in JS and "project.displayEnabled" in JS, "display master switch in UI")
@@ -90,6 +105,16 @@ def main() -> None:
     check("delay(4000)" not in (ROOT / "display_views.cpp").read_text(encoding="utf-8") and "delay(4000)" not in (ROOT / "display_sh1106.cpp").read_text(encoding="utf-8"), "boot screen has no blocking four-second delay")
     check(re.search(r'\{"di1"[^\n]*13,\s*PullMode::Up,\s*false[^\n]*25,\s*true,', hardware) is not None, "DI1 GPIO13 active-edge interrupt latch")
     check("AUDIO_RX_PIN = 18" in hardware and "AUDIO_TX_PIN = 19" in hardware and "AUDIO_BUSY_PIN = 39" in hardware, "DY-SV17F pin map")
+    audio_driver = (ROOT / "audio_dy_sv17f.cpp").read_text(encoding="utf-8")
+    hardware_registry = (ROOT / "hardware_registry.cpp").read_text(encoding="utf-8")
+    check("AUDIO_MIN_COMMAND_GAP_MS = 120" in hardware and "AUDIO_VOLUME_SEND_REPEATS = 2" in hardware and "HardwareTypes::FeedbackType::ExternalFeedback" in audio_driver, "DY-SV17F paced command path with external BUSY feedback")
+    check("case QueryKind::CurrentDevice: return 0x0A;" in audio_driver and "case QueryKind::CurrentTrack: return 0x0D;" in audio_driver, "DY-SV17F full low-priority diagnostics")
+    check('#include <driver/rmt_rx.h>' in rf_driver and 'attachInterrupt(digitalPinToInterrupt(HardwareConfig::RF433_GDO0_PIN)' not in rf_driver, "CC1101 raw timing uses ESP32 RMT instead of per-edge ISR")
+    check("Rf433Cc1101::update();" in hardware_registry and "Rf433Cc1101::update();" not in (ROOT / "rf433_service.cpp").read_text(encoding="utf-8"), "HardwareRegistry exclusively services RF driver")
+    check("if (!Rf433Cc1101::begin())" not in (ROOT / "rf433_service.cpp").read_text(encoding="utf-8"), "project RF service does not initialize hardware driver")
+    check("HARDWARE_DIAG_LABELS" in JS, "expanded hardware diagnostics translated")
+    check(hardware_registry.find("Rf433Cc1101::begin();") < hardware_registry.find("AudioDySv17f::begin();"), "CC1101 SPI initialized before final UART2 pin routing")
+    check("rfMode" in JS and "'rf433.mode.somfy'" in JS and "'rf433.mode.universal'" in JS and "rfMode(value)" in JS, "RF mode selector UI")
     check("0x2D0000, 0x130000" in partitions, "LittleFS custom partition")
 
     de = translation_keys("de", "en")
@@ -113,6 +138,11 @@ def main() -> None:
     check("const weeks = Array.from({ length: 53 }, (_, i) => String(i + 1))" in JS, "calendar-week heatmap headers use numbers only")
     check("Bindings.notify('analytics.monthWeek')" in JS and "Bindings.notify('analytics.hourly')" in JS, "manual heatmap filters trigger targeted rerender")
     check("projectSettings: renderProjectSettings" in JS, "Home project settings card")
+    check("rfLearn: renderRfLearn" in JS and "rfSources: renderRfSourceList" in JS, "RF learning on Home and source manager on Device")
+    check("rf433.test.somfy_received" in JS and "attempt < 40" in JS, "Somfy test UI and bounded 10-second hardware follow-up")
+    check("Rf433Cc1101::startReceiveTest" in (ROOT / "hardware_registry.cpp").read_text(encoding="utf-8") and '"rf433"' in (ROOT / "hardware_registry.cpp").read_text(encoding="utf-8"), "RF receiver integrated into HardwareRegistry with test action")
+    check("WiFi.setHostname(AppConfig::FIRMWARE_NAME)" in (ROOT / "wifi_module.cpp").read_text(encoding="utf-8"), "project Wi-Fi hostname")
+    check("includeRetainedCounts" in (ROOT / "rf433_api.cpp").read_text(encoding="utf-8") and "compact=1" in JS, "compact RF configuration API avoids raw-ring scans")
     check("SoundMode::Rotate" in (ROOT / "project_preferences.cpp").read_text(encoding="utf-8"), "rotating interruption sound mode")
     check("Track 1 belongs exclusively to the boot sound" in (ROOT / "interruption_service.cpp").read_text(encoding="utf-8"), "boot track excluded from rotating interruption sound")
     check(not re.search(r"\.(?:innerHTML|outerHTML)\s*=|insertAdjacentHTML\s*\(|document\.write\s*\(", JS), "no unsafe bulk DOM HTML writes")
@@ -124,6 +154,11 @@ def main() -> None:
         "/api/interruptions/live",
         "/api/interruptions/sound",
         "/api/interruptions/preferences",
+        "/api/interruptions/sources",
+        "/api/interruptions/rf/learn",
+        "/api/interruptions/rf/cancel",
+        "/api/interruptions/sources/rename",
+        "/api/interruptions/sources/unbind",
         "/api/interruptions/storage",
         "/api/interruptions/analytics",
         "/api/interruptions/heatmap/hourly",
