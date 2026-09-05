@@ -24,6 +24,7 @@ uint32_t nextTxAllowedMs = 0;
 uint8_t desiredVolumePercent = 100;
 uint8_t volumeRepeatsPending = 0;
 uint32_t volumeNotBeforeMs = 0;
+bool volumePrimed = false;  // current desired volume was sent at least once
 uint16_t queuedPlayTrack = 0;
 
 bool bootTonePending = false;
@@ -427,6 +428,7 @@ void serviceVolume() {
   if (!sendFrameNow(0x13, &step, 1, HardwareConfig::AUDIO_VOLUME_REPEAT_DELAY_MS)) return;
   diag.desiredVolumePercent = desiredVolumePercent;
   diag.lastVolumeStep = step;
+  volumePrimed = true;
   ++diag.volumeCommands;
   --volumeRepeatsPending;
   SerialLog::infof("AUDIO", "Volume command sent | ui=%u%% | module=%u/30 | remaining-repeat=%u | BUSY=%s",
@@ -436,7 +438,9 @@ void serviceVolume() {
 }
 
 void serviceQueuedPlay() {
-  if (queuedPlayTrack == 0U || volumeRepeatsPending != 0U || playbackConfirmActive) return;
+  // A real playback request has priority over the redundant second volume send.
+  // Only the first volume command for the current setting must precede playback.
+  if (queuedPlayTrack == 0U || !volumePrimed || playbackConfirmActive) return;
   if (!txReady(millis())) return;
   const uint16_t track = queuedPlayTrack;
   playbackAttempts = 1;
@@ -449,8 +453,8 @@ void serviceQueuedPlay() {
 
 void serviceBootAndBackgroundProbe() {
   const uint32_t now = millis();
-  if (bootTonePending && due(now, bootToneEarliestMs) && volumeRepeatsPending == 0U &&
-      !probeActive && !playbackConfirmActive && txReady(now)) {
+  if (bootTonePending && due(now, bootToneEarliestMs) && volumePrimed &&
+      queuedPlayTrack == 0U && !probeActive && !playbackConfirmActive && txReady(now)) {
     if (playTrack(HardwareConfig::AUDIO_BOOT_TONE_TRACK)) {
       bootTonePending = false;
       SerialLog::infof("AUDIO", "Boot tone queued | track=%u", HardwareConfig::AUDIO_BOOT_TONE_TRACK);
@@ -485,6 +489,7 @@ bool begin() {
   uartReady = true;
   nextTxAllowedMs = millis() + HardwareConfig::AUDIO_BOOT_GRACE_MS;
   volumeNotBeforeMs = nextTxAllowedMs;
+  volumePrimed = false;
   volumeRepeatsPending = HardwareConfig::AUDIO_VOLUME_SEND_REPEATS;
   bootTonePending = HardwareConfig::AUDIO_BOOT_TONE_ENABLED;
   bootToneEarliestMs = millis() + HardwareConfig::AUDIO_BOOT_GRACE_MS + HardwareConfig::AUDIO_BOOT_TONE_DELAY_MS;
@@ -505,12 +510,13 @@ void update() {
   while (audioSerial.available() > 0) feedParser(static_cast<uint8_t>(audioSerial.read()));
   handleQueryTimeout();
 
-  // Volume is a command-only setting and is safe while a track is playing. It
-  // is serviced before playback retries so a newly requested 0 % actually
-  // reaches the module instead of waiting for BUSY to become idle.
-  serviceVolume();
+  // Priority: first apply the current volume once, then real playback, then
+  // redundant volume refresh and diagnostics. No user sound waits for the second
+  // volume transmission and BUSY never causes a duplicate play command.
+  if (!volumePrimed) serviceVolume();
   handlePlaybackConfirmation();
   serviceQueuedPlay();
+  if (queuedPlayTrack == 0U) serviceVolume();
 
   if (probeActive && volumeRepeatsPending == 0U && queuedPlayTrack == 0U) sendCurrentProbeQuery();
   serviceBootAndBackgroundProbe();
@@ -561,6 +567,7 @@ const char *deviceName(uint8_t device) {
 void configureVolumePercent(uint8_t percent) {
   desiredVolumePercent = percent > 100U ? 100U : percent;
   diag.desiredVolumePercent = desiredVolumePercent;
+  volumePrimed = false;
   if (uartReady && (probeActive || waitingQuery != QueryKind::None)) {
     cancelProbeForPriorityCommand("volume change");
   }
@@ -579,6 +586,9 @@ uint8_t volumePercent() { return desiredVolumePercent; }
 bool playTrack(uint16_t trackNumber) {
   if (!enabled() || !uartReady || trackNumber == 0U) return false;
   if (probeActive || waitingQuery != QueryKind::None) cancelProbeForPriorityCommand("playback");
+  // Any explicit project/test playback supersedes the cosmetic boot chime. This
+  // prevents a boot tone from appearing seconds later after an early button press.
+  bootTonePending = false;
   queuedPlayTrack = trackNumber;
   return true;
 }

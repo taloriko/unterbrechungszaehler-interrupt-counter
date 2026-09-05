@@ -46,13 +46,18 @@ constexpr uint8_t AUDIO_PROBE_MAX_ATTEMPTS = 2;
 constexpr uint32_t AUDIO_MIN_COMMAND_GAP_MS = 120;
 constexpr uint32_t AUDIO_VOLUME_REPEAT_DELAY_MS = 150;
 constexpr uint8_t AUDIO_VOLUME_SEND_REPEATS = 2;
-constexpr uint32_t AUDIO_PLAY_BUSY_CONFIRM_MS = 450;
-constexpr uint8_t AUDIO_PLAY_MAX_ATTEMPTS = 2;
+// BUSY is diagnostic feedback only. Never resend a play command merely because
+// the decoder/amplifier needs longer to assert BUSY; duplicate play commands can
+// themselves restart or delay a track.
+constexpr uint32_t AUDIO_PLAY_BUSY_CONFIRM_MS = 1200;
+constexpr uint8_t AUDIO_PLAY_MAX_ATTEMPTS = 1;
 constexpr uint32_t AUDIO_BOOT_GRACE_MS = 1200;
 constexpr bool AUDIO_BOOT_TONE_ENABLED = true;
 constexpr uint16_t AUDIO_BOOT_TONE_TRACK = 1;
 constexpr uint32_t AUDIO_BOOT_TONE_DELAY_MS = 350;
-constexpr uint32_t AUDIO_AUTO_PROBE_DELAY_MS = 5000;
+// Keep the startup path quiet. UART diagnostics are deliberately delayed and
+// remain lower priority than every real playback request.
+constexpr uint32_t AUDIO_AUTO_PROBE_DELAY_MS = 15000;
 constexpr uint16_t AUDIO_TEST_TRACK = 1;
 
 // CC1101 / RF1100SE prototype: 433.92 MHz OOK fixed-code receiver.
