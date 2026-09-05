@@ -33,6 +33,15 @@ jobs:
           PY
       - name: Apply source patch
         run: python3 .github/patch_330.py
+      - name: Align renamed raw analytics check
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('Unterbrechungszaehler/tools/release_check.py')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('"scanIntervalAnalytics" in interruption_api', '"scanRawAnalytics" in interruption_api')
+          p.write_text(s, encoding='utf-8')
+          PY
       - name: Regenerate web bundle
         run: python3 Unterbrechungszaehler/tools/build_web.py
       - name: Portable release checks
