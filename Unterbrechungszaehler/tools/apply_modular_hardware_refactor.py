@@ -1389,38 +1389,22 @@ write("RF433_TEST.md", rf_test)
 
 
 # ---------------------------------------------------------------------------
-# Release checks: guard the architectural regression we are fixing.
+# Release checks: replace the old audio-specific regression assertion with
+# invariants for the modular RMT/BUSY architecture.
 # ---------------------------------------------------------------------------
 check = read("tools/release_check.py")
-marker = 'print("Release checks passed.")'
-if marker not in check:
-    raise SystemExit("release check marker missing")
-extra = r'''
-
-# Draft hardware-runtime invariants: raw RF timing belongs to RMT, not a
-# per-edge GPIO ISR; hardware lifecycle belongs to HardwareRegistry; normal
-# audio play uses external BUSY feedback and volume remains a command-only
-# repeated setting.
-rf_cpp = (ROOT / "rf433_cc1101.cpp").read_text(encoding="utf-8")
-rf_service_cpp = (ROOT / "rf433_service.cpp").read_text(encoding="utf-8")
-hardware_registry_cpp = (ROOT / "hardware_registry.cpp").read_text(encoding="utf-8")
-audio_cpp = (ROOT / "audio_dy_sv17f.cpp").read_text(encoding="utf-8")
-hardware_cfg = (ROOT / "hardware_config.h").read_text(encoding="utf-8")
-app_js = (ROOT / "ui-src" / "app.js").read_text(encoding="utf-8")
-
-require('#include <driver/rmt_rx.h>' in rf_cpp, "RF433 uses ESP32 RMT RX")
-require('attachInterrupt(digitalPinToInterrupt(HardwareConfig::RF433_GDO0_PIN)' not in rf_cpp,
-        "RF433 has no per-edge GPIO ISR")
-require('Rf433Cc1101::update();' in hardware_registry_cpp, "HardwareRegistry owns RF driver update")
-require('Rf433Cc1101::update();' not in rf_service_cpp, "project RF service does not tick hardware driver")
-require('if (!Rf433Cc1101::begin())' not in rf_service_cpp, "project RF service does not initialize hardware driver")
-require('HardwareTypes::FeedbackType::ExternalFeedback' in audio_cpp, "audio playback feedback is BUSY/external")
-require('AUDIO_VOLUME_SEND_REPEATS = 2' in hardware_cfg, "volume command is repeated exactly twice")
-require('case QueryKind::CurrentDevice: return 0x0A;' in audio_cpp, "audio diagnostic queries active device")
-require('case QueryKind::CurrentTrack: return 0x0D;' in audio_cpp, "audio diagnostic queries current track")
-require('HARDWARE_DIAG_LABELS' in app_js, "hardware diagnostics translated")
-'''
-check = check.replace(marker, extra + '\n' + marker, 1)
+old_audio_check = '    check("AUDIO_PROBE_MAX_ATTEMPTS = 2" in hardware and "RetryProbePlay" in audio_driver and "BUSY confirms active playback" in audio_driver, "DY-SV17F nonblocking query retry and BUSY fallback")\n'
+new_arch_checks = (
+    '    check("AUDIO_MIN_COMMAND_GAP_MS = 120" in hardware and "AUDIO_VOLUME_SEND_REPEATS = 2" in hardware and "HardwareTypes::FeedbackType::ExternalFeedback" in audio_driver, "DY-SV17F paced command path with external BUSY feedback")\n'
+    '    check("case QueryKind::CurrentDevice: return 0x0A;" in audio_driver and "case QueryKind::CurrentTrack: return 0x0D;" in audio_driver, "DY-SV17F full low-priority diagnostics")\n'
+    '    check('#include <driver/rmt_rx.h>' in rf_driver and 'attachInterrupt(digitalPinToInterrupt(HardwareConfig::RF433_GDO0_PIN)' not in rf_driver, "CC1101 raw timing uses ESP32 RMT instead of per-edge ISR")\n'
+    '    check("Rf433Cc1101::update();" in hardware_registry and "Rf433Cc1101::update();" not in (ROOT / "rf433_service.cpp").read_text(encoding="utf-8"), "HardwareRegistry exclusively services RF driver")\n'
+    '    check("if (!Rf433Cc1101::begin())" not in (ROOT / "rf433_service.cpp").read_text(encoding="utf-8"), "project RF service does not initialize hardware driver")\n'
+    '    check("HARDWARE_DIAG_LABELS" in JS, "expanded hardware diagnostics translated")\n'
+)
+if old_audio_check not in check:
+    raise SystemExit("old audio release-check assertion not found")
+check = check.replace(old_audio_check, new_arch_checks, 1)
 write("tools/release_check.py", check)
 
 print("Modular hardware refactor applied")
