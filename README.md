@@ -3,7 +3,7 @@
 > [!WARNING]
 > **KI-Hinweis:** Dieses Projekt wurde maßgeblich mit Unterstützung von KI erstellt, anschließend aber praktisch getestet, überarbeitet und weiterentwickelt. Wer KI-generierten Code grundsätzlich nicht mag, darf natürlich trotzdem den Taster drücken. ;-)
 
-> **Aktueller Stand:** `3.3.0`
+> **Aktueller Stand:** `3.3.1`
 
 [Deutsch](docs/de/README.md) · [English](docs/en/README.md) · [Schwäbisch](docs/swg/README.md)
 
@@ -273,3 +273,7 @@ GitHub: [taloriko](https://github.com/taloriko)
 Die Heatmaps lassen sich zusätzlich nach der Herkunft filtern: **Beides** (Standard), **Knopf / GPIO** oder **Web**. Die Herkunft steckt bereits im kompakten Rohdatensatz. Sobald nach einer einzelnen Herkunft gefiltert wird, wertet das Gerät deshalb den noch vorhandenen Roh-Ringspeicher aus und weist auf eine eventuell unvollständige Abdeckung hin. Das Datenformat wird dafür nicht aufgebläht und bleibt offen für spätere Quellen wie API.
 
 Unter **Daten & Export** kann die komplette Ereignisdatenbank bewusst gelöscht werden. Als Schutz gegen versehentliches Löschen muss exakt der Projektname `Unterbrechungszähler` eingegeben werden. Danach werden Rohereignisse und Tagesaggregate entfernt und das Gerät startet neu. Unter **Gerät → Speicher** wird bei einem Speicherproblem zusätzlich die konkrete interne Fehlerursache angezeigt.
+
+### DY-SV17F-Diagnose in 3.3.1
+
+Die Soundwiedergabe blieb funktional unverändert. Die Diagnose unterscheidet jetzt sauber zwischen der letzten **UART-Protokollantwort** und dem rohen **BUSY-Pegel an GPIO39**. `Prüfen` bleibt lautlos. `Ton testen` kann zusätzlich einen kontrollierten End-to-End-Test durchführen und die BUSY-Polarität nur dann bestätigen, wenn UART und ein vollständiger BUSY-Zyklus zusammenpassen. BUSY ist reine Zusatzdiagnose und keine Voraussetzung für die Wiedergabe.

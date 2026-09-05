@@ -366,12 +366,27 @@ void appendJson(String &out) {
     appendInfoString(out, first, "hardware.info.transport", "UART2 / 9600 8N1");
     appendInfoString(out, first, "hardware.info.pins",
                      String("DY TX -> GPIO") + String(static_cast<int>(HardwareConfig::AUDIO_RX_PIN)) + " (ESP RX), DY RX <- GPIO" + String(static_cast<int>(HardwareConfig::AUDIO_TX_PIN)) + " (ESP TX), BUSY -> GPIO" + String(static_cast<int>(HardwareConfig::AUDIO_BUSY_PIN)) + "/VN");
+    appendInfoString(out, first, "hardware.info.uartCommunication", AudioDySv17f::detected() ? "ok" : "no_response", "statusKey");
+    appendInfoString(out, first, "hardware.info.playState", AudioDySv17f::playStateKnown() ? String(AudioDySv17f::playStateName()) : String("unknown"), "stateKey");
+    if (AudioDySv17f::playStateMeasuredAtMs() > 0) appendInfoUInt(out, first, "hardware.info.playStateMeasured", AudioDySv17f::playStateMeasuredAtMs(), "checkTime");
     if (AudioDySv17f::detected()) {
-      appendInfoString(out, first, "hardware.info.playState", String(AudioDySv17f::playStateName()), "stateKey");
-      appendInfoString(out, first, "hardware.info.onlineDevices", hexByte(AudioDySv17f::onlineDevices()));
+      appendInfoString(out, first, "hardware.info.mediaStatus", "response", "mediaStatus");
+      appendInfoString(out, first, "hardware.info.mediaRaw", hexByte(AudioDySv17f::onlineDevices()));
       appendInfoUInt(out, first, "hardware.info.fileCount", AudioDySv17f::musicCount());
     }
-    if (AudioDySv17f::busyKnown()) appendInfoBool(out, first, "hardware.info.busy", AudioDySv17f::busy());
+    if (AudioDySv17f::busyKnown()) {
+      appendInfoString(out, first, "hardware.info.busyLevel", AudioDySv17f::busyLevelHigh() ? "HIGH" : "LOW");
+      appendInfoUInt(out, first, "hardware.info.busyMeasured", AudioDySv17f::busyMeasuredAtMs(), "checkTime");
+      if (AudioDySv17f::busyChangedAtMs() > 0) appendInfoUInt(out, first, "hardware.info.busyChanged", AudioDySv17f::busyChangedAtMs(), "checkTime");
+    }
+    appendInfoString(out, first, "hardware.info.busyInterpretation", AudioDySv17f::busyPolarityName(), "busyPolarity");
+    appendInfoString(out, first, "hardware.info.audioTest", AudioDySv17f::audioTestStateName(), "audioTestState");
+    if (AudioDySv17f::audioTestStartedAtMs() > 0) appendInfoUInt(out, first, "hardware.info.audioTestStarted", AudioDySv17f::audioTestStartedAtMs(), "checkTime");
+    if (AudioDySv17f::audioTestState() != AudioDySv17f::AudioTestState::NotRun) {
+      appendInfoBool(out, first, "hardware.info.uartPlayConfirmed", AudioDySv17f::audioTestUartPlayingConfirmed());
+      appendInfoBool(out, first, "hardware.info.busyEdgeSeen", AudioDySv17f::audioTestBusyTransitionSeen());
+      appendInfoBool(out, first, "hardware.info.uartStopConfirmed", AudioDySv17f::audioTestUartStoppedConfirmed());
+    }
     appendInfoUInt(out, first, "hardware.info.testTrack", HardwareConfig::AUDIO_TEST_TRACK);
     endModule(out, "test", "action.audioTest", "audio");
   }

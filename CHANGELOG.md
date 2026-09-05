@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.3.1
+
+- DY-SV17F-Diagnose trennt UART-Status und BUSY-Hardwarepegel klar voneinander und zeigt deren Messzeitpunkte
+- BUSY wird nicht mehr permanent im Audio-Loop gepollt; ein Snapshot erfolgt nur bei Boot/Prüfung und Flanken werden ausschließlich während des manuellen Audiotests beobachtet
+- **Prüfen** bleibt lautlos und fragt Wiedergabestatus, Datenträger und Dateianzahl gezielt per UART ab
+- **Ton testen** wird zum nicht blockierenden End-to-End-Diagnosetest: UART PLAY bestätigen, BUSY-Flanken beobachten und ein vermutetes Ende einmal per UART gegenprüfen
+- BUSY-Polarität startet bewusst unbestätigt und wird nur nach einem vollständigen Ruhe → Wiedergabe → Ruhe-Zyklus als HIGH/LOW=Wiedergabe übernommen
+- Ein unplausibles BUSY-Signal beschädigt die funktionierende Wiedergabe nicht; fehlende UART-Antwort bleibt dagegen ein echter Diagnosefehler
+- Datenträgerwert wird nicht geraten: Klartext `Antwort erhalten` plus technischer Rohwert (z. B. `0x04`)
+
 ## 3.3.0
 
 - Datenbank kann nach Eingabe des exakten Projektnamens vollständig gelöscht werden; Rohdaten und Tagesaggregate werden entfernt und das Gerät startet sauber neu

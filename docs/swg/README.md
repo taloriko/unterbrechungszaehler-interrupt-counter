@@ -240,3 +240,7 @@ GitHub: [taloriko](https://github.com/taloriko)
 ## Neu in 3.3.0
 
 Bei de Heatmaps kannsch jetzt **Beides**, **Knopf / GPIO** oder **Web** auswähla. Wenn bloß oine Herkunft gfiltert wird, nimmt s Gerät die Rohereignis, wo no em Ringspeicher send, ond zeigt ehrlich an, wenn dr Zeitraum nimme komplett drin isch. D komplette Datenbank kannsch mit em exakta Projektname `Unterbrechungszähler` löscha; danach startet s Gerät neu. Bei Gerät → Speicher steht bei Fehler jetzt au dr konkrete Grund dabei.
+
+## DY-SV17F-Diagnose 3.3.1
+
+UART-Wiedergabstatus ond dr rohe BUSY-Pegel send jetzt sauber trennt ond hend ihre Messzeit dabei. `Prüfen` bleibt still; `Ton testen` schaut zusätzlich nach BUSY-Flanka ond fragt s vermutete End no amol per UART ab. BUSY isch bloß Diagnose ond net nötig, dass dr Ton funktioniert.

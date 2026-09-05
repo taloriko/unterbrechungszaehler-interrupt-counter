@@ -990,6 +990,81 @@
   };
   Object.entries(I18N_330).forEach(([code, labels]) => Object.assign(I18N[code], labels));
 
+
+  const I18N_331 = {
+    de: {
+      'hardware.info.uartCommunication': 'UART-Kommunikation', 'hardware.info.playState': 'Wiedergabe laut Modul',
+      'hardware.info.playStateMeasured': 'Letzte Statusabfrage', 'hardware.info.mediaStatus': 'Datenträger', 'hardware.info.mediaRaw': 'Datenträger-Rohwert',
+      'hardware.info.busyLevel': 'BUSY GPIO39', 'hardware.info.busyMeasured': 'BUSY gemessen', 'hardware.info.busyChanged': 'Letzte BUSY-Änderung',
+      'hardware.info.busyInterpretation': 'BUSY-Auswertung', 'hardware.info.audioTest': 'Audiotest', 'hardware.info.audioTestStarted': 'Audiotest gestartet',
+      'hardware.info.uartPlayConfirmed': 'UART PLAY bestätigt', 'hardware.info.uartStopConfirmed': 'UART Ende bestätigt', 'hardware.info.busyEdgeSeen': 'BUSY-Flanke erkannt',
+      'hardware.media.response': 'Antwort erhalten', 'hardware.busy.unconfirmed': 'Nicht bestätigt', 'hardware.busy.active_low': 'LOW = Wiedergabe', 'hardware.busy.active_high': 'HIGH = Wiedergabe',
+      'hardware.audioTest.not_run': 'Nicht durchgeführt', 'hardware.audioTest.running': 'Läuft', 'hardware.audioTest.ok': 'OK', 'hardware.audioTest.partial': 'Unvollständig',
+      'hardware.audioTest.warning': 'Warnung', 'hardware.audioTest.error': 'Fehler'
+    },
+    en: {
+      'hardware.info.uartCommunication': 'UART communication', 'hardware.info.playState': 'Playback reported by module',
+      'hardware.info.playStateMeasured': 'Last status query', 'hardware.info.mediaStatus': 'Media', 'hardware.info.mediaRaw': 'Media raw value',
+      'hardware.info.busyLevel': 'BUSY GPIO39', 'hardware.info.busyMeasured': 'BUSY sampled', 'hardware.info.busyChanged': 'Last BUSY change',
+      'hardware.info.busyInterpretation': 'BUSY interpretation', 'hardware.info.audioTest': 'Audio test', 'hardware.info.audioTestStarted': 'Audio test started',
+      'hardware.info.uartPlayConfirmed': 'UART PLAY confirmed', 'hardware.info.uartStopConfirmed': 'UART end confirmed', 'hardware.info.busyEdgeSeen': 'BUSY edge seen',
+      'hardware.media.response': 'Response received', 'hardware.busy.unconfirmed': 'Not confirmed', 'hardware.busy.active_low': 'LOW = playback', 'hardware.busy.active_high': 'HIGH = playback',
+      'hardware.audioTest.not_run': 'Not run', 'hardware.audioTest.running': 'Running', 'hardware.audioTest.ok': 'OK', 'hardware.audioTest.partial': 'Incomplete',
+      'hardware.audioTest.warning': 'Warning', 'hardware.audioTest.error': 'Error'
+    },
+    it: {
+      'hardware.info.uartCommunication': 'Comunicazione UART', 'hardware.info.playState': 'Riproduzione secondo il modulo',
+      'hardware.info.playStateMeasured': 'Ultima richiesta stato', 'hardware.info.mediaStatus': 'Supporto', 'hardware.info.mediaRaw': 'Valore supporto grezzo',
+      'hardware.info.busyLevel': 'BUSY GPIO39', 'hardware.info.busyMeasured': 'BUSY misurato', 'hardware.info.busyChanged': 'Ultimo cambio BUSY',
+      'hardware.info.busyInterpretation': 'Interpretazione BUSY', 'hardware.info.audioTest': 'Test audio', 'hardware.info.audioTestStarted': 'Test audio avviato',
+      'hardware.info.uartPlayConfirmed': 'PLAY UART confermato', 'hardware.info.uartStopConfirmed': 'Fine UART confermata', 'hardware.info.busyEdgeSeen': 'Transizione BUSY rilevata',
+      'hardware.media.response': 'Risposta ricevuta', 'hardware.busy.unconfirmed': 'Non confermato', 'hardware.busy.active_low': 'LOW = riproduzione', 'hardware.busy.active_high': 'HIGH = riproduzione',
+      'hardware.audioTest.not_run': 'Non eseguito', 'hardware.audioTest.running': 'In corso', 'hardware.audioTest.ok': 'OK', 'hardware.audioTest.partial': 'Incompleto',
+      'hardware.audioTest.warning': 'Avviso', 'hardware.audioTest.error': 'Errore'
+    },
+    fr: {
+      'hardware.info.uartCommunication': 'Communication UART', 'hardware.info.playState': 'Lecture signalée par le module',
+      'hardware.info.playStateMeasured': 'Dernière requête d’état', 'hardware.info.mediaStatus': 'Support', 'hardware.info.mediaRaw': 'Valeur brute du support',
+      'hardware.info.busyLevel': 'BUSY GPIO39', 'hardware.info.busyMeasured': 'BUSY mesuré', 'hardware.info.busyChanged': 'Dernier changement BUSY',
+      'hardware.info.busyInterpretation': 'Interprétation BUSY', 'hardware.info.audioTest': 'Test audio', 'hardware.info.audioTestStarted': 'Test audio démarré',
+      'hardware.info.uartPlayConfirmed': 'PLAY UART confirmé', 'hardware.info.uartStopConfirmed': 'Fin UART confirmée', 'hardware.info.busyEdgeSeen': 'Front BUSY détecté',
+      'hardware.media.response': 'Réponse reçue', 'hardware.busy.unconfirmed': 'Non confirmé', 'hardware.busy.active_low': 'LOW = lecture', 'hardware.busy.active_high': 'HIGH = lecture',
+      'hardware.audioTest.not_run': 'Non exécuté', 'hardware.audioTest.running': 'En cours', 'hardware.audioTest.ok': 'OK', 'hardware.audioTest.partial': 'Incomplet',
+      'hardware.audioTest.warning': 'Avertissement', 'hardware.audioTest.error': 'Erreur'
+    },
+    swg: {
+      'hardware.info.uartCommunication': 'UART-Verbindung', 'hardware.info.playState': 'Wiedergab laut Modul',
+      'hardware.info.playStateMeasured': 'Letzte Statusabfrag', 'hardware.info.mediaStatus': 'Datenträger', 'hardware.info.mediaRaw': 'Datenträger-Rohwert',
+      'hardware.info.busyLevel': 'BUSY GPIO39', 'hardware.info.busyMeasured': 'BUSY gmessa', 'hardware.info.busyChanged': 'Letzte BUSY-Änderung',
+      'hardware.info.busyInterpretation': 'BUSY-Auswertung', 'hardware.info.audioTest': 'Audiotest', 'hardware.info.audioTestStarted': 'Audiotest gstartet',
+      'hardware.info.uartPlayConfirmed': 'UART PLAY bestätigt', 'hardware.info.uartStopConfirmed': 'UART End bestätigt', 'hardware.info.busyEdgeSeen': 'BUSY-Flanke gseha',
+      'hardware.media.response': 'Antwort komma', 'hardware.busy.unconfirmed': 'No net bestätigt', 'hardware.busy.active_low': 'LOW = Wiedergab', 'hardware.busy.active_high': 'HIGH = Wiedergab',
+      'hardware.audioTest.not_run': 'No net gmacht', 'hardware.audioTest.running': 'Läuft', 'hardware.audioTest.ok': 'OK', 'hardware.audioTest.partial': 'Net komplett',
+      'hardware.audioTest.warning': 'Warnung', 'hardware.audioTest.error': 'Fehler'
+    },
+    'swg-alb': {
+      'hardware.info.uartCommunication': 'UART-Verbindung', 'hardware.info.playState': 'Wiedergab laut Modul',
+      'hardware.info.playStateMeasured': 'Letzte Statusabfrag', 'hardware.info.mediaStatus': 'Datenträger', 'hardware.info.mediaRaw': 'Datenträger-Rohwert',
+      'hardware.info.busyLevel': 'BUSY GPIO39', 'hardware.info.busyMeasured': 'BUSY gmessa', 'hardware.info.busyChanged': 'Letzte BUSY-Änderung',
+      'hardware.info.busyInterpretation': 'BUSY-Auswertung', 'hardware.info.audioTest': 'Audiotest', 'hardware.info.audioTestStarted': 'Audiotest gstartet',
+      'hardware.info.uartPlayConfirmed': 'UART PLAY bestätigt', 'hardware.info.uartStopConfirmed': 'UART End bestätigt', 'hardware.info.busyEdgeSeen': 'BUSY-Flanke gseha',
+      'hardware.media.response': 'Antwort komma', 'hardware.busy.unconfirmed': 'No net bestätigt', 'hardware.busy.active_low': 'LOW = Wiedergab', 'hardware.busy.active_high': 'HIGH = Wiedergab',
+      'hardware.audioTest.not_run': 'No net gmacht', 'hardware.audioTest.running': 'Läuft', 'hardware.audioTest.ok': 'OK', 'hardware.audioTest.partial': 'Net komplett',
+      'hardware.audioTest.warning': 'Warnung', 'hardware.audioTest.error': 'Fehler'
+    },
+    'swg-ob': {
+      'hardware.info.uartCommunication': 'UART-Verbindung', 'hardware.info.playState': 'Wiedergab laut Modul',
+      'hardware.info.playStateMeasured': 'Letzte Statusabfrag', 'hardware.info.mediaStatus': 'Datenträger', 'hardware.info.mediaRaw': 'Datenträger-Rohwert',
+      'hardware.info.busyLevel': 'BUSY GPIO39', 'hardware.info.busyMeasured': 'BUSY gmessa', 'hardware.info.busyChanged': 'Letzte BUSY-Änderung',
+      'hardware.info.busyInterpretation': 'BUSY-Auswertung', 'hardware.info.audioTest': 'Audiotest', 'hardware.info.audioTestStarted': 'Audiotest gstartet',
+      'hardware.info.uartPlayConfirmed': 'UART PLAY bestätigt', 'hardware.info.uartStopConfirmed': 'UART End bestätigt', 'hardware.info.busyEdgeSeen': 'BUSY-Flanke gseha',
+      'hardware.media.response': 'Antwort komma', 'hardware.busy.unconfirmed': 'No it bestätigt', 'hardware.busy.active_low': 'LOW = Wiedergab', 'hardware.busy.active_high': 'HIGH = Wiedergab',
+      'hardware.audioTest.not_run': 'No it gmacht', 'hardware.audioTest.running': 'Läuft', 'hardware.audioTest.ok': 'OK', 'hardware.audioTest.partial': 'It komplett',
+      'hardware.audioTest.warning': 'Warnung', 'hardware.audioTest.error': 'Fehler'
+    }
+  };
+  Object.entries(I18N_331).forEach(([code, labels]) => Object.assign(I18N[code], labels));
+
   const STORAGE_STATUS_LABELS = {
     de: { 'status.ready': 'Bereit', 'status.unavailable': 'Nicht verfügbar' },
     en: { 'status.ready': 'Ready', 'status.unavailable': 'Unavailable' },
@@ -1405,6 +1480,10 @@
     },
     bool(value) { return value === true ? t('common.yes') : value === false ? t('common.no') : t('common.none'); },
     stateKey(value) { return t(`hardware.play.${value || 'unknown'}`); },
+    statusKey(value) { return t(`status.${value || 'unknown'}`); },
+    mediaStatus(value) { return t(`hardware.media.${value || 'response'}`); },
+    busyPolarity(value) { return t(`hardware.busy.${value || 'unconfirmed'}`); },
+    audioTestState(value) { return t(`hardware.audioTest.${value || 'not_run'}`); },
     checkTime(value) {
       const ms = Number(value);
       if (!Number.isFinite(ms) || ms <= 0) return t('common.none');

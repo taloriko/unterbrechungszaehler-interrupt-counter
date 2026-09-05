@@ -39,6 +39,7 @@ constexpr int8_t AUDIO_BUSY_PIN = 39; // DY-SV17F CON3/BUSY, active LOW while pl
 constexpr uint32_t AUDIO_BAUD_RATE = 9600;
 constexpr uint32_t AUDIO_RESPONSE_TIMEOUT_MS = 1000;
 constexpr uint32_t AUDIO_COMMAND_VERIFY_DELAY_MS = 220;
+constexpr uint32_t AUDIO_DIAGNOSTIC_TEST_TIMEOUT_MS = 120000; // safety timeout only; not a track-duration assumption
 constexpr uint32_t AUDIO_INTER_COMMAND_DELAY_MS = 120;
 constexpr uint32_t AUDIO_BOOT_GRACE_MS = 1200;
 constexpr bool AUDIO_BOOT_TONE_ENABLED = true;
