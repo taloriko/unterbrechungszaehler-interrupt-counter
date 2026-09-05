@@ -67,12 +67,14 @@ constexpr int8_t RF433_GDO2_PIN = 27;  // carrier sense
 constexpr uint32_t RF433_FREQUENCY_HZ = 433920000UL;
 constexpr uint32_t RF433_SOMFY_FREQUENCY_HZ = 433420000UL;
 // Raw OOK/RTS timing is captured by the ESP32 RMT peripheral, not by a GPIO
-// CHANGE ISR. 1 MHz gives one-microsecond symbols; the hardware glitch filter
-// rejects pulses far below every supported protocol timing.
+// CHANGE ISR. 1 MHz gives one-microsecond symbols. On the classic ESP32 the
+// RMT RX hardware glitch filter is clocked from the 80 MHz APB clock and only
+// accepts a few microseconds of threshold. Protocol-level rejection of the
+// much longer 433 MHz glitches therefore stays in the bounded loop decoder.
 constexpr uint32_t RF433_RMT_RESOLUTION_HZ = 1000000UL;
 constexpr uint16_t RF433_RMT_MEM_BLOCK_SYMBOLS = 128;
 constexpr uint16_t RF433_RMT_CAPTURE_SYMBOLS = 160;
-constexpr uint32_t RF433_RMT_GLITCH_MIN_NS = 60000UL;
+constexpr uint32_t RF433_RMT_GLITCH_MIN_NS = 2000UL;
 constexpr uint32_t RF433_RMT_IDLE_MAX_NS = 8000000UL;
 
 // CON3/BUSY is also a mode selection input during roughly the first 30 ms of
