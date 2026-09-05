@@ -1,0 +1,30 @@
+name: Fix modular refactor helper
+
+on:
+  push:
+    branches:
+      - design/433mhz-multisource
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.event.head_commit.message == 'Fix modular refactor helper'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: design/433mhz-multisource
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Correct helper
+        run: python Unterbrechungszaehler/tools/fix_modular_refactor_helper.py
+      - name: Commit correction and trigger refactor
+        run: |
+          git config user.name 'taloriko'
+          git config user.email '67206692+taloriko@users.noreply.github.com'
+          git add Unterbrechungszaehler/tools/apply_modular_hardware_refactor.py
+          git commit -m 'Run modular hardware refactor'
+          git push
