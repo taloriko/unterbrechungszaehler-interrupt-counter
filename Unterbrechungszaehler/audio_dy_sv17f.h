@@ -47,7 +47,7 @@ bool audioTestBusyTransitionSeen();
 uint8_t onlineDevices();
 uint16_t musicCount();
 
-// Existing playback path. 3.3.1 deliberately changes diagnostics only.
+// Existing playback path remains unchanged; 3.3.2 fixes only diagnostic test completion.
 bool playTrack(uint16_t trackNumber);
 bool playTestTone();
 bool stop();

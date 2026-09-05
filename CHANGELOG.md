@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.3.2
+
+- DY-SV17F-Audiotest beendet sich jetzt zuverlässig über den aktiv abgefragten UART-Wiedergabestatus statt auf eine weitere BUSY-Flanke angewiesen zu sein
+- Während eines ausdrücklich gestarteten Audiotests wird der Status mit sparsamen 500-ms-Abständen abgefragt; außerhalb des Tests gibt es weiterhin kein zyklisches UART- oder BUSY-Polling
+- BUSY-Flanken beschleunigen eine Statusprüfung weiterhin, sind aber nur Zusatzdiagnose und keine Voraussetzung für einen erfolgreichen Test
+- Wenn UART sowohl `Spielt` als auch anschließend `Gestoppt` bestätigt, endet der Audiotest mit OK; eine nicht bestätigte BUSY-Polarität wird separat angezeigt
+- Der 120-s-Sicherheits-Timeout beendet den Test nun auch dann sicher, wenn gerade eine Statusabfrage geplant oder aktiv ist
+
 ## 3.3.1
 
 - DY-SV17F-Diagnose trennt UART-Status und BUSY-Hardwarepegel klar voneinander und zeigt deren Messzeitpunkte

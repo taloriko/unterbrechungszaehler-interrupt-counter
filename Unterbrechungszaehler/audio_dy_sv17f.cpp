@@ -72,7 +72,8 @@ enum class DeferredAction : uint8_t {
   VerifyPlay,
   BootTone,
   TestPlay,
-  TestVerifyPlaying
+  TestVerifyPlaying,
+  TestCheckStopped
 };
 DeferredAction deferredAction = DeferredAction::None;
 uint32_t deferredAtMs = 0;
@@ -324,8 +325,11 @@ void handleFrame(uint8_t command, const uint8_t *data, uint8_t length) {
       testBusyDuringKnown = busyLevelKnown;
       testBusyDuringHigh = currentBusyLevelHigh;
       setHealth(StatusRegistry::State::Checking);
-      SerialLog::successf("AUDIO", "AUDIO TEST | UART playback confirmed | BUSY now=%s",
-                          testBusyDuringKnown ? (testBusyDuringHigh ? "HIGH" : "LOW") : "n/a");
+      deferredAction = DeferredAction::TestCheckStopped;
+      deferredAtMs = millis() + HardwareConfig::AUDIO_DIAGNOSTIC_STATUS_POLL_MS;
+      SerialLog::successf("AUDIO", "AUDIO TEST | UART playback confirmed | BUSY now=%s | end checks every %lu ms",
+                          testBusyDuringKnown ? (testBusyDuringHigh ? "HIGH" : "LOW") : "n/a",
+                          static_cast<unsigned long>(HardwareConfig::AUDIO_DIAGNOSTIC_STATUS_POLL_MS));
       break;
 
     case WaitKind::TestTransition:
@@ -337,7 +341,9 @@ void handleFrame(uint8_t command, const uint8_t *data, uint8_t length) {
         testBusyDuringKnown = busyLevelKnown;
         testBusyDuringHigh = currentBusyLevelHigh;
         setHealth(StatusRegistry::State::Checking);
-        SerialLog::infof("AUDIO", "AUDIO TEST | BUSY edge checked by UART | still playing | BUSY=%s",
+        deferredAction = DeferredAction::TestCheckStopped;
+        deferredAtMs = millis() + HardwareConfig::AUDIO_DIAGNOSTIC_STATUS_POLL_MS;
+        SerialLog::infof("AUDIO", "AUDIO TEST | UART end check | still playing | BUSY=%s",
                          testBusyDuringKnown ? (testBusyDuringHigh ? "HIGH" : "LOW") : "n/a");
         return;
       }
@@ -350,12 +356,14 @@ void handleFrame(uint8_t command, const uint8_t *data, uint8_t length) {
                                    testBusyDuringHigh != testBusyEndHigh;
         if (completeCycle) {
           confirmedBusyPolarity = testBusyDuringHigh ? BusyPolarity::ActiveHigh : BusyPolarity::ActiveLow;
-          finishAudioTest(AudioTestState::Ok, StatusRegistry::State::Ok, "");
+          SerialLog::successf("AUDIO", "AUDIO TEST | UART stopped confirmed | BUSY polarity=%s", busyPolarityName());
         } else {
           confirmedBusyPolarity = BusyPolarity::Unconfirmed;
-          finishAudioTest(AudioTestState::Partial, StatusRegistry::State::Warning,
-                          "UART playback works; BUSY polarity not confirmed");
+          SerialLog::warning("AUDIO", "AUDIO TEST | UART start/end confirmed | BUSY polarity remains unconfirmed");
         }
+        // UART is the protocol truth for test completion. BUSY is additional
+        // diagnostic information and must never keep a working module in Checking.
+        finishAudioTest(AudioTestState::Ok, StatusRegistry::State::Ok, "");
         return;
       }
       finishAudioTest(AudioTestState::Warning, StatusRegistry::State::Warning,
@@ -451,8 +459,11 @@ void serviceBusyEdge() {
   SerialLog::infof("AUDIO", "AUDIO TEST | BUSY edge | GPIO%d=%s",
                    HardwareConfig::AUDIO_BUSY_PIN, currentBusyLevelHigh ? "HIGH" : "LOW");
 
-  if (testUartPlaying && waitingFor == WaitKind::None && deferredAction == DeferredAction::None) {
-    sendQuery(WaitKind::TestTransition, 0x01);
+  if (testUartPlaying && waitingFor == WaitKind::None) {
+    // A BUSY edge may accelerate the next UART end check, but it is not
+    // required for completion. Cancel only our own scheduled end check.
+    if (deferredAction == DeferredAction::TestCheckStopped) deferredAction = DeferredAction::None;
+    if (deferredAction == DeferredAction::None) sendQuery(WaitKind::TestTransition, 0x01);
   }
 }
 
@@ -521,11 +532,11 @@ void update() {
   if (volumePending && commandPathIdle()) applyDesiredVolume();
 
   const uint32_t now = millis();
-  if (manualTestActive && due(now, manualTestStartedAt + HardwareConfig::AUDIO_DIAGNOSTIC_TEST_TIMEOUT_MS) &&
-      waitingFor == WaitKind::None && deferredAction == DeferredAction::None) {
+  if (manualTestActive && due(now, manualTestStartedAt + HardwareConfig::AUDIO_DIAGNOSTIC_TEST_TIMEOUT_MS)) {
+    // Hard safety stop even if an end-check query/deferred action is active.
     finishAudioTest(testUartPlaying ? AudioTestState::Partial : AudioTestState::Warning,
                     StatusRegistry::State::Warning,
-                    "audio test timeout; track end was not confirmed");
+                    "audio test timeout; UART track end was not confirmed");
   }
 
   if (deferredAction != DeferredAction::None && due(now, deferredAtMs)) {
@@ -553,6 +564,11 @@ void update() {
       }
     } else if (action == DeferredAction::TestVerifyPlaying) {
       if (manualTestActive && waitingFor == WaitKind::None) sendQuery(WaitKind::TestPlaying, 0x01);
+    } else if (action == DeferredAction::TestCheckStopped) {
+      if (manualTestActive && testUartPlaying && waitingFor == WaitKind::None) {
+        SerialLog::info("AUDIO", "AUDIO TEST | scheduled UART end check");
+        sendQuery(WaitKind::TestTransition, 0x01);
+      }
     }
   }
 }
@@ -568,7 +584,8 @@ bool checking() {
          deferredAction == DeferredAction::QueryCount ||
          deferredAction == DeferredAction::VerifyPlay ||
          deferredAction == DeferredAction::TestPlay ||
-         deferredAction == DeferredAction::TestVerifyPlaying;
+         deferredAction == DeferredAction::TestVerifyPlaying ||
+         deferredAction == DeferredAction::TestCheckStopped;
 }
 StatusRegistry::State health() { return moduleHealth; }
 uint32_t lastCheckMs() { return checkedAtMs; }

@@ -1,3 +1,10 @@
+# Release 3.3.2
+
+- manueller DY-SV17F-Audiotest beendet sich anhand gezielter UART-Statusabfragen sicher, auch wenn keine weitere BUSY-Flanke kommt
+- UART wird nur während des ausdrücklich gestarteten Audiotests in 500-ms-Abständen auf das Trackende geprüft; außerhalb des Tests bleibt die Diagnose ereignisgesteuert
+- BUSY bleibt zusätzliche Hardwarediagnose: eine unbestätigte Polarität verhindert weder funktionierende Wiedergabe noch einen erfolgreichen UART-End-to-End-Test
+- funktionierender PLAY-Pfad, Boot-Ton, Rotation, Lautstärke und normale Unterbrechungstöne bleiben unverändert
+
 # Release 3.3.1
 
 - DY-SV17F-Diagnose zeigt UART-Wiedergabestatus und BUSY-Rohpegel getrennt samt Messzeit

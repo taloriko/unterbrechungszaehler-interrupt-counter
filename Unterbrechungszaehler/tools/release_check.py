@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.3.1."""
+"""Portable release checks for Unterbrechungszaehler 3.3.2."""
 from __future__ import annotations
 
 import gzip
@@ -60,7 +60,7 @@ def main() -> None:
     partitions = (ROOT / "partitions.csv").read_text(encoding="utf-8")
 
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.3.1"' in config, "project version 3.3.1")
+    check('SOFTWARE_VERSION[] = "3.3.2"' in config, "project version 3.3.2")
     check(
         'AVAILABLE_LANGUAGES_JSON[] = "[\\\"de\\\",\\\"en\\\",\\\"it\\\",\\\"fr\\\",\\\"swg\\\",\\\"swg-alb\\\",\\\"swg-ob\\\"]"' in config,
         "declared UI languages",
@@ -100,6 +100,10 @@ def main() -> None:
     check("currentPlayStateMeasuredAtMs" in audio_cpp and "busyMeasuredAtMs" in audio_h, "UART and BUSY diagnostics carry measurement times")
     check("BusyPolarity::Unconfirmed" in audio_cpp and "active_low" in audio_cpp and "active_high" in audio_cpp, "BUSY polarity is unconfirmed until full test cycle")
     check("AudioTestState::Partial" in audio_cpp and "audioTestUartPlayingConfirmed" in audio_h, "manual audio-test result is explicit")
+    check("AUDIO_DIAGNOSTIC_STATUS_POLL_MS = 500" in hardware, "manual audio test has bounded UART end-check cadence")
+    check("DeferredAction::TestCheckStopped" in audio_cpp and "scheduled UART end check" in audio_cpp, "UART end checks run only inside explicit audio test")
+    check("UART is the protocol truth for test completion" in audio_cpp and "finishAudioTest(AudioTestState::Ok, StatusRegistry::State::Ok" in audio_cpp, "UART stopped confirmation completes test even when BUSY is unconfirmed")
+    check("audio test timeout; UART track end was not confirmed" in audio_cpp, "manual audio test has hard safety timeout")
     check("command verification timeout" in audio_cpp and "StatusRegistry::State::NoResponse" in audio_cpp, "UART no-response remains a real diagnostic error")
     check("hardware.info.uartCommunication" in JS and "hardware.info.busyInterpretation" in JS and "hardware.info.audioTest" in JS, "richer DY-SV17F diagnostic UI")
     check("0x2D0000, 0x130000" in partitions, "LittleFS custom partition")
@@ -117,7 +121,7 @@ def main() -> None:
     )
     for language in ("de", "en", "it", "fr", "swg", "swg-alb", "swg-ob"):
         token = f"Object.assign(I18N{'.' + language if '-' not in language else '[' + repr(language) + ']'}, {{"
-        check(token in JS, f"3.3.1 UI additions present for {language}")
+        check(token in JS, f"3.3.2 UI additions present for {language}")
 
     positions = [JS.find(f"{{ id: '{name}'") for name in ("device", "wifi", "memory", "time", "hardware", "ota")]
     check(all(position >= 0 for position in positions) and positions == sorted(positions), "device card order")
