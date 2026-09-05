@@ -38,10 +38,12 @@ Die Laufzeit wurde vereinfacht:
 
 - `Play specified music (0x07)` erwartet laut Protokoll **keine** UART-Antwort.
 - Ein normaler Ton wird deshalb nicht mehr mit einer zusätzlichen Statusabfrage gekoppelt.
-- Ein Wiedergabestart gilt nur dann als BUSY-bestätigt, wenn nach dem Play-Kommando eine **frische** BUSY-Sequenz beobachtet wird. Ein bereits vorher LOW stehendes BUSY bestätigt kein neues Kommando.
-- Ein nicht bestätigter Play-Befehl wird höchstens einmal wiederholt.
+- War BUSY vor dem Play-Kommando HIGH/idle, wird ein neuer Start durch BUSY LOW bestätigt. Bleibt dieser Start aus, gibt es höchstens einen Wiederholungsversuch.
+- War BUSY bereits LOW/aktiv, wird **nicht** auf eine künstliche HIGH→LOW-Sequenz gewartet und der Track nicht mehrfach neu gestartet. Der DY-SV17F kann einen Track wechseln oder neu starten, ohne BUSY zwischen zwei Play-Kommandos freizugeben; dieser Fall ist deshalb nicht unabhängig als neuer Start bestätigbar.
 - Lautstärke `0x13` ist command-only. 0–100 % wird zentral auf die dokumentierten 31 Stufen 0–30 abgebildet. Weil das Modul darauf keine Antwort sendet, wird dieselbe Einstellung zweimal mit Abstand gesendet; die UI nennt sie ausdrücklich Soll-/Sendewert, nicht bestätigten Istwert.
-- Diagnoseabfragen `0x01`, `0x09`, `0x0A`, `0x0C`, `0x0D` laufen sequenziell und niedrig priorisiert. Echte Wiedergabe darf eine Diagnose abbrechen.
+- Eine Lautstärkeänderung ist ein priorisiertes, idempotentes Kommando und darf auch während laufender Wiedergabe gesendet werden. Insbesondere `0 %` wartet nicht mehr auf BUSY=idle.
+- Play-Anforderungen werden klein gepuffert, falls gerade noch die zwei Lautstärkekommandos oder der globale UART-Abstand laufen. Die Ereigniserfassung selbst wartet nie auf Audio.
+- Diagnoseabfragen `0x01`, `0x09`, `0x0A`, `0x0C`, `0x0D` laufen sequenziell und niedrig priorisiert. Lautstärke, Stop/Pause oder echte Wiedergabe dürfen eine Diagnose abbrechen.
 - Fehlgeschlagene Diagnoseabfragen löschen keine zuvor gültig gelesenen Werte.
 - Nach dem Boot läuft einmal eine niedrige Prioritätsdiagnose, damit Trackanzahl/Datenträger für Rotation und Hardwarekarte verfügbar werden.
 
@@ -55,11 +57,13 @@ Stattdessen besitzt der ESP32 einen RMT-RX-Kanal auf GDO0:
 
 - 1 MHz Auflösung = 1 µs
 - statischer 160-Symbol-Puffer
-- 60-µs-Hardware-Glitchfilter
+- 2-µs-RMT-Hardwarefilter auf dem klassischen ESP32; längere RF-Störpulse werden zusätzlich protokollbezogen im normalen Loop verworfen
 - 8-ms-Idlegrenze beendet eine Aufnahme
 - Callback veröffentlicht nur `frame ready + symbol count`
 - Universal-/Somfy-Decoding läuft vollständig im normalen Loop
 - nach Kopie in einen kleinen lokalen Arbeitsbuffer wird RMT sofort wieder scharfgeschaltet
+
+Der erste Hardwaretest mit dem 60-µs-Wert lieferte `cc1101_rmt_init_failed`. Ursache: Beim klassischen ESP32 wird der RMT-RX-Glitchfilter unabhängig von der 1-MHz-Symbolauflösung aus dem 80-MHz-APB-Takt gespeist und sein Register kann nur wenige Mikrosekunden abbilden. 60 µs waren deshalb für `rmt_receive()` ein ungültiger Parameter. Der Hardwarefilter liegt nun sicher innerhalb dieses Bereichs; die eigentlich relevante 433-MHz-Störunterdrückung bleibt im begrenzten Decoder.
 
 Damit sinkt die Interruptlast von „eine ISR pro RF-Flanke“ auf ungefähr „ein RX-done-Callback pro Aufnahme“. Das schützt insbesondere UART2, WLAN und den restlichen kooperativen Loop vor zufälliger 433-MHz-Rauschlast.
 
@@ -84,7 +88,7 @@ I2C, SPI, UART2 und RMT besitzen getrennte Verantwortungsbereiche. Kein Modul da
 Ein Diagnosewert ist nur dann „bestätigt“, wenn seine reale Rückmeldung dazu passt:
 
 - I2C/SPI: Bus-/Registerantwort
-- Audio-Wiedergabe: externe BUSY-Flanke
+- Audio-Wiedergabe: externe BUSY-Flanke, sofern der Ausgang vor dem Kommando idle war
 - Audio-Kommandos ohne Response (z. B. Volume): nur „gesendet“, nie „bestätigt“
 - RF-Konfiguration: SPI-Readback
 - RF-Empfang: RMT-Aufnahme + gültiger Protokolldecoder
