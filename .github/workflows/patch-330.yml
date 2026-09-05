@@ -21,6 +21,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Fix helper template expansion
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('.github/patch_330.py')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('coverage_old.format(samples=samples, count=count, start=start)', 'coverage_old.replace("{samples}", samples).replace("{count}", count).replace("{start}", start)')
+          s = s.replace('coverage_new.format(samples=samples, count=count, start=start)', 'coverage_new.replace("{samples}", samples).replace("{count}", count).replace("{start}", start)')
+          p.write_text(s, encoding='utf-8')
+          PY
       - name: Apply source patch
         run: python3 .github/patch_330.py
       - name: Regenerate web bundle
