@@ -10,7 +10,10 @@ constexpr bool ENABLE_GPIO = true;
 constexpr bool ENABLE_RTC_DS3231 = true;
 constexpr bool ENABLE_DISPLAY_SH1106 = true;
 constexpr bool ENABLE_AUDIO_DY_SV17F = true;
-constexpr bool ENABLE_RF433_CC1101 = true;
+// Temporary PR-only isolation test: keep the CC1101 physically wired and
+// powered, but do not initialize SPI, RMT or any RF runtime path. This lets us
+// distinguish RF software/peripheral interference from wiring/power coupling.
+constexpr bool ENABLE_RF433_CC1101 = false;
 
 // Shared I2C bus: DS3231 + SH1106.
 constexpr int8_t I2C_SDA_PIN = 21;
