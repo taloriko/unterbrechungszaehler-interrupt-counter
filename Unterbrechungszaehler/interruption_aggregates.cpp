@@ -560,6 +560,28 @@ bool apply(const InterruptionTypes::CapturedEvent &event, uint64_t sequence) {
   return true;
 }
 
+bool eraseAll() {
+  rebuildActive = false;
+  readyFlag = false;
+  cacheValid = false;
+  dataFile.close();
+  metaFile.close();
+
+  const bool dataOk = !LittleFS.exists(ProjectConfig::DAILY_DATA_PATH) || LittleFS.remove(ProjectConfig::DAILY_DATA_PATH);
+  const bool metaOk = !LittleFS.exists(ProjectConfig::DAILY_META_PATH) || LittleFS.remove(ProjectConfig::DAILY_META_PATH);
+  meta = Meta{};
+  rebuildSequence = 0;
+  updateInfo();
+
+  if (!dataOk || !metaOk) {
+    setState("aggregate database delete failed");
+    return false;
+  }
+  setState("database erased; restart pending");
+  SerialLog::warning("STATS", "Daily aggregate database erased by explicit user request");
+  return true;
+}
+
 bool find(uint16_t dayIndex, DailyRecord &recordOut) {
   uint32_t slot = 0;
   const bool found = locate(dayIndex, recordOut, slot);

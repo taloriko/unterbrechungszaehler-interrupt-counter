@@ -236,3 +236,7 @@ Ob des d internationale Verbreitung vom Projekt beschleunigt oder massiv behinde
 MIT. Benutza, ändra, erweitera ond ebbes Eigenes draus baua isch ausdrücklich erlaubt. Wenn daraus irgendwann a millionenschweres Produkt wird, freu i mi immer no über a Postkarte.
 
 GitHub: [taloriko](https://github.com/taloriko)
+
+## Neu in 3.3.0
+
+Bei de Heatmaps kannsch jetzt **Beides**, **Knopf / GPIO** oder **Web** auswähla. Wenn bloß oine Herkunft gfiltert wird, nimmt s Gerät die Rohereignis, wo no em Ringspeicher send, ond zeigt ehrlich an, wenn dr Zeitraum nimme komplett drin isch. D komplette Datenbank kannsch mit em exakta Projektname `Unterbrechungszähler` löscha; danach startet s Gerät neu. Bei Gerät → Speicher steht bei Fehler jetzt au dr konkrete Grund dabei.

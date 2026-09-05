@@ -291,6 +291,10 @@ const uint32_t otaUsedPercent = otaMaxBytes == 0
     : static_cast<uint32_t>((static_cast<uint64_t>(otaCurrentBytes) * 100ULL) / otaMaxBytes);
 appendUIntField(out, "usedPercent", otaUsedPercent, false);
   out += '}';
+  out += ',';
+
+  JsonUtils::appendKey(out, "storage");
+  InterruptionApi::appendStorageObject(out);
 
   out += '}';
   return out;

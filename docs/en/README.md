@@ -255,3 +255,7 @@ Whether that accelerates the international adoption of the project or massively 
 MIT. You are explicitly allowed to use it, modify it, extend it and build something of your own from it. If it somehow turns into a multi-million-dollar product one day, I will still be happy to receive a postcard.
 
 GitHub: [taloriko](https://github.com/taloriko)
+
+## New in 3.3.0
+
+Heatmaps can be filtered by **Both**, **Button / GPIO**, or **Web**. A single-source filter is calculated from the retained raw-event ring and explicitly reports incomplete coverage. The complete event database can be erased after entering the exact project name `Unterbrechungszähler`; the device then restarts. Device → Memory also shows the concrete raw-data or aggregate-storage error when storage is unhealthy.

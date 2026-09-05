@@ -915,6 +915,92 @@
     'common.no': 'Nai'
   };
 
+
+  const I18N_330 = {
+    de: {
+      'analytics.source': 'Herkunft', 'analytics.source.all': 'Beides', 'analytics.source.physical_button': 'Knopf / GPIO', 'analytics.source.web_button': 'Web',
+      'analytics.sourceCoveragePartial': 'Der Herkunftsfilter basiert auf den noch vorhandenen Rohereignissen.',
+      'analytics.storageState': 'Datenspeicher', 'analytics.rawProblem': 'Rohdaten-Problem', 'analytics.aggregateProblem': 'Statistik-Problem',
+      'analytics.databaseDeleteTitle': 'Datenbank löschen', 'analytics.databaseDeletePassword': 'Passwort / Projektname',
+      'analytics.databaseDeleteHint': 'Zum vollständigen Löschen aller Ereignisse und Statistiken den Projektname eingeben.',
+      'analytics.databaseDeleteAction': 'Datenbank vollständig löschen', 'analytics.databaseDeleteConfirm': 'Alle gespeicherten Ereignisse und Statistiken wirklich löschen?',
+      'analytics.databaseDeleteWrong': 'Passwort stimmt nicht. Erwartet wird der Projektname.', 'analytics.databaseDeleteFailed': 'Datenbank konnte nicht vollständig gelöscht werden.',
+      'analytics.databaseDeleteSuccess': 'Datenbank gelöscht. Gerät startet neu.'
+    },
+    en: {
+      'analytics.source': 'Source', 'analytics.source.all': 'Both', 'analytics.source.physical_button': 'Button / GPIO', 'analytics.source.web_button': 'Web',
+      'analytics.sourceCoveragePartial': 'The source filter is based on the raw events still retained on the device.',
+      'analytics.storageState': 'Data storage', 'analytics.rawProblem': 'Raw-data problem', 'analytics.aggregateProblem': 'Statistics problem',
+      'analytics.databaseDeleteTitle': 'Delete database', 'analytics.databaseDeletePassword': 'Password / project name',
+      'analytics.databaseDeleteHint': 'Enter the project name to permanently delete all events and statistics.',
+      'analytics.databaseDeleteAction': 'Delete complete database', 'analytics.databaseDeleteConfirm': 'Really delete all stored events and statistics?',
+      'analytics.databaseDeleteWrong': 'Wrong password. The project name is required.', 'analytics.databaseDeleteFailed': 'The database could not be deleted completely.',
+      'analytics.databaseDeleteSuccess': 'Database deleted. Device is restarting.'
+    },
+    it: {
+      'analytics.source': 'Origine', 'analytics.source.all': 'Entrambi', 'analytics.source.physical_button': 'Pulsante / GPIO', 'analytics.source.web_button': 'Web',
+      'analytics.sourceCoveragePartial': 'Il filtro origine usa gli eventi grezzi ancora disponibili sul dispositivo.',
+      'analytics.storageState': 'Memoria dati', 'analytics.rawProblem': 'Problema dati grezzi', 'analytics.aggregateProblem': 'Problema statistiche',
+      'analytics.databaseDeleteTitle': 'Elimina database', 'analytics.databaseDeletePassword': 'Password / nome progetto',
+      'analytics.databaseDeleteHint': 'Inserire il nome del progetto per eliminare definitivamente eventi e statistiche.',
+      'analytics.databaseDeleteAction': 'Elimina tutto il database', 'analytics.databaseDeleteConfirm': 'Eliminare davvero tutti gli eventi e le statistiche?',
+      'analytics.databaseDeleteWrong': 'Password errata. È richiesto il nome del progetto.', 'analytics.databaseDeleteFailed': 'Impossibile eliminare completamente il database.',
+      'analytics.databaseDeleteSuccess': 'Database eliminato. Il dispositivo si riavvia.'
+    },
+    fr: {
+      'analytics.source': 'Origine', 'analytics.source.all': 'Les deux', 'analytics.source.physical_button': 'Bouton / GPIO', 'analytics.source.web_button': 'Web',
+      'analytics.sourceCoveragePartial': 'Le filtre d’origine utilise les événements bruts encore conservés sur l’appareil.',
+      'analytics.storageState': 'Stockage des données', 'analytics.rawProblem': 'Problème données brutes', 'analytics.aggregateProblem': 'Problème statistiques',
+      'analytics.databaseDeleteTitle': 'Supprimer la base', 'analytics.databaseDeletePassword': 'Mot de passe / nom du projet',
+      'analytics.databaseDeleteHint': 'Saisir le nom du projet pour supprimer définitivement tous les événements et statistiques.',
+      'analytics.databaseDeleteAction': 'Supprimer toute la base', 'analytics.databaseDeleteConfirm': 'Supprimer vraiment tous les événements et statistiques ?',
+      'analytics.databaseDeleteWrong': 'Mot de passe incorrect. Le nom du projet est requis.', 'analytics.databaseDeleteFailed': 'La base n’a pas pu être entièrement supprimée.',
+      'analytics.databaseDeleteSuccess': 'Base supprimée. L’appareil redémarre.'
+    },
+    swg: {
+      'analytics.source': 'Herkunft', 'analytics.source.all': 'Beides', 'analytics.source.physical_button': 'Knopf / GPIO', 'analytics.source.web_button': 'Web',
+      'analytics.sourceCoveragePartial': 'Dr Herkunftsfilter nimmt bloß no die Rohereignis, wo no em Speicher send.',
+      'analytics.storageState': 'Datenspeicher', 'analytics.rawProblem': 'Rohdata-Problem', 'analytics.aggregateProblem': 'Statistik-Problem',
+      'analytics.databaseDeleteTitle': 'Datenbank löscha', 'analytics.databaseDeletePassword': 'Passwort / Projektname',
+      'analytics.databaseDeleteHint': 'Zum komplette Löscha vom ganze Zeug dr Projektname eigeba.',
+      'analytics.databaseDeleteAction': 'Datenbank komplett löscha', 'analytics.databaseDeleteConfirm': 'Wirklich alle Ereignis ond Statistika löscha?',
+      'analytics.databaseDeleteWrong': 'Passwort passt net. Dr Projektname wird braucht.', 'analytics.databaseDeleteFailed': 'D Datenbank hot sich net komplett löscha lassa.',
+      'analytics.databaseDeleteSuccess': 'Datenbank isch weg. S Gerät startet neu.'
+    },
+    'swg-alb': {
+      'analytics.source': 'Herkunft', 'analytics.source.all': 'Beides', 'analytics.source.physical_button': 'Knopf / GPIO', 'analytics.source.web_button': 'Web',
+      'analytics.sourceCoveragePartial': 'Dr Herkunftsfilter nimmt dia Rohereignis, wo no em Speicher send.',
+      'analytics.storageState': 'Datenspeicher', 'analytics.rawProblem': 'Rohdata-Problem', 'analytics.aggregateProblem': 'Statistik-Problem',
+      'analytics.databaseDeleteTitle': 'Datenbank löscha', 'analytics.databaseDeletePassword': 'Passwort / Projektname',
+      'analytics.databaseDeleteHint': 'Zum komplette Löscha dr Projektname eigeba.',
+      'analytics.databaseDeleteAction': 'Datenbank komplett löscha', 'analytics.databaseDeleteConfirm': 'Wirklich alles löscha?',
+      'analytics.databaseDeleteWrong': 'Passwort passt net. Dr Projektname wird braucht.', 'analytics.databaseDeleteFailed': 'D Datenbank hot sich net komplett löscha lassa.',
+      'analytics.databaseDeleteSuccess': 'Datenbank isch weg. S Gerät startet neu.'
+    },
+    'swg-ob': {
+      'analytics.source': 'Herkunft', 'analytics.source.all': 'Beides', 'analytics.source.physical_button': 'Knopf / GPIO', 'analytics.source.web_button': 'Web',
+      'analytics.sourceCoveragePartial': 'Dr Herkunftsfilter nimmt bloß no dia Rohereignis, wo no gspeichert send.',
+      'analytics.storageState': 'Datenspeicher', 'analytics.rawProblem': 'Rohdata-Problem', 'analytics.aggregateProblem': 'Statistik-Problem',
+      'analytics.databaseDeleteTitle': 'Datenbank löscha', 'analytics.databaseDeletePassword': 'Passwort / Projektname',
+      'analytics.databaseDeleteHint': 'Zum komplette Löscha dr Projektname eigeba.',
+      'analytics.databaseDeleteAction': 'Datenbank komplett löscha', 'analytics.databaseDeleteConfirm': 'Wirklich alle Ereignis ond Statistika löscha?',
+      'analytics.databaseDeleteWrong': 'Passwort passt it. Dr Projektname wird braucht.', 'analytics.databaseDeleteFailed': 'D Datenbank hot sich it komplett löscha lassa.',
+      'analytics.databaseDeleteSuccess': 'Datenbank isch weg. S Gerät startet neu.'
+    }
+  };
+  Object.entries(I18N_330).forEach(([code, labels]) => Object.assign(I18N[code], labels));
+
+  const STORAGE_STATUS_LABELS = {
+    de: { 'status.ready': 'Bereit', 'status.unavailable': 'Nicht verfügbar' },
+    en: { 'status.ready': 'Ready', 'status.unavailable': 'Unavailable' },
+    it: { 'status.ready': 'Pronto', 'status.unavailable': 'Non disponibile' },
+    fr: { 'status.ready': 'Prêt', 'status.unavailable': 'Indisponible' },
+    swg: { 'status.ready': 'Bereit', 'status.unavailable': 'Net verfügbar' },
+    'swg-alb': { 'status.ready': 'Bereit', 'status.unavailable': 'Net verfügbar' },
+    'swg-ob': { 'status.ready': 'Bereit', 'status.unavailable': 'It verfügbar' }
+  };
+  Object.entries(STORAGE_STATUS_LABELS).forEach(([code, labels]) => Object.assign(I18N[code], labels));
+
   const LANGUAGE_LABELS = {
     de: { 'lang.it': 'Italienisch', 'lang.fr': 'Französisch', 'lang.swgAlb': 'Alb-Schwäbisch', 'lang.swgOb': 'Oberschwäbisch' },
     en: { 'lang.it': 'Italian', 'lang.fr': 'French', 'lang.swgAlb': 'Swabian (Alb)', 'lang.swgOb': 'Upper Swabian' },
@@ -1014,7 +1100,12 @@
               { labelKey: 'label.heapFree', path: 'memory.heapFree', format: 'bytes' },
               { labelKey: 'label.heapMin', path: 'memory.heapMin', format: 'bytes' }
             ] },
-            { type: 'meter', labelKey: 'label.heapUsed', path: 'memory.heapUsedPercent', policy: 'heapUsed', format: 'percent' }
+            { type: 'meter', labelKey: 'label.heapUsed', path: 'memory.heapUsedPercent', policy: 'heapUsed', format: 'percent' },
+            { type: 'status', labelKey: 'analytics.storageState', path: 'storage.state' },
+            { type: 'kv', items: [
+              { labelKey: 'analytics.rawProblem', path: 'storage.rawError' },
+              { labelKey: 'analytics.aggregateProblem', path: 'storage.aggregateError' }
+            ] }
           ] },
           { id: 'time', titleKey: 'card.time', descriptionKey: 'card.time.desc', icon: 'clock', width: 'full', components: [
             { type: 'timeManagement' }
@@ -1149,7 +1240,7 @@
     device: {}, wifi: {}, memory: {}, hardware: { checking: false, modules: [] }, ota: { supported: null, currentBytes: 0, maxBytes: 0, headroomBytes: 0, usedPercent: 0 },
     interruptions: { todayCount: 0, unassignedCount: 0, sequence: 0, persistedSequence: 0, pendingCount: 0, droppedCount: 0, storageState: 'unavailable', soundEnabled: true, last: { available: false } },
     projectSettings: { soundEnabled: true, soundVolume: 100, soundMode: 'rotate', soundTrack: 2, soundTrackCount: 0, language: 'en', languageStored: false, displayEnabled: true, displayRotation180: false, displayFlashEnabled: true, displayMode: 'standard', displayBrightness: 65, displayDimAfterMinutes: 10, displayDimBrightness: 5 },
-    analytics: { loaded: false, loading: false, dirty: false, error: '', storage: null, hourly: null, monthWeek: null, yearMonth: null, hourlyMode: 'week', metric: 'count' },
+    analytics: { loaded: false, loading: false, dirty: false, error: '', storage: null, hourly: null, monthWeek: null, yearMonth: null, hourlyMode: 'week', metric: 'count', source: 'all' },
     time: { valid: false, source: 'relative', quality: 'relative', epochMs: 0, syncPerf: 0 },
     timeManagement: { activeSource: 'relative', quality: 'relative', valid: false, ntpServer: '', browserFallbackAllowed: false, ntp: {}, rtc: {}, browser: {}, system: {} },
     uptime: { baseMs: 0, syncPerf: 0 },
@@ -2222,9 +2313,9 @@
       }
     }
     holder.append(grid);
-    if (isAverage && data.coverage?.complete === false) {
+    if (data.coverage?.complete === false) {
       const coverage = el('div', 'form-note heatmap-coverage');
-      coverage.textContent = t('analytics.coveragePartial');
+      coverage.textContent = data.source && data.source !== 'all' ? t('analytics.sourceCoveragePartial') : t('analytics.coveragePartial');
       holder.append(coverage);
     }
   }
@@ -2248,10 +2339,23 @@
     return { wrap, select };
   }
 
+  function createAnalyticsSourceField() {
+    const wrap = el('label', 'analytics-filter-field');
+    const label = el('span'); label.textContent = t('analytics.source');
+    const select = el('select'); select.dataset.analyticsSource = '1';
+    for (const [value, key] of [['all','analytics.source.all'],['physical_button','analytics.source.physical_button'],['web_button','analytics.source.web_button']]) {
+      const option = el('option'); option.value = value; option.textContent = t(key); select.append(option);
+    }
+    select.value = state.analytics.source || 'all';
+    wrap.append(label, select);
+    return { wrap, select };
+  }
+
   function renderHeatmapHourly() {
     const root = el('div', 'analytics-block'); root.dataset.heatmapKind = 'hourly';
     const controls = el('div', 'analytics-filters');
     const metricField = createAnalyticsMetricField();
+    const sourceField = createAnalyticsSourceField();
     const modeWrap = el('label', 'analytics-filter-field'); const modeLabel = el('span'); modeLabel.textContent = t('analytics.mode');
     const mode = el('select'); mode.dataset.analyticsHourlyMode = '1';
     for (const [value, key] of [['week','analytics.mode.week'],['range','analytics.mode.range']]) { const option=el('option'); option.value=value; option.textContent=t(key); mode.append(option); }
@@ -2263,7 +2367,7 @@
     const fromField = createFilterField('analytics.from','date',dateText,'analyticsHourlyFrom');
     const toField = createFilterField('analytics.to','date',dateText,'analyticsHourlyTo');
     const button = el('button','button'); button.type='button'; button.dataset.analyticsAction='hourly'; button.append(icon('refresh')); const bt=el('span'); bt.textContent=t('analytics.load'); button.append(bt);
-    controls.append(metricField.wrap,modeWrap,yearField.wrap,weekField.wrap,fromField.wrap,toField.wrap,button);
+    controls.append(metricField.wrap,sourceField.wrap,modeWrap,yearField.wrap,weekField.wrap,fromField.wrap,toField.wrap,button);
     const holder = el('div','heatmap-holder'); root.append(controls,holder);
     const updateMode = () => { const isWeek=mode.value==='week'; yearField.wrap.hidden=!isWeek; weekField.wrap.hidden=!isWeek; fromField.wrap.hidden=isWeek; toField.wrap.hidden=isWeek; state.analytics.hourlyMode=mode.value; };
     mode.addEventListener('change', updateMode); updateMode();
@@ -2273,15 +2377,15 @@
 
   function renderHeatmapMonthWeek() {
     const root=el('div','analytics-block'); root.dataset.heatmapKind='monthWeek';
-    const controls=el('div','analytics-filters'); const metricField=createAnalyticsMetricField(); const year=createFilterField('analytics.year','number',String(projectCurrentCalendar().year),'analyticsMonthWeekYear'); year.input.min='2020'; year.input.max='2199';
-    const button=el('button','button'); button.type='button'; button.dataset.analyticsAction='month-week'; button.append(icon('refresh')); const bt=el('span');bt.textContent=t('analytics.load');button.append(bt); controls.append(metricField.wrap,year.wrap,button);
+    const controls=el('div','analytics-filters'); const metricField=createAnalyticsMetricField(); const sourceField=createAnalyticsSourceField(); const year=createFilterField('analytics.year','number',String(projectCurrentCalendar().year),'analyticsMonthWeekYear'); year.input.min='2020'; year.input.max='2199';
+    const button=el('button','button'); button.type='button'; button.dataset.analyticsAction='month-week'; button.append(icon('refresh')); const bt=el('span');bt.textContent=t('analytics.load');button.append(bt); controls.append(metricField.wrap,sourceField.wrap,year.wrap,button);
     const holder=el('div','heatmap-holder'); root.append(controls,holder);
     Bindings.add(['analytics.monthWeek','analytics.error'],()=>renderHeatmapGrid(root,'monthWeek',state.analytics.monthWeek)); return root;
   }
 
   function renderHeatmapYearMonth() {
     const root=el('div','analytics-block'); root.dataset.heatmapKind='yearMonth';
-    const controls=el('div','analytics-filters'); const metricField=createAnalyticsMetricField(); controls.append(metricField.wrap);
+    const controls=el('div','analytics-filters'); const metricField=createAnalyticsMetricField(); const sourceField=createAnalyticsSourceField(); controls.append(metricField.wrap,sourceField.wrap);
     const holder=el('div','heatmap-holder'); root.append(controls,holder);
     Bindings.add(['analytics.yearMonth','analytics.error'],()=>renderHeatmapGrid(root,'yearMonth',state.analytics.yearMonth)); return root;
   }
@@ -2293,11 +2397,39 @@
     for(const [key,labelKey] of [['raw','analytics.rawEvents'],['daily','analytics.dailyRecords'],['used','analytics.storageUsed'],['unassigned','analytics.unassigned'],['dropped','analytics.dropped']]){
       const row=el('div','kv-row'); const dt=el('dt');dt.textContent=t(labelKey); const dd=el('dd'); row.append(dt,dd); dl.append(row); rows[key]=dd;
     }
+    const problem=el('div','notice'); problem.dataset.kind='warning'; problem.hidden=true; problem.append(icon('warning')); const problemText=el('p'); problem.append(problemText);
     const hint=el('div','form-note');hint.textContent=t('analytics.ringHint');
     const actions=el('div','action-row'); const button=el('button','button primary-button');button.type='button';button.dataset.analyticsDownload='1';button.append(icon('download'));const bt=el('span');bt.textContent=t('analytics.download');button.append(bt);actions.append(button);
-    root.append(dl,hint,actions);
+
+    const danger=el('section','time-section');
+    const dangerTitle=el('h3'); dangerTitle.textContent=t('analytics.databaseDeleteTitle');
+    const dangerNote=el('div','form-note'); dangerNote.textContent=t('analytics.databaseDeleteHint');
+    const field=el('label','form-control'); const fieldLabel=el('span'); fieldLabel.textContent=t('analytics.databaseDeletePassword');
+    const password=el('input','text-input'); password.type='password'; password.autocomplete='off'; password.spellcheck=false; password.dataset.databasePassword='1'; field.append(fieldLabel,password);
+    const dangerActions=el('div','action-row'); const erase=el('button','button danger'); erase.type='button'; erase.append(icon('trash')); const eraseText=el('span'); eraseText.textContent=t('analytics.databaseDeleteAction'); erase.append(eraseText); dangerActions.append(erase);
+    const eraseMessage=el('div','project-setting-message'); eraseMessage.setAttribute('aria-live','polite');
+    erase.addEventListener('click', async()=>{
+      if(!confirm(t('analytics.databaseDeleteConfirm'))) return;
+      erase.disabled=true; password.disabled=true; eraseMessage.textContent='';
+      try{
+        await Transport.eraseDatabase(password.value);
+        eraseMessage.dataset.state='ok'; eraseMessage.textContent=t('analytics.databaseDeleteSuccess');
+      }catch(error){
+        eraseMessage.dataset.state='error';
+        eraseMessage.textContent=error?.code==='invalid_database_password'?t('analytics.databaseDeleteWrong'):t('analytics.databaseDeleteFailed');
+        erase.disabled=false; password.disabled=false;
+      }
+    });
+    danger.append(dangerTitle,dangerNote,field,dangerActions,eraseMessage);
+    root.append(dl,problem,hint,actions,danger);
     Bindings.add('analytics.storage',()=>{
-      const s=state.analytics.storage||{}; rows.raw.textContent=`${Number(s.rawCount||0).toLocaleString()} / ${Number(s.rawCapacity||0).toLocaleString()}`; rows.daily.textContent=`${Number(s.dailyCount||0).toLocaleString()} / ${Number(s.dailyCapacity||0).toLocaleString()}`; rows.used.textContent=s.fsTotalBytes?`${Formats.bytes(s.fsUsedBytes)} / ${Formats.bytes(s.fsTotalBytes)}`:t('common.none'); rows.unassigned.textContent=String(s.unassignedCount||0); rows.dropped.textContent=String(s.droppedCount||0);
+      const s=state.analytics.storage||{};
+      rows.raw.textContent=`${Number(s.rawCount||0).toLocaleString()} / ${Number(s.rawCapacity||0).toLocaleString()}`;
+      rows.daily.textContent=`${Number(s.dailyCount||0).toLocaleString()} / ${Number(s.dailyCapacity||0).toLocaleString()}`;
+      rows.used.textContent=s.fsTotalBytes?`${Formats.bytes(s.fsUsedBytes)} / ${Formats.bytes(s.fsTotalBytes)}`:t('common.none');
+      rows.unassigned.textContent=String(s.unassignedCount||0); rows.dropped.textContent=String(s.droppedCount||0);
+      const detail=s.problem||s.rawError||s.aggregateError||'';
+      problem.hidden=!detail; problemText.textContent=detail?`${t('analytics.storageState')}: ${detail}`:'';
     });
     return root;
   }
@@ -2554,7 +2686,8 @@
       state.analytics.hourlyMode = mode;
 
       const metric = state.analytics.metric || 'count';
-      const parts = [`metric=${encodeURIComponent(metric)}`, `hourlyMode=${encodeURIComponent(mode)}`];
+      const source = state.analytics.source || 'all';
+      const parts = [`metric=${encodeURIComponent(metric)}`, `source=${encodeURIComponent(source)}`, `hourlyMode=${encodeURIComponent(mode)}`];
       if (mode === 'range') {
         const from = hourlyRoot?.querySelector('[data-analytics-hourly-from]')?.value || '';
         const to = hourlyRoot?.querySelector('[data-analytics-hourly-to]')?.value || '';
@@ -2580,6 +2713,16 @@
       const data = await this.request('/api/interruptions/storage');
       patchState({ analytics: { storage: data.storage || null } });
       Bindings.notify('analytics.storage');
+    },
+    async eraseDatabase(password) {
+      const body = new URLSearchParams({ password: String(password || '') }).toString();
+      const data = await this.requestResult('/api/interruptions/storage/reset', {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body
+      });
+      setTimeout(() => location.reload(), 3500);
+      return data;
     },
     async loadHourlyHeatmap(root = null) {
       root = root || document.querySelector('[data-heatmap-kind="hourly"]');
@@ -2687,7 +2830,7 @@
       try {
         const data = await this.request('/api/device');
         const statusPatch = { api: 'ok', wifi: data.wifi?.state || 'unknown' };
-        patchState({ device: data.device || {}, wifi: data.wifi || {}, memory: data.memory || {}, hardware: data.hardware || { checking: false, modules: [] }, ota: data.ota || {}, status: statusPatch });
+        patchState({ device: data.device || {}, wifi: data.wifi || {}, memory: data.memory || {}, storage: data.storage || {}, hardware: data.hardware || { checking: false, modules: [] }, ota: data.ota || {}, status: statusPatch });
         syncUptime(data.device?.uptimeMs);
         state.connection.deviceLoaded = true;
       } catch (error) {
@@ -2947,7 +3090,7 @@
     const analyticsAction = event.target.closest('[data-analytics-action]');
     if (analyticsAction) {
       const root = analyticsAction.closest('[data-heatmap-kind]');
-      if ((state.analytics.metric || 'count') === 'averageInterval') await Transport.loadAnalytics(true);
+      if ((state.analytics.metric || 'count') === 'averageInterval' || (state.analytics.source || 'all') !== 'all') await Transport.loadAnalytics(true);
       else if (analyticsAction.dataset.analyticsAction === 'hourly') await Transport.loadHourlyHeatmap(root);
       else if (analyticsAction.dataset.analyticsAction === 'month-week') await Transport.loadMonthWeekHeatmap(root);
       return;
@@ -2997,6 +3140,15 @@
     if (metricControl) {
       state.analytics.metric = metricControl.value === 'averageInterval' ? 'averageInterval' : 'count';
       for (const control of document.querySelectorAll('[data-analytics-metric]')) control.value = state.analytics.metric;
+      state.analytics.dirty = true;
+      Transport.loadAnalytics(true);
+      return;
+    }
+    const sourceControl = event.target.closest('[data-analytics-source]');
+    if (sourceControl) {
+      const allowed = ['all','physical_button','web_button'];
+      state.analytics.source = allowed.includes(sourceControl.value) ? sourceControl.value : 'all';
+      for (const control of document.querySelectorAll('[data-analytics-source]')) control.value = state.analytics.source;
       state.analytics.dirty = true;
       Transport.loadAnalytics(true);
       return;

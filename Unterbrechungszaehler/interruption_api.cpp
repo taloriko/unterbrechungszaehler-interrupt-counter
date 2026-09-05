@@ -119,7 +119,7 @@ void appendValues(String &out, const uint32_t *values, size_t count) {
   out += ']';
 }
 
-void appendStorageObject(String &out) {
+void appendStorageObjectInternal(String &out) {
   const auto &raw = InterruptionStore::info();
   const auto &daily = InterruptionAggregates::info();
   const auto &summary = InterruptionService::summary();
@@ -136,7 +136,34 @@ void appendStorageObject(String &out) {
   fieldUInt(out, "dailyCapacity", daily.capacity);
   fieldUInt(out, "unassignedCount", daily.unassignedCount);
   fieldUInt(out, "droppedCount", summary.droppedCount);
-  fieldBool(out, "recovering", raw.recovering || daily.rebuilding, false);
+  fieldBool(out, "recovering", raw.recovering || daily.rebuilding);
+  fieldBool(out, "rawMounted", raw.mounted);
+  fieldBool(out, "rawReady", raw.ready);
+  fieldBool(out, "aggregateReady", daily.ready);
+  if (raw.error && strcmp(raw.error, "none") != 0) fieldString(out, "rawError", raw.error);
+  if (daily.error && strcmp(daily.error, "none") != 0) fieldString(out, "aggregateError", daily.error);
+
+  const char *problemComponent = nullptr;
+  const char *problem = nullptr;
+  if (!raw.mounted) {
+    problemComponent = "filesystem";
+    problem = "LittleFS not mounted";
+  } else if (raw.error && strcmp(raw.error, "none") != 0) {
+    problemComponent = "raw";
+    problem = raw.error;
+  } else if (daily.error && strcmp(daily.error, "none") != 0) {
+    problemComponent = "aggregate";
+    problem = daily.error;
+  } else if (summary.droppedCount > 0U) {
+    problemComponent = "queue";
+    problem = "events were not durably persisted in this boot";
+  }
+  if (problem) {
+    fieldString(out, "problemComponent", problemComponent);
+    fieldString(out, "problem", problem, false);
+  } else {
+    removeTrailingComma(out);
+  }
   out += '}';
 }
 
@@ -248,8 +275,57 @@ bool visitYearMonth(const InterruptionAggregates::DailyRecord &record, void *con
   return true;
 }
 
+enum class AnalyticsSourceFilter : uint8_t {
+  All,
+  PhysicalButton,
+  WebButton,
+  Software,
+  Api,
+  Hardware,
+  Unknown
+};
+
+bool parseAnalyticsSourceFilter(const char *text, AnalyticsSourceFilter &filter) {
+  if (!text || !*text || strcmp(text, "all") == 0) { filter = AnalyticsSourceFilter::All; return true; }
+  if (strcmp(text, "physical_button") == 0) { filter = AnalyticsSourceFilter::PhysicalButton; return true; }
+  if (strcmp(text, "web_button") == 0) { filter = AnalyticsSourceFilter::WebButton; return true; }
+  if (strcmp(text, "software") == 0) { filter = AnalyticsSourceFilter::Software; return true; }
+  if (strcmp(text, "api") == 0) { filter = AnalyticsSourceFilter::Api; return true; }
+  if (strcmp(text, "hardware") == 0) { filter = AnalyticsSourceFilter::Hardware; return true; }
+  if (strcmp(text, "unknown") == 0) { filter = AnalyticsSourceFilter::Unknown; return true; }
+  return false;
+}
+
+bool sourceMatches(AnalyticsSourceFilter filter, InterruptionTypes::EventSource source) {
+  switch (filter) {
+    case AnalyticsSourceFilter::All: return true;
+    case AnalyticsSourceFilter::PhysicalButton: return source == InterruptionTypes::EventSource::PhysicalButton;
+    case AnalyticsSourceFilter::WebButton: return source == InterruptionTypes::EventSource::WebButton;
+    case AnalyticsSourceFilter::Software: return source == InterruptionTypes::EventSource::Software;
+    case AnalyticsSourceFilter::Api: return source == InterruptionTypes::EventSource::Api;
+    case AnalyticsSourceFilter::Hardware: return source == InterruptionTypes::EventSource::Hardware;
+    case AnalyticsSourceFilter::Unknown: return source == InterruptionTypes::EventSource::Unknown;
+  }
+  return false;
+}
+
+const char *analyticsSourceFilterName(AnalyticsSourceFilter filter) {
+  switch (filter) {
+    case AnalyticsSourceFilter::PhysicalButton: return "physical_button";
+    case AnalyticsSourceFilter::WebButton: return "web_button";
+    case AnalyticsSourceFilter::Software: return "software";
+    case AnalyticsSourceFilter::Api: return "api";
+    case AnalyticsSourceFilter::Hardware: return "hardware";
+    case AnalyticsSourceFilter::Unknown: return "unknown";
+    case AnalyticsSourceFilter::All:
+    default: return "all";
+  }
+}
+
 struct AnalyticsBundleContext {
   bool averageInterval = false;
+  bool rawCountScan = false;
+  AnalyticsSourceFilter sourceFilter = AnalyticsSourceFilter::All;
   bool hourlyWeekMode = false;
   uint16_t hourlyYear = 0;
   uint8_t hourlyWeek = 0;
@@ -367,6 +443,33 @@ void appendIntervalCoverage(String &out, const AnalyticsBundleContext &ctx, bool
   out += '}';
 }
 
+void addCountSample(AnalyticsBundleContext &ctx,
+                    const ProjectTime::LocalDateTime &eventLocal) {
+  bool includeHourly = false;
+  if (ctx.hourlyWeekMode) {
+    includeHourly = eventLocal.isoYear == ctx.hourlyYear && eventLocal.isoWeek == ctx.hourlyWeek;
+  } else {
+    includeHourly = eventLocal.dayIndex >= ctx.hourlyFrom && eventLocal.dayIndex <= ctx.hourlyTo;
+  }
+  if (includeHourly) {
+    const size_t index = static_cast<size_t>(eventLocal.weekday) * 24U + eventLocal.hour;
+    ++ctx.hourly[index];
+  }
+
+  if (eventLocal.year == ctx.monthWeekYear && eventLocal.month >= 1U && eventLocal.month <= 12U &&
+      eventLocal.isoWeek >= 1U && eventLocal.isoWeek <= 53U) {
+    const size_t index = static_cast<size_t>(eventLocal.month - 1U) * 53U + static_cast<size_t>(eventLocal.isoWeek - 1U);
+    ++ctx.monthWeek[index];
+  }
+
+  if (eventLocal.year >= ctx.yearMonthStart && eventLocal.year <= ctx.yearMonthEnd &&
+      eventLocal.month >= 1U && eventLocal.month <= 12U) {
+    const size_t index = static_cast<size_t>(eventLocal.year - ctx.yearMonthStart) * 12U +
+                         static_cast<size_t>(eventLocal.month - 1U);
+    ++ctx.yearMonth[index];
+  }
+}
+
 void addIntervalSample(AnalyticsBundleContext &ctx,
                        const ProjectTime::LocalDateTime &start,
                        uint32_t elapsedSeconds) {
@@ -396,7 +499,7 @@ void addIntervalSample(AnalyticsBundleContext &ctx,
   }
 }
 
-bool scanIntervalAnalytics(AnalyticsBundleContext &ctx) {
+bool scanRawAnalytics(AnalyticsBundleContext &ctx) {
   const uint64_t first = InterruptionStore::oldestSequence();
   const uint64_t last = InterruptionStore::newestSequence();
   if (first == 0U || last == 0U || first > last) return true;
@@ -425,11 +528,13 @@ bool scanIntervalAnalytics(AnalyticsBundleContext &ctx) {
       }
       ctx.newestRawDayIndex = currentLocal.dayIndex;
       ctx.newestRawEpochSeconds = current.timeValueSeconds;
+      if (ctx.rawCountScan && sourceMatches(ctx.sourceFilter, current.eventSource)) addCountSample(ctx, currentLocal);
     }
 
     if (previousUsable && currentUsable && previousLocal.dayIndex == currentLocal.dayIndex &&
         current.deltaSeconds > 0U && current.deltaSeconds < InterruptionTypes::DELTA_UNKNOWN &&
-        current.timeValueSeconds > previous.timeValueSeconds) {
+        current.timeValueSeconds > previous.timeValueSeconds &&
+        sourceMatches(ctx.sourceFilter, previous.eventSource)) {
       const uint32_t elapsedSeconds = current.timeValueSeconds - previous.timeValueSeconds;
       // deltaSeconds is generated from the same absolute timestamps. Requiring
       // equality also proves that the current event actually follows this
@@ -459,6 +564,10 @@ void appendSummaryObject(String &out) {
 
 void appendProjectPreferencesObject(String &out) {
   appendProjectPreferencesObjectInternal(out);
+}
+
+void appendStorageObject(String &out) {
+  appendStorageObjectInternal(out);
 }
 
 String buildProjectPreferencesJson(bool ok) {
@@ -492,7 +601,7 @@ String buildStorageJson() {
   out += '{';
   fieldBool(out, "ok", true);
   JsonUtils::appendKey(out, "storage");
-  appendStorageObject(out);
+  appendStorageObjectInternal(out);
   out += '}';
   return out;
 }
@@ -504,6 +613,7 @@ String buildAnalyticsBundleJson(const char *metric,
                                 const char *fromDate,
                                 const char *toDate,
                                 uint16_t monthWeekYear,
+                                const char *source,
                                 bool &validRequest) {
   validRequest = false;
   if (monthWeekYear < 2020 || monthWeekYear > 2099) return String();
@@ -512,9 +622,14 @@ String buildAnalyticsBundleJson(const char *metric,
   const bool countMetric = !metric || !*metric || strcmp(metric, "count") == 0;
   if (!averageInterval && !countMetric) return String();
 
+  AnalyticsSourceFilter sourceFilter = AnalyticsSourceFilter::All;
+  if (!parseAnalyticsSourceFilter(source, sourceFilter)) return String();
+
   static AnalyticsBundleContext ctx;
   memset(&ctx, 0, sizeof(ctx));
   ctx.averageInterval = averageInterval;
+  ctx.sourceFilter = sourceFilter;
+  ctx.rawCountScan = countMetric && sourceFilter != AnalyticsSourceFilter::All;
   ctx.monthWeekYear = monthWeekYear;
 
   uint16_t hourlyCoverageStart = 0;
@@ -558,8 +673,9 @@ String buildAnalyticsBundleJson(const char *metric,
     return String();
   }
 
-  const bool scanOk = averageInterval ? scanIntervalAnalytics(ctx)
-                                      : InterruptionAggregates::forEach(visitAnalyticsBundle, &ctx);
+  const bool rawBacked = averageInterval || ctx.rawCountScan;
+  const bool scanOk = rawBacked ? scanRawAnalytics(ctx)
+                                : InterruptionAggregates::forEach(visitAnalyticsBundle, &ctx);
   if (!scanOk) return String();
   validRequest = true;
 
@@ -577,6 +693,7 @@ String buildAnalyticsBundleJson(const char *metric,
   fieldBool(out, "ok", true);
   fieldString(out, "metric", averageInterval ? "averageInterval" : "count");
   fieldString(out, "unit", averageInterval ? "seconds" : "count");
+  fieldString(out, "source", analyticsSourceFilterName(ctx.sourceFilter));
   fieldUInt(out, "rows", 7);
   fieldUInt(out, "cols", 24);
   fieldInt(out, "currentRow", local.valid ? local.weekday : -1);
@@ -588,6 +705,8 @@ String buildAnalyticsBundleJson(const char *metric,
     out += ',';
     JsonUtils::appendKey(out, "samples");
     appendValues(out, ctx.hourlyIntervalSamples, 7U * 24U);
+  }
+  if (rawBacked) {
     out += ',';
     JsonUtils::appendKey(out, "coverage");
     appendIntervalCoverage(out, ctx, intervalCoverageComplete(ctx, hourlyCoverageStart));
@@ -600,6 +719,7 @@ String buildAnalyticsBundleJson(const char *metric,
   fieldBool(out, "ok", true);
   fieldString(out, "metric", averageInterval ? "averageInterval" : "count");
   fieldString(out, "unit", averageInterval ? "seconds" : "count");
+  fieldString(out, "source", analyticsSourceFilterName(ctx.sourceFilter));
   fieldUInt(out, "rows", 12);
   fieldUInt(out, "cols", 53);
   fieldUInt(out, "year", monthWeekYear);
@@ -613,6 +733,8 @@ String buildAnalyticsBundleJson(const char *metric,
     out += ',';
     JsonUtils::appendKey(out, "samples");
     appendValues(out, ctx.monthWeekIntervalSamples, 12U * 53U);
+  }
+  if (rawBacked) {
     out += ',';
     JsonUtils::appendKey(out, "coverage");
     appendIntervalCoverage(out, ctx, intervalCoverageComplete(ctx, monthWeekCoverageStart));
@@ -625,6 +747,7 @@ String buildAnalyticsBundleJson(const char *metric,
   fieldBool(out, "ok", true);
   fieldString(out, "metric", averageInterval ? "averageInterval" : "count");
   fieldString(out, "unit", averageInterval ? "seconds" : "count");
+  fieldString(out, "source", analyticsSourceFilterName(ctx.sourceFilter));
   fieldUInt(out, "rows", 5);
   fieldUInt(out, "cols", 12);
   fieldUInt(out, "startYear", ctx.yearMonthStart);
@@ -642,6 +765,8 @@ String buildAnalyticsBundleJson(const char *metric,
     out += ',';
     JsonUtils::appendKey(out, "samples");
     appendValues(out, ctx.yearMonthIntervalSamples, 5U * 12U);
+  }
+  if (rawBacked) {
     out += ',';
     JsonUtils::appendKey(out, "coverage");
     appendIntervalCoverage(out, ctx, intervalCoverageComplete(ctx, yearMonthCoverageStart));

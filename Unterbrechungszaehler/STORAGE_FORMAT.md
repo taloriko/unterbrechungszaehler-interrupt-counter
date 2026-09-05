@@ -131,3 +131,9 @@ Die ca. 198 kB Reserve müssen zusätzlich LittleFS-Verwaltungs-/Blockoverhead a
 ## CSV
 
 CSV ist **kein** Primärformat. Beim Download werden die Raw-Records chronologisch – ältester noch vorhandener bis neuester – dekodiert und in kleinen HTTP-Chunks ausgegeben. Es entsteht weder eine zweite permanente CSV-Datei noch ein 100.000-Zeilen-String im RAM.
+
+## 3.3.0 Herkunftsfilter und Löschfunktion
+
+Der bereits im 9-Byte-RawEvent gespeicherte `eventSource` wird nun direkt für Heatmap-Filter verwendet. **Beides** kann weiterhin die kompakten Langzeit-Tagesaggregate nutzen. Ein einzelner Herkunftsfilter (z. B. GPIO oder Web) wird aus dem retained Raw-Ring berechnet; dadurch wird das bestehende Tagesformat nicht vergrößert. Ist der angefragte Zeitraum älter als die Rohdatenabdeckung, meldet die API `coverage.complete=false` statt fehlende Daten als Null zu erfinden.
+
+Die manuelle Datenbank-Löschung entfernt zuerst die abgeleiteten Tagesaggregate und danach Rohdaten samt Metadaten. Anschließend startet der ESP32 neu und erzeugt leere, konsistente Datenstrukturen. Die Aktion wird serverseitig nur akzeptiert, wenn die Bestätigung exakt dem Projektnamen entspricht.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.2.0."""
+"""Portable release checks for Unterbrechungszaehler 3.3.0."""
 from __future__ import annotations
 
 import gzip
@@ -60,7 +60,7 @@ def main() -> None:
     partitions = (ROOT / "partitions.csv").read_text(encoding="utf-8")
 
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.2.0"' in config, "project version 3.2.0")
+    check('SOFTWARE_VERSION[] = "3.3.0"' in config, "project version 3.3.0")
     check(
         'AVAILABLE_LANGUAGES_JSON[] = "[\\\"de\\\",\\\"en\\\",\\\"it\\\",\\\"fr\\\",\\\"swg\\\",\\\"swg-alb\\\",\\\"swg-ob\\\"]"' in config,
         "declared UI languages",
@@ -86,7 +86,7 @@ def main() -> None:
     check("ota.hint" not in JS and "Export Compiled Binary" not in JS, "obsolete Arduino sketch BIN hint removed")
     check("averageInterval" in JS and "analytics.coveragePartial" in JS, "average-interval heatmap UI")
     interruption_api = (ROOT / "interruption_api.cpp").read_text(encoding="utf-8")
-    check("scanIntervalAnalytics" in interruption_api and "elapsedSeconds == current.deltaSeconds" in interruption_api, "retained adjacent-event interval scan")
+    check("scanRawAnalytics" in interruption_api and "elapsedSeconds == current.deltaSeconds" in interruption_api, "retained adjacent-event interval scan")
     check("delay(4000)" not in (ROOT / "display_views.cpp").read_text(encoding="utf-8") and "delay(4000)" not in (ROOT / "display_sh1106.cpp").read_text(encoding="utf-8"), "boot screen has no blocking four-second delay")
     check(re.search(r'\{"di1"[^\n]*13,\s*PullMode::Up,\s*false[^\n]*25,\s*true,', hardware) is not None, "DI1 GPIO13 active-edge interrupt latch")
     check("AUDIO_RX_PIN = 18" in hardware and "AUDIO_TX_PIN = 19" in hardware and "AUDIO_BUSY_PIN = 39" in hardware, "DY-SV17F pin map")
@@ -105,7 +105,7 @@ def main() -> None:
     )
     for language in ("de", "en", "it", "fr", "swg", "swg-alb", "swg-ob"):
         token = f"Object.assign(I18N{'.' + language if '-' not in language else '[' + repr(language) + ']'}, {{"
-        check(token in JS, f"3.2.0 UI additions present for {language}")
+        check(token in JS, f"3.3.0 UI additions present for {language}")
 
     positions = [JS.find(f"{{ id: '{name}'") for name in ("device", "wifi", "memory", "time", "hardware", "ota")]
     check(all(position >= 0 for position in positions) and positions == sorted(positions), "device card order")
@@ -125,6 +125,7 @@ def main() -> None:
         "/api/interruptions/sound",
         "/api/interruptions/preferences",
         "/api/interruptions/storage",
+        "/api/interruptions/storage/reset",
         "/api/interruptions/analytics",
         "/api/interruptions/heatmap/hourly",
         "/api/interruptions/heatmap/month-week",
@@ -133,6 +134,20 @@ def main() -> None:
     )
     web_server = (ROOT / "web_server.cpp").read_text(encoding="utf-8")
     check(all(route in web_server for route in expected_routes), "project API routes")
+
+    check("/api/interruptions/storage/reset" in web_server and "AppConfig::PROJECT_NAME" in web_server, "project-name protected database reset route")
+    store_cpp = (ROOT / "interruption_store.cpp").read_text(encoding="utf-8")
+    aggregates_cpp = (ROOT / "interruption_aggregates.cpp").read_text(encoding="utf-8")
+    check("bool eraseAll()" in store_cpp and "raw database delete failed" in store_cpp, "raw database destructive reset")
+    check("bool eraseAll()" in aggregates_cpp and "aggregate database delete failed" in aggregates_cpp, "aggregate database destructive reset")
+    check("event.eventSource" in store_cpp and "<< 20" in store_cpp, "event source remains persisted in 9-byte raw record")
+    check("physical_button" in interruption_api and "web_button" in interruption_api and "sourceMatches" in interruption_api, "raw event-source analytics filter")
+    check("rawCountScan" in interruption_api and "addCountSample" in interruption_api, "source-filtered count heatmaps use retained raw ring")
+    check("previous.eventSource" in interruption_api, "average interval source filter follows interval start event")
+    check("rawError" in interruption_api and "aggregateError" in interruption_api and "problemComponent" in interruption_api, "exact storage diagnostics exposed")
+    check("analytics.source.physical_button" in JS and "analytics.source.web_button" in JS and "data-analytics-source" in JS, "heatmap source selector")
+    check("databaseDeletePassword" in JS and "eraseDatabase" in JS, "password-confirmed database erase UI")
+    check("status.ready" in JS and "status.unavailable" in JS, "translated storage health states")
 
     subprocess.run([sys.executable, str(ROOT / "tools" / "test_interruption_storage.py")], check=True)
     subprocess.run([sys.executable, "-m", "py_compile", str(ROOT / "tools" / "build_web.py"), str(ROOT / "tools" / "test_interruption_storage.py"), str(ROOT / "tools" / "release_check.py")], check=True)

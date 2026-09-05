@@ -552,6 +552,32 @@ bool append(const InterruptionTypes::CapturedEvent &event, uint64_t &sequenceOut
   return true;
 }
 
+bool eraseAll() {
+  if (!mounted) {
+    setStatus(StatusRegistry::State::Error, "LittleFS not mounted");
+    return false;
+  }
+
+  recovery = RecoveryState{};
+  readyFlag = false;
+  rawFile.close();
+  metaFile.close();
+
+  const bool rawOk = !LittleFS.exists(ProjectConfig::RAW_DATA_PATH) || LittleFS.remove(ProjectConfig::RAW_DATA_PATH);
+  const bool metaOk = !LittleFS.exists(ProjectConfig::RAW_META_PATH) || LittleFS.remove(ProjectConfig::RAW_META_PATH);
+  meta = Meta{};
+  updateInfo();
+  refreshFsUsage(true);
+
+  if (!rawOk || !metaOk) {
+    setStatus(StatusRegistry::State::Error, "raw database delete failed");
+    return false;
+  }
+  setStatus(StatusRegistry::State::Warning, "database erased; restart pending");
+  SerialLog::warning("STORE", "Raw interruption database erased by explicit user request");
+  return true;
+}
+
 uint64_t oldestSequence() {
   return meta.count == 0 ? 0 : meta.totalSequence - static_cast<uint64_t>(meta.count) + 1ULL;
 }

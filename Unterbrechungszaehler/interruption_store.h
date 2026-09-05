@@ -41,5 +41,7 @@ bool lastCalendarAnchor(uint16_t &dayIndexOut, uint32_t &epochSecondsOut);
 // lower-bound hint so the raw logical sequence is lifted by whole 256-count
 // epochs without changing ring order or any record bytes.
 bool alignSequenceAtLeast(uint64_t durableHint);
+// Destructive maintenance operation used only after explicit project-name confirmation.
+bool eraseAll();
 
 }  // namespace InterruptionStore
