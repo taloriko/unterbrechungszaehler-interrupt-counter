@@ -1,1 +1,1 @@
-one-shot trigger for modular hardware refactor
+one-shot trigger for modular hardware refactor - corrected helper
