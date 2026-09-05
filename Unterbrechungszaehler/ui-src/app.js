@@ -915,6 +915,67 @@
     'common.no': 'Nai'
   };
 
+  const HARDWARE_DIAG_LABELS = {
+    de: {
+      'hardware.info.currentDevice': 'Aktiver Datenträger', 'hardware.info.currentTrack': 'Aktueller Track',
+      'hardware.info.volume': 'Soll-Lautstärke', 'hardware.info.volumeStep': 'Gesendete Lautstärkestufe (0–30)',
+      'hardware.info.uartResponses': 'UART-Antworten', 'hardware.info.uartTimeouts': 'UART-Timeouts',
+      'hardware.info.checksumErrors': 'UART-Prüfsummenfehler', 'hardware.info.playCommands': 'Play-Kommandos',
+      'hardware.info.busyConfirmedPlays': 'Per BUSY bestätigte Starts', 'hardware.info.playRetries': 'Play-Wiederholungen',
+      'hardware.info.busyEdges': 'BUSY-Flanken', 'hardware.info.captureBackend': 'Pulserfassung',
+      'hardware.info.captureReady': 'RMT-Empfang bereit', 'hardware.info.carrierSense': 'Trägersignal aktiv',
+      'hardware.info.captureFrames': 'RMT-Aufnahmen', 'hardware.info.lastCaptureSymbols': 'Symbole letzte Aufnahme',
+      'hardware.info.captureErrors': 'RMT-Fehler'
+    },
+    en: {
+      'hardware.info.currentDevice': 'Active storage device', 'hardware.info.currentTrack': 'Current track',
+      'hardware.info.volume': 'Requested volume', 'hardware.info.volumeStep': 'Sent volume step (0–30)',
+      'hardware.info.uartResponses': 'UART responses', 'hardware.info.uartTimeouts': 'UART timeouts',
+      'hardware.info.checksumErrors': 'UART checksum errors', 'hardware.info.playCommands': 'Play commands',
+      'hardware.info.busyConfirmedPlays': 'Starts confirmed by BUSY', 'hardware.info.playRetries': 'Play retries',
+      'hardware.info.busyEdges': 'BUSY edges', 'hardware.info.captureBackend': 'Pulse capture',
+      'hardware.info.captureReady': 'RMT receiver ready', 'hardware.info.carrierSense': 'Carrier sense active',
+      'hardware.info.captureFrames': 'RMT captures', 'hardware.info.lastCaptureSymbols': 'Symbols in last capture',
+      'hardware.info.captureErrors': 'RMT errors'
+    },
+    it: {
+      'hardware.info.currentDevice': 'Supporto attivo', 'hardware.info.currentTrack': 'Traccia attuale',
+      'hardware.info.volume': 'Volume richiesto', 'hardware.info.volumeStep': 'Livello volume inviato (0–30)',
+      'hardware.info.uartResponses': 'Risposte UART', 'hardware.info.uartTimeouts': 'Timeout UART',
+      'hardware.info.checksumErrors': 'Errori checksum UART', 'hardware.info.playCommands': 'Comandi play',
+      'hardware.info.busyConfirmedPlays': 'Avvii confermati da BUSY', 'hardware.info.playRetries': 'Ripetizioni play',
+      'hardware.info.busyEdges': 'Fronti BUSY', 'hardware.info.captureBackend': 'Acquisizione impulsi',
+      'hardware.info.captureReady': 'Ricezione RMT pronta', 'hardware.info.carrierSense': 'Portante attiva',
+      'hardware.info.captureFrames': 'Acquisizioni RMT', 'hardware.info.lastCaptureSymbols': 'Simboli ultima acquisizione',
+      'hardware.info.captureErrors': 'Errori RMT'
+    },
+    fr: {
+      'hardware.info.currentDevice': 'Support actif', 'hardware.info.currentTrack': 'Piste actuelle',
+      'hardware.info.volume': 'Volume demandé', 'hardware.info.volumeStep': 'Niveau de volume envoyé (0–30)',
+      'hardware.info.uartResponses': 'Réponses UART', 'hardware.info.uartTimeouts': 'Timeouts UART',
+      'hardware.info.checksumErrors': 'Erreurs checksum UART', 'hardware.info.playCommands': 'Commandes lecture',
+      'hardware.info.busyConfirmedPlays': 'Démarrages confirmés par BUSY', 'hardware.info.playRetries': 'Répétitions lecture',
+      'hardware.info.busyEdges': 'Fronts BUSY', 'hardware.info.captureBackend': 'Capture des impulsions',
+      'hardware.info.captureReady': 'Réception RMT prête', 'hardware.info.carrierSense': 'Porteuse active',
+      'hardware.info.captureFrames': 'Captures RMT', 'hardware.info.lastCaptureSymbols': 'Symboles dernière capture',
+      'hardware.info.captureErrors': 'Erreurs RMT'
+    },
+    swg: {
+      'hardware.info.currentDevice': 'Aktiver Datenträger', 'hardware.info.currentTrack': 'Aktueller Track',
+      'hardware.info.volume': 'Soll-Lautstärk', 'hardware.info.volumeStep': 'Gsendete Lautstärkstuf (0–30)',
+      'hardware.info.uartResponses': 'UART-Antworta', 'hardware.info.uartTimeouts': 'UART-Timeouts',
+      'hardware.info.checksumErrors': 'UART-Prüfsummafehler', 'hardware.info.playCommands': 'Play-Kommandos',
+      'hardware.info.busyConfirmedPlays': 'Per BUSY bestätigte Starts', 'hardware.info.playRetries': 'Play-Wiederholunga',
+      'hardware.info.busyEdges': 'BUSY-Flanka', 'hardware.info.captureBackend': 'Pulserfassig',
+      'hardware.info.captureReady': 'RMT-Empfang bereit', 'hardware.info.carrierSense': 'Trägersignal aktiv',
+      'hardware.info.captureFrames': 'RMT-Aufnahma', 'hardware.info.lastCaptureSymbols': 'Symbol letzte Aufnahm',
+      'hardware.info.captureErrors': 'RMT-Fehler'
+    }
+  };
+  HARDWARE_DIAG_LABELS['swg-alb'] = HARDWARE_DIAG_LABELS.swg;
+  HARDWARE_DIAG_LABELS['swg-ob'] = HARDWARE_DIAG_LABELS.swg;
+  Object.entries(HARDWARE_DIAG_LABELS).forEach(([code, labels]) => Object.assign(I18N[code], labels));
+
   const LANGUAGE_LABELS = {
     de: { 'lang.it': 'Italienisch', 'lang.fr': 'Französisch', 'lang.swgAlb': 'Alb-Schwäbisch', 'lang.swgOb': 'Oberschwäbisch' },
     en: { 'lang.it': 'Italian', 'lang.fr': 'French', 'lang.swgAlb': 'Swabian (Alb)', 'lang.swgOb': 'Upper Swabian' },

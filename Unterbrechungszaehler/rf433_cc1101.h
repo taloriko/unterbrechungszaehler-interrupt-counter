@@ -29,6 +29,11 @@ struct Info {
   uint8_t partNumber = 0xFF;
   uint8_t version = 0xFF;
   uint32_t activeFrequencyHz = 0;
+  bool captureReady = false;
+  bool carrierSense = false;
+  uint16_t lastCaptureSymbols = 0;
+  uint32_t captureFrames = 0;
+  uint32_t captureErrors = 0;
   uint32_t decodedFrames = 0;
   uint32_t rejectedFrames = 0;
   uint32_t overflowFrames = 0;

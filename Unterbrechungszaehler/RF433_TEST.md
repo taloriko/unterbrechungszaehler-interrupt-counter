@@ -92,3 +92,18 @@ Beim Umschalten bleiben bestehende Bindungen des jeweils anderen Protokolls erha
 ### DY-SV17F-Koexistenztest
 
 Nach Einbau des CC1101 Audio mehrfach mit **Prüfen** und **Ton testen** testen. Der Audiotreiber wiederholt eine ausgebliebene Play-State-UART-Abfrage einmal nicht blockierend. Ist danach keine UART-Antwort vorhanden, BUSY aber aktiv, wird dies als Warnung mit bestätigter Wiedergabe statt fälschlich als vollständige Nichterreichbarkeit dargestellt. Ein inaktiver BUSY-Pin ersetzt keine UART-Antwort.
+
+
+## Kombitest Funk + Audio
+
+Dieser Test ist nach der RMT-Umstellung besonders wichtig:
+
+1. CC1101 angeschlossen lassen und passenden Modus wählen.
+2. Unter Hardware prüfen: `Pulserfassung = ESP32 RMT RX`, `RMT-Empfang bereit = Ja`.
+3. DY-SV17F auf 0 % stellen, mindestens eine Sekunde warten und `Ton testen` drücken. BUSY darf aktiv werden, hörbar sollte bei wirksamem Volume-Kommando nichts sein.
+4. Danach 25 %, 50 % und 100 % testen. Die Karte zeigt Soll-Lautstärke und die gesendete Modulstufe 0…30.
+5. 20 normale Töne mit Funkempfänger angeschlossen auslösen. `Per BUSY bestätigte Starts` muss entsprechend steigen; `Play-Wiederholungen` sollte normalerweise 0 bleiben.
+6. Parallel mehrfach den Funkbutton drücken. Audio und Funk müssen unabhängig bleiben.
+7. `Prüfen` beim Audio startet ausschließlich die UART-Diagnose. Fehlende optionale Antworten dürfen ein reales BUSY-bestätigtes Playback nicht als verschwunden darstellen.
+
+Bei einem Fehler Screenshot der Audio- **und** Funkkarte zusammen sichern. Relevant sind besonders UART-Timeouts, Prüfsummenfehler, Play-Wiederholungen, BUSY-Flanken, RMT-Aufnahmen und RMT-Fehler.

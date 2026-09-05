@@ -282,8 +282,12 @@ void begin() {
 
 void update() {
   if (!pinMapValid) return;
+  // Urgent local input and UART servicing run before bounded RF decoding.
+  // Each concrete driver is updated exactly here; project services only
+  // consume the cached/decoded results afterwards.
   GpioModule::update();
   AudioDySv17f::update();
+  Rf433Cc1101::update();
 }
 
 void probeAll() {
@@ -400,12 +404,22 @@ void appendJson(String &out) {
     appendInfoString(out, first, "hardware.info.transport", "UART2 / 9600 8N1");
     appendInfoString(out, first, "hardware.info.pins",
                      String("DY TX -> GPIO") + String(static_cast<int>(HardwareConfig::AUDIO_RX_PIN)) + " (ESP RX), DY RX <- GPIO" + String(static_cast<int>(HardwareConfig::AUDIO_TX_PIN)) + " (ESP TX), BUSY -> GPIO" + String(static_cast<int>(HardwareConfig::AUDIO_BUSY_PIN)) + "/VN");
-    if (AudioDySv17f::detected()) {
-      appendInfoString(out, first, "hardware.info.playState", String(AudioDySv17f::playStateName()), "stateKey");
-      appendInfoString(out, first, "hardware.info.onlineDevices", hexByte(AudioDySv17f::onlineDevices()));
-      appendInfoUInt(out, first, "hardware.info.fileCount", AudioDySv17f::musicCount());
-    }
+    const auto &audio = AudioDySv17f::diagnostics();
+    appendInfoString(out, first, "hardware.info.playState", String(AudioDySv17f::playStateName()), "stateKey");
+    if (audio.onlineDeviceKnown) appendInfoString(out, first, "hardware.info.onlineDevices", AudioDySv17f::deviceName(audio.onlineDevice));
+    if (audio.currentDeviceKnown) appendInfoString(out, first, "hardware.info.currentDevice", AudioDySv17f::deviceName(audio.currentDevice));
+    if (audio.trackCountKnown) appendInfoUInt(out, first, "hardware.info.fileCount", audio.trackCount);
+    if (audio.currentTrackKnown) appendInfoUInt(out, first, "hardware.info.currentTrack", audio.currentTrack);
     if (AudioDySv17f::busyKnown()) appendInfoBool(out, first, "hardware.info.busy", AudioDySv17f::busy());
+    appendInfoUInt(out, first, "hardware.info.volume", audio.desiredVolumePercent, "percent");
+    appendInfoUInt(out, first, "hardware.info.volumeStep", audio.lastVolumeStep);
+    appendInfoUInt(out, first, "hardware.info.uartResponses", audio.rxFrames);
+    appendInfoUInt(out, first, "hardware.info.uartTimeouts", audio.queryTimeouts);
+    appendInfoUInt(out, first, "hardware.info.checksumErrors", audio.checksumErrors);
+    appendInfoUInt(out, first, "hardware.info.playCommands", audio.playCommands);
+    appendInfoUInt(out, first, "hardware.info.busyConfirmedPlays", audio.busyConfirmedPlays);
+    appendInfoUInt(out, first, "hardware.info.playRetries", audio.playRetries);
+    appendInfoUInt(out, first, "hardware.info.busyEdges", audio.busyEdges);
     appendInfoUInt(out, first, "hardware.info.testTrack", HardwareConfig::AUDIO_TEST_TRACK);
     endModule(out, "test", "action.audioTest", "audio");
   }
@@ -430,6 +444,12 @@ void appendJson(String &out) {
     appendInfoBool(out, first, "hardware.info.configVerified", rf.configVerified);
     if (rf.partNumber != 0xFFU) appendInfoString(out, first, "hardware.info.partNumber", hexByte(rf.partNumber));
     if (rf.version != 0xFFU) appendInfoString(out, first, "hardware.info.chipVersion", hexByte(rf.version));
+    appendInfoString(out, first, "hardware.info.captureBackend", "ESP32 RMT RX");
+    appendInfoBool(out, first, "hardware.info.captureReady", rf.captureReady);
+    appendInfoBool(out, first, "hardware.info.carrierSense", rf.carrierSense);
+    appendInfoUInt(out, first, "hardware.info.captureFrames", rf.captureFrames);
+    appendInfoUInt(out, first, "hardware.info.lastCaptureSymbols", rf.lastCaptureSymbols);
+    appendInfoUInt(out, first, "hardware.info.captureErrors", rf.captureErrors);
     appendInfoUInt(out, first, "hardware.info.decodedFrames", rf.decodedFrames);
     appendInfoUInt(out, first, "hardware.info.rejectedFrames", rf.rejectedFrames);
     appendInfoUInt(out, first, "hardware.info.overflowFrames", rf.overflowFrames);

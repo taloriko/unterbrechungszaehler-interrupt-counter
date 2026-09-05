@@ -27,7 +27,7 @@ bool begin() {
   if (started) return Rf433Cc1101::info().ready;
   started = true;
   SourceRegistry::begin();
-  if (!Rf433Cc1101::begin()) return false;
+  if (!Rf433Cc1101::info().ready) return false;
   if (!Rf433Cc1101::setOperatingProtocol(driverProtocol(ProjectPreferences::radioMode()))) {
     SerialLog::error("RF433", "Persisted RF mode could not be applied");
     return false;
@@ -37,7 +37,6 @@ bool begin() {
 
 void update() {
   SourceRegistry::update();
-  Rf433Cc1101::update();
 
   Rf433Cc1101::Frame frame;
   while (Rf433Cc1101::pollFrame(frame)) {

@@ -38,21 +38,21 @@ constexpr int8_t AUDIO_RX_PIN = 18;  // ESP32 RX <- DY-SV17F TXD/IO0
 constexpr int8_t AUDIO_TX_PIN = 19;  // ESP32 TX -> DY-SV17F RXD/IO1
 constexpr int8_t AUDIO_BUSY_PIN = 39; // DY-SV17F CON3/BUSY, active LOW while playing
 constexpr uint32_t AUDIO_BAUD_RATE = 9600;
-constexpr uint32_t AUDIO_RESPONSE_TIMEOUT_MS = 1000;
+constexpr uint32_t AUDIO_RESPONSE_TIMEOUT_MS = 900;
 constexpr uint8_t AUDIO_PROBE_MAX_ATTEMPTS = 2;
-constexpr uint32_t AUDIO_PROBE_RETRY_DELAY_MS = 120;
-constexpr uint32_t AUDIO_COMMAND_VERIFY_DELAY_MS = 220;
-// Playback itself is confirmed by the independent BUSY feedback line. This is
-// intentionally separate from UART query timeouts: a lost status reply must not
-// suppress otherwise valid audio. If BUSY never becomes active, resend the
-// track once before reporting a playback warning.
+// DY-SV17F commands are intentionally paced. Playback is higher priority than
+// diagnostics, while volume is repeated idempotently because command 0x13 has
+// no protocol response according to the UART guide.
+constexpr uint32_t AUDIO_MIN_COMMAND_GAP_MS = 120;
+constexpr uint32_t AUDIO_VOLUME_REPEAT_DELAY_MS = 150;
+constexpr uint8_t AUDIO_VOLUME_SEND_REPEATS = 2;
 constexpr uint32_t AUDIO_PLAY_BUSY_CONFIRM_MS = 450;
 constexpr uint8_t AUDIO_PLAY_MAX_ATTEMPTS = 2;
-constexpr uint32_t AUDIO_INTER_COMMAND_DELAY_MS = 120;
 constexpr uint32_t AUDIO_BOOT_GRACE_MS = 1200;
 constexpr bool AUDIO_BOOT_TONE_ENABLED = true;
 constexpr uint16_t AUDIO_BOOT_TONE_TRACK = 1;
 constexpr uint32_t AUDIO_BOOT_TONE_DELAY_MS = 350;
+constexpr uint32_t AUDIO_AUTO_PROBE_DELAY_MS = 5000;
 constexpr uint16_t AUDIO_TEST_TRACK = 1;
 
 // CC1101 / RF1100SE prototype: 433.92 MHz OOK fixed-code receiver.
@@ -65,7 +65,15 @@ constexpr int8_t RF433_CS_PIN = 25;
 constexpr int8_t RF433_GDO0_PIN = 26;  // asynchronous demodulated data
 constexpr int8_t RF433_GDO2_PIN = 27;  // carrier sense
 constexpr uint32_t RF433_FREQUENCY_HZ = 433920000UL;
-constexpr uint32_t RF433_SOMFY_FREQUENCY_HZ = 433420000UL;  // Somfy RTS receive test
+constexpr uint32_t RF433_SOMFY_FREQUENCY_HZ = 433420000UL;
+// Raw OOK/RTS timing is captured by the ESP32 RMT peripheral, not by a GPIO
+// CHANGE ISR. 1 MHz gives one-microsecond symbols; the hardware glitch filter
+// rejects pulses far below every supported protocol timing.
+constexpr uint32_t RF433_RMT_RESOLUTION_HZ = 1000000UL;
+constexpr uint16_t RF433_RMT_MEM_BLOCK_SYMBOLS = 128;
+constexpr uint16_t RF433_RMT_CAPTURE_SYMBOLS = 160;
+constexpr uint32_t RF433_RMT_GLITCH_MIN_NS = 60000UL;
+constexpr uint32_t RF433_RMT_IDLE_MAX_NS = 8000000UL;
 
 // CON3/BUSY is also a mode selection input during roughly the first 30 ms of
 // DY-SV17F power-up. Hardware wiring must hold it HIGH during that interval;

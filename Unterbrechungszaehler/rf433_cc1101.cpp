@@ -1,7 +1,8 @@
 #include "rf433_cc1101.h"
 
 #include <SPI.h>
-#include <driver/gpio.h>
+#include <driver/rmt_rx.h>
+#include <driver/rmt_types.h>
 #include <cstring>
 
 #include "hardware_config.h"
@@ -20,10 +21,8 @@ constexpr uint8_t SIDLE = 0x36;
 constexpr uint8_t SRX = 0x34;
 constexpr uint8_t PARTNUM = 0x30;
 constexpr uint8_t VERSION = 0x31;
-constexpr uint16_t PULSE_BUFFER_SIZE = 160;
+constexpr uint16_t PULSE_WORK_CAPACITY = 192;
 constexpr uint16_t MIN_FRAME_PULSES = 36;
-constexpr uint32_t FRAME_GAP_US = 5000;
-constexpr uint32_t FORCE_FRAME_GAP_US = 7000;
 constexpr uint32_t REPEAT_WINDOW_MS = 650;
 constexpr uint32_t PRESS_DEDUPE_MS = 550;
 constexpr uint32_t RECEIVE_TEST_MS = 10000;
@@ -80,14 +79,12 @@ constexpr RegisterSetting SETTINGS[] = {
 SPISettings spiSettings(4000000, MSBFIRST, SPI_MODE0);
 Info currentInfo;
 
-volatile uint16_t pulseBuffers[2][PULSE_BUFFER_SIZE]{};
-volatile uint8_t writeBuffer = 0;
-volatile uint16_t writeCount = 0;
-volatile uint32_t lastEdgeUs = 0;
-volatile bool readyFrame = false;
-volatile uint8_t readyBuffer = 0;
-volatile uint16_t readyCount = 0;
-volatile uint32_t isrOverflowFrames = 0;
+rmt_channel_handle_t rmtChannel = nullptr;
+rmt_symbol_word_t rmtSymbols[HardwareConfig::RF433_RMT_CAPTURE_SYMBOLS]{};
+volatile bool rmtFrameReady = false;
+volatile size_t rmtReadySymbols = 0;
+bool rmtEnabled = false;
+bool rmtArmed = false;
 
 Frame pendingCandidate;
 uint8_t pendingRepeats = 0;
@@ -103,18 +100,8 @@ const char *receiveTestResultText = "idle";
 Frame receiveTestFrame;
 
 enum class CaptureMode : uint8_t { FixedOok = 0, SomfyRts = 1 };
-volatile CaptureMode captureMode = CaptureMode::FixedOok;
+CaptureMode captureMode = CaptureMode::FixedOok;
 Protocol operatingProtocolValue = Protocol::FixedOok;
-
-volatile bool somfyReceiving = false;
-volatile bool somfyWaitingHalf = false;
-volatile bool somfyReady = false;
-volatile uint8_t somfySyncCount = 0;
-volatile uint8_t somfyBitCount = 0;
-volatile uint8_t somfyPreviousBit = 0;
-volatile uint8_t somfyPayload[7]{};
-volatile uint8_t somfyReadyPayload[7]{};
-volatile uint8_t somfyReadySyncCount = 0;
 
 void setHealth(StatusRegistry::State state) {
   currentHealth = state;
@@ -188,127 +175,74 @@ bool verifyConfiguration(CaptureMode mode) {
          readConfigRegister(0x12) == 0x30;
 }
 
-void IRAM_ATTR resetSomfyCapture(bool clearReady) {
-  somfyReceiving = false;
-  somfyWaitingHalf = false;
-  somfySyncCount = 0;
-  somfyBitCount = 0;
-  somfyPreviousBit = 0;
-  for (uint8_t i = 0; i < 7; ++i) somfyPayload[i] = 0;
-  if (clearReady) {
-    somfyReady = false;
-    somfyReadySyncCount = 0;
-    for (uint8_t i = 0; i < 7; ++i) somfyReadyPayload[i] = 0;
-  }
+bool IRAM_ATTR onRmtReceiveDone(rmt_channel_handle_t, const rmt_rx_done_event_data_t *edata, void *) {
+  if (!edata) return false;
+  rmtReadySymbols = edata->num_symbols > HardwareConfig::RF433_RMT_CAPTURE_SYMBOLS
+                        ? HardwareConfig::RF433_RMT_CAPTURE_SYMBOLS
+                        : edata->num_symbols;
+  rmtFrameReady = true;
+  rmtArmed = false;
+  return false;  // no task is woken; normal loop consumes the static buffer
 }
 
-void IRAM_ATTR appendSomfyBit() {
-  if (somfyBitCount >= 56U || somfyReady) return;
-  if (somfyPreviousBit) {
-    somfyPayload[somfyBitCount / 8U] |= static_cast<uint8_t>(1U << (7U - (somfyBitCount % 8U)));
+bool armRmtReceive() {
+  if (!rmtChannel || !rmtEnabled || rmtArmed || rmtFrameReady) return false;
+  rmt_receive_config_t cfg{};
+  cfg.signal_range_min_ns = HardwareConfig::RF433_RMT_GLITCH_MIN_NS;
+  cfg.signal_range_max_ns = HardwareConfig::RF433_RMT_IDLE_MAX_NS;
+  const esp_err_t err = rmt_receive(rmtChannel, rmtSymbols, sizeof(rmtSymbols), &cfg);
+  if (err != ESP_OK) {
+    ++currentInfo.captureErrors;
+    currentInfo.captureReady = false;
+    return false;
   }
-  ++somfyBitCount;
-  if (somfyBitCount < 56U) return;
-
-  for (uint8_t i = 0; i < 7; ++i) somfyReadyPayload[i] = somfyPayload[i];
-  somfyReadySyncCount = somfySyncCount;
-  somfyReady = true;
-  somfyReceiving = false;
-  somfyWaitingHalf = false;
-  somfySyncCount = 0;
-  somfyBitCount = 0;
-  somfyPreviousBit = 0;
-  for (uint8_t i = 0; i < 7; ++i) somfyPayload[i] = 0;
+  rmtArmed = true;
+  currentInfo.captureReady = true;
+  return true;
 }
 
-void IRAM_ATTR feedSomfyDuration(uint32_t duration) {
-  if (somfyReady) return;
+bool initRmtCapture() {
+  rmt_rx_channel_config_t cfg{};
+  cfg.gpio_num = static_cast<gpio_num_t>(HardwareConfig::RF433_GDO0_PIN);
+  cfg.clk_src = RMT_CLK_SRC_DEFAULT;
+  cfg.resolution_hz = HardwareConfig::RF433_RMT_RESOLUTION_HZ;
+  cfg.mem_block_symbols = HardwareConfig::RF433_RMT_MEM_BLOCK_SYMBOLS;
+  cfg.intr_priority = 0;
+  cfg.flags.invert_in = false;
+  cfg.flags.with_dma = false;
+  if (rmt_new_rx_channel(&cfg, &rmtChannel) != ESP_OK || !rmtChannel) return false;
 
-  if (!somfyReceiving) {
-    if (duration >= SOMFY_HW_SYNC_MIN_US && duration <= SOMFY_HW_SYNC_MAX_US) {
-      if (somfySyncCount < 31U) ++somfySyncCount;
-      return;
+  rmt_rx_event_callbacks_t callbacks{};
+  callbacks.on_recv_done = onRmtReceiveDone;
+  if (rmt_rx_register_event_callbacks(rmtChannel, &callbacks, nullptr) != ESP_OK) return false;
+  if (rmt_enable(rmtChannel) != ESP_OK) return false;
+  rmtEnabled = true;
+  return armRmtReceive();
+}
+
+void pauseRmtCapture() {
+  if (rmtChannel && rmtEnabled) rmt_disable(rmtChannel);
+  rmtEnabled = false;
+  rmtArmed = false;
+  rmtFrameReady = false;
+  rmtReadySymbols = 0;
+  currentInfo.captureReady = false;
+}
+
+bool resumeRmtCapture() {
+  if (!rmtChannel) return false;
+  if (!rmtEnabled) {
+    if (rmt_enable(rmtChannel) != ESP_OK) {
+      ++currentInfo.captureErrors;
+      return false;
     }
-    if (duration >= SOMFY_SW_SYNC_MIN_US && duration <= SOMFY_SW_SYNC_MAX_US && somfySyncCount >= 4U) {
-      somfyReceiving = true;
-      somfyWaitingHalf = false;
-      somfyBitCount = 0;
-      somfyPreviousBit = 0;
-      for (uint8_t i = 0; i < 7; ++i) somfyPayload[i] = 0;
-      return;
-    }
-    somfySyncCount = 0;
-    return;
+    rmtEnabled = true;
   }
-
-  if (duration >= SOMFY_SYMBOL_MIN_US && duration <= SOMFY_SYMBOL_MAX_US && !somfyWaitingHalf) {
-    somfyPreviousBit ^= 1U;
-    appendSomfyBit();
-    return;
-  }
-  if (duration >= SOMFY_HALF_MIN_US && duration <= SOMFY_HALF_MAX_US) {
-    if (somfyWaitingHalf) {
-      somfyWaitingHalf = false;
-      appendSomfyBit();
-    } else {
-      somfyWaitingHalf = true;
-    }
-    return;
-  }
-
-  resetSomfyCapture(false);
-}
-
-void IRAM_ATTR finalizeFrameFromIsr() {
-  if (writeCount < MIN_FRAME_PULSES) {
-    writeCount = 0;
-    return;
-  }
-  if (readyFrame) {
-    ++isrOverflowFrames;
-    writeCount = 0;
-    return;
-  }
-  readyBuffer = writeBuffer;
-  readyCount = writeCount;
-  readyFrame = true;
-  writeBuffer ^= 1U;
-  writeCount = 0;
-}
-
-void IRAM_ATTR onDataEdge() {
-  const uint32_t nowUs = micros();
-  const uint32_t duration = static_cast<uint32_t>(nowUs - lastEdgeUs);
-
-  if (captureMode == CaptureMode::SomfyRts) {
-    // RTS decoding uses the edge-to-edge Manchester timing. Ignore tiny glitches
-    // without moving the reference edge, matching the protocol's timing model.
-    if (duration < SOMFY_GLITCH_MIN_US) return;
-    lastEdgeUs = nowUs;
-    feedSomfyDuration(duration);
-    return;
-  }
-
-  lastEdgeUs = nowUs;
-  if (duration > FRAME_GAP_US) {
-    finalizeFrameFromIsr();
-    return;
-  }
-  if (duration < 70U || duration > 4500U) return;
-
-  const bool carrier = gpio_get_level(static_cast<gpio_num_t>(HardwareConfig::RF433_GDO2_PIN)) != 0;
-  if (!carrier && writeCount == 0) return;
-
-  if (writeCount >= PULSE_BUFFER_SIZE) {
-    ++isrOverflowFrames;
-    writeCount = 0;
-    return;
-  }
-  pulseBuffers[writeBuffer][writeCount++] = static_cast<uint16_t>(duration);
+  return armRmtReceive();
 }
 
 bool applyCaptureMode(CaptureMode mode) {
-  detachInterrupt(digitalPinToInterrupt(HardwareConfig::RF433_GDO0_PIN));
+  pauseRmtCapture();
   if (!strobe(SIDLE)) return false;
 
   // 26 MHz crystal: 433.92 MHz = 0x10B071, Somfy RTS 433.42 MHz = 0x10AB85.
@@ -319,28 +253,11 @@ bool applyCaptureMode(CaptureMode mode) {
     return false;
   }
   strobe(SFRX);
-
-  noInterrupts();
   captureMode = mode;
-  writeCount = 0;
-  readyFrame = false;
-  readyCount = 0;
-  resetSomfyCapture(true);
-  lastEdgeUs = micros();
-  interrupts();
-
   if (!strobe(SRX)) return false;
-  currentInfo.activeFrequencyHz = somfy ? HardwareConfig::RF433_SOMFY_FREQUENCY_HZ : HardwareConfig::RF433_FREQUENCY_HZ;
-  attachInterrupt(digitalPinToInterrupt(HardwareConfig::RF433_GDO0_PIN), onDataEdge, CHANGE);
-  return true;
-}
-
-void finalizeSilentFrameIfNeeded() {
-  if (writeCount < MIN_FRAME_PULSES) return;
-  if (static_cast<uint32_t>(micros() - lastEdgeUs) < FORCE_FRAME_GAP_US) return;
-  noInterrupts();
-  finalizeFrameFromIsr();
-  interrupts();
+  currentInfo.activeFrequencyHz = somfy ? HardwareConfig::RF433_SOMFY_FREQUENCY_HZ
+                                        : HardwareConfig::RF433_FREQUENCY_HZ;
+  return resumeRmtCapture();
 }
 
 bool similarBucket(uint8_t a, uint8_t b) {
@@ -434,27 +351,85 @@ bool decodeSomfyPayload(const uint8_t encoded[7], Frame &out) {
   return true;
 }
 
-void processSomfyReady() {
-  if (!somfyReady) return;
-  uint8_t encoded[7]{};
+struct SomfyDecodeState {
+  bool receiving = false;
+  bool waitingHalf = false;
   uint8_t syncCount = 0;
-  noInterrupts();
-  if (somfyReady) {
-    for (uint8_t i = 0; i < 7; ++i) encoded[i] = somfyReadyPayload[i];
-    syncCount = somfyReadySyncCount;
-    somfyReady = false;
-  }
-  interrupts();
+  uint8_t bitCount = 0;
+  uint8_t previousBit = 0;
+  uint8_t payload[7]{};
+};
 
-  Frame candidate;
-  if (!decodeSomfyPayload(encoded, candidate)) {
-    ++currentInfo.rejectedFrames;
-    return;
+bool appendSomfyBit(SomfyDecodeState &state) {
+  if (state.bitCount >= 56U) return true;
+  if (state.previousBit) {
+    state.payload[state.bitCount / 8U] |= static_cast<uint8_t>(1U << (7U - (state.bitCount % 8U)));
+  }
+  ++state.bitCount;
+  return state.bitCount >= 56U;
+}
+
+bool feedSomfyDuration(SomfyDecodeState &state, uint32_t duration) {
+  if (duration < SOMFY_GLITCH_MIN_US) return false;
+  if (!state.receiving) {
+    if (duration >= SOMFY_HW_SYNC_MIN_US && duration <= SOMFY_HW_SYNC_MAX_US) {
+      if (state.syncCount < 31U) ++state.syncCount;
+      return false;
+    }
+    if (duration >= SOMFY_SW_SYNC_MIN_US && duration <= SOMFY_SW_SYNC_MAX_US && state.syncCount >= 4U) {
+      state.receiving = true;
+      state.waitingHalf = false;
+      state.bitCount = 0;
+      state.previousBit = 0;
+      for (uint8_t &byte : state.payload) byte = 0;
+      return false;
+    }
+    state.syncCount = 0;
+    return false;
   }
 
+  if (duration >= SOMFY_SYMBOL_MIN_US && duration <= SOMFY_SYMBOL_MAX_US && !state.waitingHalf) {
+    state.previousBit ^= 1U;
+    return appendSomfyBit(state);
+  }
+  if (duration >= SOMFY_HALF_MIN_US && duration <= SOMFY_HALF_MAX_US) {
+    if (state.waitingHalf) {
+      state.waitingHalf = false;
+      return appendSomfyBit(state);
+    }
+    state.waitingHalf = true;
+    return false;
+  }
+
+  state.receiving = false;
+  state.waitingHalf = false;
+  state.syncCount = 0;
+  state.bitCount = 0;
+  state.previousBit = 0;
+  for (uint8_t &byte : state.payload) byte = 0;
+  return false;
+}
+
+bool decodeSomfySymbols(const rmt_symbol_word_t *symbols, size_t count, Frame &out, uint8_t &syncCount) {
+  SomfyDecodeState state;
+  for (size_t i = 0; i < count; ++i) {
+    const uint32_t durations[2] = {symbols[i].duration0, symbols[i].duration1};
+    for (uint8_t part = 0; part < 2; ++part) {
+      const uint32_t duration = durations[part];
+      if (duration == 0U) continue;
+      if (feedSomfyDuration(state, duration)) {
+        syncCount = state.syncCount;
+        return decodeSomfyPayload(state.payload, out);
+      }
+    }
+  }
+  return false;
+}
+
+void processSomfyCandidate(const Frame &candidate, uint8_t syncCount) {
   const uint32_t nowMs = millis();
   if (sameFrame(candidate, currentInfo.lastFrame) && static_cast<uint32_t>(nowMs - lastEmitMs) < PRESS_DEDUPE_MS) {
-    return;  // repeated RTS telegram of the same physical press
+    return;
   }
 
   const bool diagnostic = receiveTestActiveFlag;
@@ -466,10 +441,8 @@ void processSomfyReady() {
     currentInfo.error = "";
     setHealth(StatusRegistry::State::Ok);
     SerialLog::successf("RF433", "Somfy RTS test passed | sync=%u | address=0x%06lX | rolling=%u | command=%s",
-                        static_cast<unsigned int>(syncCount),
-                        static_cast<unsigned long>(candidate.code),
-                        static_cast<unsigned int>(candidate.rollingCode),
-                        somfyCommandName(candidate.command));
+                        static_cast<unsigned int>(syncCount), static_cast<unsigned long>(candidate.code),
+                        static_cast<unsigned int>(candidate.rollingCode), somfyCommandName(candidate.command));
   }
 
   emittedFrame = candidate;
@@ -515,26 +488,56 @@ void processCandidate(const Frame &candidate) {
   lastEmitMs = nowMs;
 }
 
-void processReadyFrame() {
-  finalizeSilentFrameIfNeeded();
-  if (!readyFrame) return;
-
-  uint16_t local[PULSE_BUFFER_SIZE];
-  uint16_t count = 0;
-  noInterrupts();
-  if (readyFrame) {
-    count = readyCount > PULSE_BUFFER_SIZE ? PULSE_BUFFER_SIZE : readyCount;
-    for (uint16_t i = 0; i < count; ++i) local[i] = pulseBuffers[readyBuffer][i];
-    readyFrame = false;
-    readyCount = 0;
+void processRmtCapture() {
+  if (!rmtFrameReady) {
+    currentInfo.carrierSense = digitalRead(HardwareConfig::RF433_GDO2_PIN) != 0;
+    if (!rmtArmed && rmtEnabled) armRmtReceive();
+    return;
   }
-  const uint32_t overflow = isrOverflowFrames;
-  interrupts();
-  currentInfo.overflowFrames = overflow;
-  if (count == 0) return;
 
+  rmt_symbol_word_t local[HardwareConfig::RF433_RMT_CAPTURE_SYMBOLS]{};
+  const size_t count = rmtReadySymbols > HardwareConfig::RF433_RMT_CAPTURE_SYMBOLS
+                           ? HardwareConfig::RF433_RMT_CAPTURE_SYMBOLS
+                           : rmtReadySymbols;
+  for (size_t i = 0; i < count; ++i) local[i] = rmtSymbols[i];
+  rmtFrameReady = false;
+  rmtReadySymbols = 0;
+  ++currentInfo.captureFrames;
+  currentInfo.lastCaptureSymbols = static_cast<uint16_t>(count);
+  if (count >= HardwareConfig::RF433_RMT_CAPTURE_SYMBOLS) ++currentInfo.overflowFrames;
+  currentInfo.carrierSense = digitalRead(HardwareConfig::RF433_GDO2_PIN) != 0;
+
+  // Rearm before decoding the private copy. RF reception therefore remains
+  // mostly hardware-autonomous while the loop performs bounded parsing.
+  if (!armRmtReceive()) ++currentInfo.captureErrors;
+  if (count == 0U) return;
+
+  if (captureMode == CaptureMode::SomfyRts) {
+    Frame candidate;
+    uint8_t syncCount = 0;
+    if (!decodeSomfySymbols(local, count, candidate, syncCount)) {
+      ++currentInfo.rejectedFrames;
+      return;
+    }
+    processSomfyCandidate(candidate, syncCount);
+    return;
+  }
+
+  uint16_t timings[PULSE_WORK_CAPACITY]{};
+  uint16_t timingCount = 0;
+  for (size_t i = 0; i < count && timingCount < PULSE_WORK_CAPACITY; ++i) {
+    const uint32_t durations[2] = {local[i].duration0, local[i].duration1};
+    for (uint8_t part = 0; part < 2 && timingCount < PULSE_WORK_CAPACITY; ++part) {
+      const uint32_t duration = durations[part];
+      if (duration >= 70U && duration <= 4600U) timings[timingCount++] = static_cast<uint16_t>(duration);
+    }
+  }
+  if (timingCount < MIN_FRAME_PULSES) {
+    ++currentInfo.rejectedFrames;
+    return;
+  }
   Frame candidate;
-  if (!decodeFrame(local, count, candidate)) {
+  if (!decodeFrame(timings, timingCount, candidate)) {
     ++currentInfo.rejectedFrames;
     return;
   }
@@ -606,13 +609,16 @@ bool begin() {
   captureMode = CaptureMode::FixedOok;
   operatingProtocolValue = Protocol::FixedOok;
   currentInfo.activeFrequencyHz = HardwareConfig::RF433_FREQUENCY_HZ;
-  lastEdgeUs = micros();
-  attachInterrupt(digitalPinToInterrupt(HardwareConfig::RF433_GDO0_PIN), onDataEdge, CHANGE);
+  if (!initRmtCapture()) {
+    failReceiver("cc1101_rmt_init_failed", StatusRegistry::State::Error);
+    SerialLog::error("RF433", "ESP32 RMT RX channel could not be initialized");
+    return false;
+  }
   currentInfo.ready = true;
   currentInfo.error = "";
   checkedAtMs = millis();
   setHealth(StatusRegistry::State::Ok);
-  SerialLog::successf("RF433", "CC1101 ready | 433.92 MHz OOK async | part=0x%02X | version=0x%02X | GDO0=%d GDO2=%d",
+  SerialLog::successf("RF433", "CC1101 ready | 433.92 MHz OOK async -> ESP32 RMT RX | part=0x%02X | version=0x%02X | GDO0=%d GDO2=%d",
                       currentInfo.partNumber, currentInfo.version,
                       HardwareConfig::RF433_GDO0_PIN, HardwareConfig::RF433_GDO2_PIN);
   return true;
@@ -630,13 +636,11 @@ bool probe() {
   const uint8_t part = readStatusRegister(PARTNUM);
   const uint8_t version = readStatusRegister(VERSION);
   if (part == 0xFFU || version == 0xFFU) {
-    detachInterrupt(digitalPinToInterrupt(HardwareConfig::RF433_GDO0_PIN));
     failReceiver("cc1101_probe_no_response", StatusRegistry::State::NoResponse);
     SerialLog::error("RF433", "Manual probe: CC1101 did not answer on SPI");
     return true;
   }
   if (!strobe(SRX)) {
-    detachInterrupt(digitalPinToInterrupt(HardwareConfig::RF433_GDO0_PIN));
     failReceiver("cc1101_probe_rx_failed", StatusRegistry::State::Error);
     return true;
   }
@@ -766,8 +770,7 @@ const Frame &lastTestFrame() { return receiveTestFrame; }
 
 void update() {
   if (!currentInfo.ready) return;
-  if (captureMode == CaptureMode::SomfyRts) processSomfyReady();
-  else processReadyFrame();
+  processRmtCapture();
 
   if (!receiveTestActiveFlag) return;
   const uint32_t nowMs = millis();
@@ -783,7 +786,6 @@ void update() {
 }
 
 bool pollFrame(Frame &frameOut) {
-  update();
   if (!emittedAvailable) return false;
   frameOut = emittedFrame;
   emittedAvailable = false;
@@ -791,7 +793,8 @@ bool pollFrame(Frame &frameOut) {
 }
 
 const Info &info() {
-  currentInfo.overflowFrames = isrOverflowFrames;
+  currentInfo.captureReady = rmtEnabled && (rmtArmed || rmtFrameReady);
+  currentInfo.carrierSense = currentInfo.ready && digitalRead(HardwareConfig::RF433_GDO2_PIN) != 0;
   return currentInfo;
 }
 
