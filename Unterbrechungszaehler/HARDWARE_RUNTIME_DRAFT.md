@@ -38,14 +38,15 @@ Die Laufzeit wurde vereinfacht:
 
 - `Play specified music (0x07)` erwartet laut Protokoll **keine** UART-Antwort.
 - Ein normaler Ton wird deshalb nicht mehr mit einer zusätzlichen Statusabfrage gekoppelt.
-- War BUSY vor dem Play-Kommando HIGH/idle, wird ein neuer Start durch BUSY LOW bestätigt. Bleibt dieser Start aus, gibt es höchstens einen Wiederholungsversuch.
-- War BUSY bereits LOW/aktiv, wird **nicht** auf eine künstliche HIGH→LOW-Sequenz gewartet und der Track nicht mehrfach neu gestartet. Der DY-SV17F kann einen Track wechseln oder neu starten, ohne BUSY zwischen zwei Play-Kommandos freizugeben; dieser Fall ist deshalb nicht unabhängig als neuer Start bestätigbar.
+- BUSY ist Diagnose-/Feedbacksignal und löst **keine automatische Wiederholung eines Play-Kommandos** mehr aus. Ein fehlender BUSY-Start wird nur vermerkt. Damit kann ein später anlaufender Decoder nicht durch ein zweites `0x07` erneut gestartet oder weiter verzögert werden.
+- War BUSY vor dem Play-Kommando HIGH/idle, darf ein neuer BUSY-LOW-Start die Wiedergabe positiv bestätigen. War BUSY bereits LOW/aktiv, wird nicht auf eine künstliche HIGH→LOW-Sequenz gewartet.
 - Lautstärke `0x13` ist command-only. 0–100 % wird zentral auf die dokumentierten 31 Stufen 0–30 abgebildet. Weil das Modul darauf keine Antwort sendet, wird dieselbe Einstellung zweimal mit Abstand gesendet; die UI nennt sie ausdrücklich Soll-/Sendewert, nicht bestätigten Istwert.
-- Eine Lautstärkeänderung ist ein priorisiertes, idempotentes Kommando und darf auch während laufender Wiedergabe gesendet werden. Insbesondere `0 %` wartet nicht mehr auf BUSY=idle.
-- Play-Anforderungen werden klein gepuffert, falls gerade noch die zwei Lautstärkekommandos oder der globale UART-Abstand laufen. Die Ereigniserfassung selbst wartet nie auf Audio.
+- Für eine neue Lautstärkeeinstellung muss nur **die erste** Übertragung vor einem folgenden Play-Kommando erfolgt sein. Die zweite identische Übertragung ist redundant und niedrig priorisiert; ein echter Ton wartet nicht darauf.
+- Ein expliziter Tonwunsch aus Taster, Funk oder Hardwaretest verwirft einen noch ausstehenden kosmetischen Boot-Ton. Dadurch kann der Boot-Ton nicht Sekunden später hinter einer echten Unterbrechung auftauchen.
+- Play-Anforderungen werden klein gepuffert, wenn lediglich der globale UART-Mindestabstand noch läuft. Die Ereigniserfassung selbst wartet nie auf Audio.
 - Diagnoseabfragen `0x01`, `0x09`, `0x0A`, `0x0C`, `0x0D` laufen sequenziell und niedrig priorisiert. Lautstärke, Stop/Pause oder echte Wiedergabe dürfen eine Diagnose abbrechen.
+- Die automatische Startdiagnose beginnt erst nach 15 Sekunden und damit außerhalb des zeitkritischen Boot-/ersten-Feedback-Fensters. Der manuelle Hardwaretest bleibt jederzeit verfügbar, solange gerade kein Ton priorisiert wird.
 - Fehlgeschlagene Diagnoseabfragen löschen keine zuvor gültig gelesenen Werte.
-- Nach dem Boot läuft einmal eine niedrige Prioritätsdiagnose, damit Trackanzahl/Datenträger für Rotation und Hardwarekarte verfügbar werden.
 
 Die Hardwarekarte zeigt BUSY, Wiedergabestatus, Online-/aktiven Datenträger, Dateizahl, aktuellen Track, Soll-Lautstärke, gesendete Modulstufe sowie UART-/Playback-Zähler.
 
