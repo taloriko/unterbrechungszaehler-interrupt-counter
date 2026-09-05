@@ -259,3 +259,7 @@ GitHub: [taloriko](https://github.com/taloriko)
 ## New in 3.3.0
 
 Heatmaps can be filtered by **Both**, **Button / GPIO**, or **Web**. A single-source filter is calculated from the retained raw-event ring and explicitly reports incomplete coverage. The complete event database can be erased after entering the exact project name `Unterbrechungszähler`; the device then restarts. Device → Memory also shows the concrete raw-data or aggregate-storage error when storage is unhealthy.
+
+## DY-SV17F diagnostics 3.3.1
+
+UART playback status and the raw BUSY level are shown separately with measurement times. **Check** stays silent; **Test sound** additionally observes BUSY edges and confirms a suspected end through UART. BUSY remains optional diagnostics and is never required for normal playback.

@@ -1,3 +1,11 @@
+# Release 3.3.1
+
+- DY-SV17F-Diagnose zeigt UART-Wiedergabestatus und BUSY-Rohpegel getrennt samt Messzeit
+- kein permanentes BUSY-Polling mehr; BUSY-Flanken nur während des manuellen Audiotests
+- `Prüfen` bleibt lautlos, `Ton testen` sammelt UART/BUSY-End-to-End-Diagnose
+- BUSY-Polarität wird nicht geraten und kann die funktionierende Wiedergabe nicht blockieren
+- Wiedergabepfad, Tracklogik, Lautstärke und UART-Pinbelegung bleiben unverändert
+
 # Release 3.3.0
 
 - Passwortgeschütztes vollständiges Löschen der Ereignisdatenbank (Bestätigung = Projektname)

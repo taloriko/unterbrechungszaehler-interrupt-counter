@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.3.0."""
+"""Portable release checks for Unterbrechungszaehler 3.3.1."""
 from __future__ import annotations
 
 import gzip
@@ -60,7 +60,7 @@ def main() -> None:
     partitions = (ROOT / "partitions.csv").read_text(encoding="utf-8")
 
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.3.0"' in config, "project version 3.3.0")
+    check('SOFTWARE_VERSION[] = "3.3.1"' in config, "project version 3.3.1")
     check(
         'AVAILABLE_LANGUAGES_JSON[] = "[\\\"de\\\",\\\"en\\\",\\\"it\\\",\\\"fr\\\",\\\"swg\\\",\\\"swg-alb\\\",\\\"swg-ob\\\"]"' in config,
         "declared UI languages",
@@ -90,6 +90,18 @@ def main() -> None:
     check("delay(4000)" not in (ROOT / "display_views.cpp").read_text(encoding="utf-8") and "delay(4000)" not in (ROOT / "display_sh1106.cpp").read_text(encoding="utf-8"), "boot screen has no blocking four-second delay")
     check(re.search(r'\{"di1"[^\n]*13,\s*PullMode::Up,\s*false[^\n]*25,\s*true,', hardware) is not None, "DI1 GPIO13 active-edge interrupt latch")
     check("AUDIO_RX_PIN = 18" in hardware and "AUDIO_TX_PIN = 19" in hardware and "AUDIO_BUSY_PIN = 39" in hardware, "DY-SV17F pin map")
+    audio_cpp = (ROOT / "audio_dy_sv17f.cpp").read_text(encoding="utf-8")
+    audio_h = (ROOT / "audio_dy_sv17f.h").read_text(encoding="utf-8")
+    update_body = audio_cpp.split("void update() {", 1)[1].split("bool probe()", 1)[0]
+    check("sampleBusyNow()" not in update_body, "no permanent BUSY polling in normal audio update")
+    check("attachInterrupt" in audio_cpp and "busyIrqArmed" in audio_cpp and "onBusyEdge" in audio_cpp, "BUSY edge monitoring is event-driven and test-gated")
+    check("sendQuery(WaitKind::TestPrePlay, 0x01)" in audio_cpp, "manual audio test starts with silent UART status query")
+    check("sendPlayCommand(HardwareConfig::AUDIO_TEST_TRACK)" in audio_cpp and "sendFrame(0x07" in audio_cpp, "manual test keeps existing DY-SV17F play command")
+    check("currentPlayStateMeasuredAtMs" in audio_cpp and "busyMeasuredAtMs" in audio_h, "UART and BUSY diagnostics carry measurement times")
+    check("BusyPolarity::Unconfirmed" in audio_cpp and "active_low" in audio_cpp and "active_high" in audio_cpp, "BUSY polarity is unconfirmed until full test cycle")
+    check("AudioTestState::Partial" in audio_cpp and "audioTestUartPlayingConfirmed" in audio_h, "manual audio-test result is explicit")
+    check("command verification timeout" in audio_cpp and "StatusRegistry::State::NoResponse" in audio_cpp, "UART no-response remains a real diagnostic error")
+    check("hardware.info.uartCommunication" in JS and "hardware.info.busyInterpretation" in JS and "hardware.info.audioTest" in JS, "richer DY-SV17F diagnostic UI")
     check("0x2D0000, 0x130000" in partitions, "LittleFS custom partition")
 
     de = translation_keys("de", "en")
@@ -105,7 +117,7 @@ def main() -> None:
     )
     for language in ("de", "en", "it", "fr", "swg", "swg-alb", "swg-ob"):
         token = f"Object.assign(I18N{'.' + language if '-' not in language else '[' + repr(language) + ']'}, {{"
-        check(token in JS, f"3.3.0 UI additions present for {language}")
+        check(token in JS, f"3.3.1 UI additions present for {language}")
 
     positions = [JS.find(f"{{ id: '{name}'") for name in ("device", "wifi", "memory", "time", "hardware", "ota")]
     check(all(position >= 0 for position in positions) and positions == sorted(positions), "device card order")
