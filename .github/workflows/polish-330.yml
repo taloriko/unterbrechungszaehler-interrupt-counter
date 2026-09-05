@@ -1,0 +1,38 @@
+name: Polish 3.3.0
+
+on:
+  push:
+    branches:
+      - feature/3.3.0-data-source-storage-diagnostics
+
+permissions:
+  contents: write
+
+jobs:
+  polish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/3.3.0-data-source-storage-diagnostics
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Apply polish
+        run: python3 .github/polish_330.py
+      - name: Regenerate web bundle
+        run: python3 Unterbrechungszaehler/tools/build_web.py
+      - name: Portable release checks
+        run: python3 Unterbrechungszaehler/tools/release_check.py
+      - name: Diff sanity
+        run: git diff --check
+      - name: Commit polish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Unterbrechungszaehler/ui-src/app.js Unterbrechungszaehler/web_assets.h Unterbrechungszaehler/tools/release_check.py
+          git commit -m "Polish 3.3.0 storage diagnostics"
+          git push
