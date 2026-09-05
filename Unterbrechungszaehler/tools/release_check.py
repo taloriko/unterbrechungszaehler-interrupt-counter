@@ -147,6 +147,7 @@ def main() -> None:
     check("rawError" in interruption_api and "aggregateError" in interruption_api and "problemComponent" in interruption_api, "exact storage diagnostics exposed")
     check("analytics.source.physical_button" in JS and "analytics.source.web_button" in JS and "data-analytics-source" in JS, "heatmap source selector")
     check("databaseDeletePassword" in JS and "eraseDatabase" in JS, "password-confirmed database erase UI")
+    check("status.ready" in JS and "status.unavailable" in JS, "translated storage health states")
 
     subprocess.run([sys.executable, str(ROOT / "tools" / "test_interruption_storage.py")], check=True)
     subprocess.run([sys.executable, "-m", "py_compile", str(ROOT / "tools" / "build_web.py"), str(ROOT / "tools" / "test_interruption_storage.py"), str(ROOT / "tools" / "release_check.py")], check=True)

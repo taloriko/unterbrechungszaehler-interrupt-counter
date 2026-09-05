@@ -990,6 +990,17 @@
   };
   Object.entries(I18N_330).forEach(([code, labels]) => Object.assign(I18N[code], labels));
 
+  const STORAGE_STATUS_LABELS = {
+    de: { 'status.ready': 'Bereit', 'status.unavailable': 'Nicht verfügbar' },
+    en: { 'status.ready': 'Ready', 'status.unavailable': 'Unavailable' },
+    it: { 'status.ready': 'Pronto', 'status.unavailable': 'Non disponibile' },
+    fr: { 'status.ready': 'Prêt', 'status.unavailable': 'Indisponible' },
+    swg: { 'status.ready': 'Bereit', 'status.unavailable': 'Net verfügbar' },
+    'swg-alb': { 'status.ready': 'Bereit', 'status.unavailable': 'Net verfügbar' },
+    'swg-ob': { 'status.ready': 'Bereit', 'status.unavailable': 'It verfügbar' }
+  };
+  Object.entries(STORAGE_STATUS_LABELS).forEach(([code, labels]) => Object.assign(I18N[code], labels));
+
   const LANGUAGE_LABELS = {
     de: { 'lang.it': 'Italienisch', 'lang.fr': 'Französisch', 'lang.swgAlb': 'Alb-Schwäbisch', 'lang.swgOb': 'Oberschwäbisch' },
     en: { 'lang.it': 'Italian', 'lang.fr': 'French', 'lang.swgAlb': 'Swabian (Alb)', 'lang.swgOb': 'Upper Swabian' },
