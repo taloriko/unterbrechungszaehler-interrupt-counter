@@ -1,0 +1,38 @@
+name: Final 3.5.0 hardening
+
+on:
+  push:
+    branches:
+      - feature/3.5.0-focus-insights
+    paths:
+      - .github/patch_350_hardening.py
+      - .github/workflows/patch-350-hardening.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/3.5.0-focus-insights
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Apply final hardening
+        run: python .github/patch_350_hardening.py
+      - name: Regenerate embedded web bundle
+        run: python Unterbrechungszaehler/tools/build_web.py
+      - name: Run portable release checks
+        run: python Unterbrechungszaehler/tools/release_check.py
+      - name: Commit hardening
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Harden Focus & Insights result coverage"
+          git push origin HEAD:feature/3.5.0-focus-insights
