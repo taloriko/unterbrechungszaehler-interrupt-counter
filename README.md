@@ -3,7 +3,7 @@
 > [!WARNING]
 > **KI-Hinweis:** Dieses Projekt wurde maßgeblich mit Unterstützung von KI erstellt, anschließend aber praktisch getestet, überarbeitet und weiterentwickelt. Wer KI-generierten Code grundsätzlich nicht mag, darf natürlich trotzdem den Taster drücken. ;-)
 
-> **Aktueller Stand:** `3.3.2`
+> **Aktueller Stand:** `3.4.1`
 
 [Deutsch](docs/de/README.md) · [English](docs/en/README.md) · [Schwäbisch](docs/swg/README.md)
 
@@ -141,6 +141,20 @@ Den Rest macht das Gerät.
 
 Die bisherigen 1.x/2.x-Stände waren Entwicklungs- und Teststände. **3.0.0 ist der neue Ausgangspunkt.** Es gibt deshalb keine zugesicherte Hardware-, Daten- oder OTA-Migration von 2.x. Wer von einem alten Testaufbau kommt, baut die Verdrahtung nach der aktuellen 3.0.0-Dokumentation neu auf.
 
+## Versionsstand 3.x
+
+| Version | Technische Erweiterung |
+|---|---|
+| 3.0.0 | Neue modulare ESP32-Baseline mit GPIO-/Web-Erfassung, 100.000 Rohereignissen, 2.300 Tagesaggregaten, Heatmaps, CSV, RTC/OLED/DY-SV17F und OTA. |
+| 3.0.1 | Passwortgeschützter Fallback-AP und bereinigte OTA-/AP-Statusdarstellung. |
+| 3.1.0 | Heatmap-Metrik Ø Abstand, persistenter Display-Master, nicht blockierender Displaytest und dokumentiertes Soundpaket. |
+| 3.2.0 | Persistente OLED-Sprache/Rotation/Helligkeit, fünf Displaymodi, DY-SV17F-Lautstärke und Rotation als Standard. |
+| 3.3.0 | Vollständiger Datenbank-Reset, Herkunftsfilter für Heatmaps und konkrete Speicherfehlerdiagnose. |
+| 3.3.1 | Getrennte DY-SV17F-UART-/BUSY-Diagnose mit Messzeitpunkten und manuellem End-to-End-Audiotest. |
+| 3.3.2 | Audiotest bestätigt das Trackende über gezielte UART-Statusabfragen; BUSY bleibt Zusatzdiagnose. |
+| 3.4.0 | 10-s-Anti-Spam für den physischen Knopf, Track 2 reserviert, normale Töne ab Track 3 und OLED-TV-Störfeedback. |
+| 3.4.1 | WebUI verfolgt den manuellen Audiotest bis zum Abschluss; die OLED-TV-Störung läuft nach dem ersten verworfenen Druck bis zum Ende der aktiven 10-s-Sperre und wird durch weitere Spam-Drücke nicht neu gestartet. |
+
 ## Aktuelle Pinbelegung
 
 | Funktion | ESP32 |
@@ -168,7 +182,7 @@ So kommen eigene oder die mitgelieferten Töne auf das Modul:
 2. Den am Rechner eingebundenen internen Speicher des DY-SV17F öffnen.
 3. Die Audiodateien **direkt ins Root-/Hauptverzeichnis** des Moduls kopieren. **Keine Unterordner verwenden.**
 4. Dateien fünfstellig mit führenden Nullen benennen: `00001.mp3`, `00002.mp3`, `00003.mp3`, …; alternativ entsprechend `00001.wav` usw. Nicht gleichzeitig unterschiedliche Dateien mit derselben Tracknummer ablegen.
-5. `00001` ist **Track 1 und ausschließlich der Boot-Ton**. `00002` und höher sind die Unterbrechungstöne. Im festen Modus spielt die Firmware den ausgewählten Track ab 2; im Rotationsmodus werden die erkannten Tracks **3…N** verwendet.
+5. `00001` ist **Track 1 für Boot/Test**, `00002` ist **Track 2 für Anti-Spam**, `00003` und höher sind normale Unterbrechungstöne. Im festen Modus sind normale Tracks ab 3 zulässig; im Rotationsmodus werden ausschließlich die erkannten Tracks **3…N** verwendet.
 6. Datenträger anschließend sauber auswerfen und die Micro-USB-Verbindung zum Computer trennen.
 
 Richtig:
@@ -189,7 +203,7 @@ Falsch:
 > [!IMPORTANT]
 > **Solange das DY-SV17F per Micro-USB mit dem Computer verbunden ist bzw. sein interner Speicher über USB verwendet wird, funktioniert die normale Soundausgabe nicht.** Nach dem Kopieren deshalb den Datenträger auswerfen, USB trennen und erst dann Soundtest, Boot-Ton oder Unterbrechungston prüfen.
 
-Ab 3.2.0 ist die Lautstärke in der Weboberfläche von **0–100 %** einstellbar; bei einer frischen Konfiguration sind **100 %** voreingestellt. Der Standardmodus für Unterbrechungstöne ist **Wechseln/Rotation** über die erkannten Tracks 2…N. Bereits gespeicherte Einstellungen älterer 3.x-Stände werden nicht überschrieben.
+Ab 3.2.0 ist die Lautstärke in der Weboberfläche von **0–100 %** einstellbar; bei einer frischen Konfiguration sind **100 %** voreingestellt. Der Standardmodus für Unterbrechungstöne ist **Wechseln/Rotation**. Seit 3.4.0 ist Track 2 für Anti-Spam reserviert; normale feste und rotierende Unterbrechungstöne beginnen bei Track 3.
 
 ## Display in 3.2.0
 
@@ -282,6 +296,11 @@ Die Soundwiedergabe blieb funktional unverändert. Die Diagnose unterscheidet je
 
 Der physische DI1/GPIO-Knopf besitzt ab 3.4.0 eine feste **10-Sekunden-Sperre**: Der erste Druck zählt, weitere physische Drücke innerhalb von weniger als 10 Sekunden werden vollständig aus Rohdaten, Tagesstatistik, CSV, Heatmaps und Ø-Abständen verworfen. Web-Ereignisse bleiben unabhängig. Ein verworfener Druck verlängert die Sperre nicht.
 
-Damit das trotzdem nicht unbemerkt bleibt, hat der Unsinn sein eigenes Feedback: **Track 2** ist fest als Anti-Spam-Ton reserviert und das OLED zeigt rund eine Sekunde eine nicht blockierende alte-TV-Störung mit „ZU SCHNELL!“. Tonkommando und erster Störframe haben im Fast-Path Priorität vor Logging und Statistikarbeit. Bei ausgeschaltetem Sound/Display wird die jeweilige Benutzerpräferenz respektiert.
+Ein verworfener physischer Druck löst **Track 2** als reservierten Anti-Spam-Ton aus. Das OLED startet beim ersten verworfenen Druck der laufenden Sperrphase eine nicht blockierende alte-TV-Störung mit „ZU SCHNELL!“ und hält sie bis zum Ende dieser 10-Sekunden-Sperre aktiv. Weitere verworfene Drücke können Track 2 erneut auslösen, starten die OLED-Animation jedoch nicht neu und verlängern die Sperre nicht. Tonkommando und erster Störframe haben im Fast-Path Priorität vor Logging und Statistikarbeit. Bei ausgeschaltetem Sound/Display wird die jeweilige Benutzerpräferenz respektiert.
 
 Trackbelegung: `00001` = Boot/Test, `00002` = Anti-Spam, `00003` und höher = normale Unterbrechungstöne. Der Wechselmodus rotiert entsprechend nur über **3…N**.
+
+
+## DY-SV17F-Webdiagnose in 3.4.1
+
+Nach einem manuellen **Ton testen** verfolgt die Weboberfläche den Hardwarestatus ausschließlich für die Dauer dieses expliziten Tests. Die Abfrage erfolgt temporär in 500-ms-Abständen und endet automatisch, sobald die Firmware den Audiotest abgeschlossen hat; als Sicherheitsgrenze gelten 120 Sekunden. Außerhalb eines gestarteten Audiotests entsteht dadurch kein zusätzlicher permanenter Polling-Timer.

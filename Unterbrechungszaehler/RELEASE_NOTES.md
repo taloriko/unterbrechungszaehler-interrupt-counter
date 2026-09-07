@@ -1,3 +1,11 @@
+# Release 3.4.1
+
+- temporäre 500-ms-Web-Nachführung eines manuellen DY-SV17F-Audiotests bis zum Abschluss, maximal 120 s
+- keine zusätzliche permanente Frontend-Abfrage außerhalb eines gestarteten Audiotests
+- OLED-TV-Störung läuft nach dem ersten verworfenen physischen Druck bis zum Ende der aktiven 10-s-Sperre und wird durch weitere Spam-Drücke nicht neu gestartet
+- Track-2-Fast-Path und bestehende Anti-Spam-Zähl-/Speicherlogik bleiben unverändert
+- README technisch auf den aktuellen 3.x-Versionsstand synchronisiert
+
 # Release 3.4.0
 
 - 10-s-Anti-Spam für DI1/GPIO ohne Einfluss auf gespeicherte Unterbrechungsdaten

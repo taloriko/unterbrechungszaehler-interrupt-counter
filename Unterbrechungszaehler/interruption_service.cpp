@@ -186,6 +186,11 @@ void refreshCurrentDay(bool force) {
 }
 
 void handleSuppressedPhysicalPress(uint32_t nowMs) {
+  const uint32_t elapsed = static_cast<uint32_t>(nowMs - physicalButtonGuard.lastAcceptedMs);
+  const uint32_t remaining = elapsed < ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS
+                                 ? ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS - elapsed
+                                 : 0U;
+
   // Fast local feedback is deliberately first. Neither storage, analytics nor
   // web work is allowed in front of the acknowledgement the user can hear/see.
   if (ProjectPreferences::soundEnabled()) {
@@ -194,13 +199,9 @@ void handleSuppressedPhysicalPress(uint32_t nowMs) {
       AudioDySv17f::playPriorityFeedbackTrack(ProjectConfig::INTERRUPTION_SPAM_SOUND_TRACK);
     }
   }
-  DisplayViews::notifySuppressedPhysicalPress();
+  DisplayViews::notifySuppressedPhysicalPress(remaining);
   DisplayViews::update(currentSummary);
 
-  const uint32_t elapsed = static_cast<uint32_t>(nowMs - physicalButtonGuard.lastAcceptedMs);
-  const uint32_t remaining = elapsed < ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS
-                                 ? ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS - elapsed
-                                 : 0U;
   SerialLog::infof("BUTTON", "suppressed | reason=anti_spam | elapsed=%lums | remaining=%lums | count=%lu",
                    static_cast<unsigned long>(elapsed), static_cast<unsigned long>(remaining),
                    static_cast<unsigned long>(physicalButtonGuard.suppressedCount));

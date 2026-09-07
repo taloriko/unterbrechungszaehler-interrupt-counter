@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.4.1
+
+- Weboberfläche verfolgt einen ausdrücklich gestarteten DY-SV17F-Audiotest bis zum Firmware-Abschluss; temporär 500 ms, maximal 120 s, kein zusätzliches permanentes Polling
+- OLED-TV-Störung startet nur beim ersten verworfenen Druck einer laufenden 10-s-Sperre und endet mit dieser Sperre; weitere verworfene Drücke starten die Animation nicht neu
+- Track-2-Fast-Feedback, 10-s-Cooldown und Regel „verworfen verlängert nicht“ bleiben unverändert
+- README auf den vollständigen technischen 3.x-Versionsstand und die aktuelle Trackbelegung synchronisiert
+
 ## 3.4.0
 
 - 10-Sekunden-Anti-Spam ausschließlich für den physischen DI1/GPIO-Knopf; verworfene Drücke erreichen weder Raw-Ring noch Tagesaggregate, CSV, Heatmaps oder Ø-Abstände

@@ -29,9 +29,10 @@ constexpr bool DISPLAY_ROTATION_180_DEFAULT = false;
 constexpr bool DISPLAY_FLASH_DEFAULT = true;
 constexpr uint32_t DISPLAY_FLASH_MS = 220;
 
-// Suppressed-button feedback is intentionally short and deterministic.
-// No delay()/random generator is used in the physical-button fast path.
-constexpr uint32_t DISPLAY_SPAM_FLICKER_MS = 950;
+// Suppressed-button feedback remains deterministic and nonblocking. The first
+// suppressed press latches the TV effect until the current physical-button
+// cooldown expires; later suppressed presses do not restart the animation.
+constexpr uint32_t DISPLAY_SPAM_FLICKER_MS = PHYSICAL_BUTTON_COOLDOWN_MS;
 constexpr uint32_t DISPLAY_SPAM_FLICKER_FRAME_MS = 85;
 
 // OLED project preferences are persisted in NVS. Brightness values are percent

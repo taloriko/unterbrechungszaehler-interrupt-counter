@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.4.0."""
+"""Portable release checks for Unterbrechungszaehler 3.4.1."""
 from __future__ import annotations
 
 import gzip
@@ -60,7 +60,7 @@ def main() -> None:
     partitions = (ROOT / "partitions.csv").read_text(encoding="utf-8")
 
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.4.0"' in config, "project version 3.4.0")
+    check('SOFTWARE_VERSION[] = "3.4.1"' in config, "project version 3.4.1")
     check(
         'AVAILABLE_LANGUAGES_JSON[] = "[\\\"de\\\",\\\"en\\\",\\\"it\\\",\\\"fr\\\",\\\"swg\\\",\\\"swg-alb\\\",\\\"swg-ob\\\"]"' in config,
         "declared UI languages",
@@ -143,7 +143,11 @@ def main() -> None:
     check("count > 0U && count < firstNormal" in service_cpp and "return 0U" in service_cpp, "known modules with only reserved tracks do not receive nonexistent normal track 3")
     check("notifySuppressedPhysicalPress" in service_cpp and "DisplayViews::update(currentSummary)" in service_cpp, "first spam display frame serviced immediately")
     views_cpp = (ROOT / "display_views.cpp").read_text(encoding="utf-8")
-    check("DISPLAY_SPAM_FLICKER_MS = 950" in project and "renderSpamFlickerFrame" in views_cpp and "delay(" not in views_cpp.split("renderSpamFlickerFrame",1)[1].split("contrastFromPercent",1)[0], "nonblocking deterministic old-TV spam flicker")
+    check("DISPLAY_SPAM_FLICKER_MS = PHYSICAL_BUTTON_COOLDOWN_MS" in project and "renderSpamFlickerFrame" in views_cpp and "delay(" not in views_cpp.split("renderSpamFlickerFrame",1)[1].split("contrastFromPercent",1)[0], "nonblocking deterministic old-TV spam flicker spans cooldown window")
+    check("notifySuppressedPhysicalPress(uint32_t cooldownRemainingMs)" in views_cpp and "if (spamFlickerActive || cooldownRemainingMs == 0U) return;" in views_cpp and "spamFlickerUntilMs" in views_cpp, "spam OLED effect latches once and is not retriggered")
+    check("DisplayViews::notifySuppressedPhysicalPress(remaining)" in service_cpp, "spam display duration follows remaining physical-button cooldown")
+    check("isLongAudioTest" in JS and "isLongAudioTest ? 240 : 4" in JS and "isLongAudioTest ? 500 : 300" in JS, "manual audio test gets bounded temporary web follow")
+    check("followHardwareCheck(attempt, maxAttempts = 4, intervalMs = 300)" in JS and "attempt < maxAttempts" in JS, "ordinary hardware follow remains short while audio test can run longer")
     prefs_cpp = (ROOT / "project_preferences.cpp").read_text(encoding="utf-8")
     check("value < ProjectConfig::INTERRUPTION_SOUND_FIRST_NORMAL_TRACK" in prefs_cpp and "prefs.putUShort(\"sndtrack\", track)" in prefs_cpp, "legacy fixed track 2 migrates to normal track 3")
     check("addNumber(soundGrid, 'soundTrack', 'project.soundTrack', 3, 65535)" in JS, "fixed-track UI starts at track 3")

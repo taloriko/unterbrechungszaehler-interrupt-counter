@@ -2989,18 +2989,19 @@
       try {
         const data = await this.request(`/api/hardware/action${query}`, { method: 'POST' });
         patchState({ hardware: data.hardware || { checking: false, modules: [] }, status: { ...(data.status || {}), api: 'ok' } });
-        this.followHardwareCheck(0);
+        const isLongAudioTest = moduleId === 'audio' && actionId === 'test';
+        this.followHardwareCheck(0, isLongAudioTest ? 240 : 4, isLongAudioTest ? 500 : 300);
       } catch (error) {
         console.warn('Hardware action failed:', error);
         try { await this.refreshHardwareState(); } catch (_) {}
         alert(t('hardware.action.failed'));
       }
     },
-    async followHardwareCheck(attempt) {
-      await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 380 : 300));
+    async followHardwareCheck(attempt, maxAttempts = 4, intervalMs = 300) {
+      await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 380 : intervalMs));
       try {
         const data = await this.refreshHardwareState();
-        if (data.hardware?.checking && attempt < 4) this.followHardwareCheck(attempt + 1);
+        if (data.hardware?.checking && attempt < maxAttempts) this.followHardwareCheck(attempt + 1, maxAttempts, intervalMs);
       } catch (error) {
         console.warn('Hardware check follow-up failed:', error);
       }
