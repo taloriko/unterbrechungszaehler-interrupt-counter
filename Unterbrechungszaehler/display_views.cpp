@@ -18,7 +18,7 @@ bool flashRequested = false;
 bool flashActive = false;
 uint32_t flashUntilMs = 0;
 bool spamFlickerActive = false;
-uint32_t spamFlickerStartedAtMs = 0;
+uint32_t spamFlickerUntilMs = 0;
 uint32_t spamFlickerNextFrameMs = 0;
 uint8_t spamFlickerFrame = 0;
 uint32_t lastIdleEvaluationMs = 0;
@@ -310,7 +310,7 @@ void notifyInterruption(bool flashEnabled) {
   flashRequested = flashEnabled;
 }
 
-void notifySuppressedPhysicalPress() {
+void notifySuppressedPhysicalPress(uint32_t cooldownRemainingMs) {
   const uint32_t nowMs = millis();
   lastActivityMs = nowMs;
   dimmed = false;
@@ -324,8 +324,12 @@ void notifySuppressedPhysicalPress() {
     spamFlickerActive = false;
     return;
   }
+  // The first suppressed press owns the current visual feedback window. Further
+  // suppressed presses may replay track 2 but must not restart the OLED effect.
+  if (spamFlickerActive || cooldownRemainingMs == 0U) return;
+  const uint32_t durationMs = std::min<uint32_t>(cooldownRemainingMs, ProjectConfig::DISPLAY_SPAM_FLICKER_MS);
   spamFlickerActive = true;
-  spamFlickerStartedAtMs = nowMs;
+  spamFlickerUntilMs = nowMs + durationMs;
   spamFlickerNextFrameMs = nowMs;
   spamFlickerFrame = 0;
 }
@@ -390,7 +394,7 @@ void update(const InterruptionTypes::Summary &summary) {
   updateContrast(nowMs);
 
   if (spamFlickerActive) {
-    if (static_cast<uint32_t>(nowMs - spamFlickerStartedAtMs) >= ProjectConfig::DISPLAY_SPAM_FLICKER_MS) {
+    if (due(nowMs, spamFlickerUntilMs)) {
       DisplaySh1106::setInverted(false);
       spamFlickerActive = false;
       renderRequested = true;
