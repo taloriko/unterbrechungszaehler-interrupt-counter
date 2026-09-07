@@ -1,7 +1,7 @@
 DY-SV17F Soundpaket
 
-00001.mp3 - Bootmelodie / Fokus bereit
-00002.mp3 - Anti-Spam / zu schnell erneut gedrückt
+00001.mp3 - Bootmelodie / Fokus bereit (DingDongDingDongDing)
+00002.mp3 - Anti-Spam / zu schnell erneut gedrückt (Schmerzschrei)
 00003.mp3 - Oooh nope
 00004.mp3 - Ding Dong - Unterbrechung
 00005.mp3 - Mini-Alarm
@@ -31,3 +31,4 @@ DY-SV17F Soundpaket
 00029.mp3 - Lustiger Schrei
 00030.mp3 - Boing
 00031.mp3 - Komische Katze
+00032.mp3 - Pling - erwischt
