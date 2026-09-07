@@ -122,13 +122,13 @@ Den Rest macht das Gerät.
 - **CSV-Export und Langzeit-Ringspeicher**
   Falls aus „Ich werde ständig unterbrochen“ irgendwann „Zeig mir die Daten“ wird.
 
-- **DS3231-RTC**
+- **Echtzeituhr DS3231-RTC**
   Damit das Gerät auch ohne WLAN weiß, wie spät es ist. Revolutionäre Technik.
 
-- **Optionales SH1106-OLED mit 128 × 64 Pixeln**
-  Technisch nicht zwingend notwendig, sieht aber sofort mindestens 37 % professioneller aus. Das Display kann persistent ein- und ausgeschaltet sowie um 180° gedreht werden. Es folgt der gewählten UI-Sprache; nicht im kleinen OLED-Font enthaltene Umlaute/Akzente werden lesbar transliteriert. Beim echten Geräteboot bleibt das Startbild mindestens vier Sekunden sichtbar.
+- **Optionales OLED-Display SH1106 mit 128 × 64 Pixeln**
+  Technisch nicht zwingend notwendig, sieht aber sofort mindestens 37 % professioneller aus. Das Display kann persistent ein- und ausgeschaltet sowie um 180° gedreht werden. Es folgt der gewählten UI-Sprache und es können verschiedene Ansichten gewählt werden.
 
-- **Fallback-WLAN für lokalen Zugriff**
+- **Fallback-WLAN (AP) für lokalen Zugriff**
   Wer keine Cloud möchte, sollte das Gerät schließlich trotzdem noch erreichen können. Der Fallback-AP ist mit `Unterbrechungszähler` geschützt.
 
 - **Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch und Oberschwäbisch in der Oberfläche**
@@ -136,10 +136,6 @@ Den Rest macht das Gerät.
 
 - **MagSafe-Ring für Akku oder Halterungen**
   Weil Klettband zwar funktioniert, aber Magnete einfach mehr nach Zukunft aussehen.
-
-## 3.0.0 ist ein harter Schnitt
-
-Die bisherigen 1.x/2.x-Stände waren Entwicklungs- und Teststände. **3.0.0 ist der neue Ausgangspunkt.** Es gibt deshalb keine zugesicherte Hardware-, Daten- oder OTA-Migration von 2.x. Wer von einem alten Testaufbau kommt, baut die Verdrahtung nach der aktuellen 3.0.0-Dokumentation neu auf.
 
 ## Versionsstand 3.x
 
@@ -155,7 +151,7 @@ Die bisherigen 1.x/2.x-Stände waren Entwicklungs- und Teststände. **3.0.0 ist 
 | 3.4.0 | 10-s-Anti-Spam für den physischen Knopf, Track 2 reserviert, normale Töne ab Track 3 und OLED-TV-Störfeedback. |
 | 3.4.1 | WebUI verfolgt den manuellen Audiotest bis zum Abschluss; die OLED-TV-Störung läuft nach dem ersten verworfenen Druck bis zum Ende der aktiven 10-s-Sperre und wird durch weitere Spam-Drücke nicht neu gestartet. |
 
-## Aktuelle Pinbelegung
+## Pinbelegung
 
 | Funktion | ESP32 |
 |---|---:|
