@@ -10,8 +10,8 @@ enum class TrendDirection : uint8_t {
   Rising = 2
 };
 
-inline TrendDirection classifyTrend(uint16_t previous60, uint16_t last60) {
-  const int32_t difference = static_cast<int32_t>(last60) - static_cast<int32_t>(previous60);
+inline TrendDirection classifyTrend(uint32_t previous60, uint32_t last60) {
+  const int64_t difference = static_cast<int64_t>(last60) - static_cast<int64_t>(previous60);
   if (difference <= -2) return TrendDirection::Falling;
   if (difference >= 2) return TrendDirection::Rising;
   return TrendDirection::Stable;
