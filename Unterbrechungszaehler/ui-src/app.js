@@ -1121,7 +1121,7 @@
       'focus.trendExplain': '↓ = mindestens 2 weniger · → = ungefähr gleich · ↑ = mindestens 2 mehr',
       'patterns.title': 'Arbeitsmuster', 'patterns.desc': 'Ruhigste beobachtete Zeit und Stunde mit den meisten Unterbrechungen.',
       'patterns.quiet': 'Ruhigstes Zeitfenster', 'patterns.peak': 'Meiste Unterbrechungen', 'patterns.basis': 'Basis',
-      'patterns.days': '{n} ausgewertete Tage', 'patterns.insufficient': 'Noch nicht genug Daten',
+      'patterns.days': '{n} ausgewertete Tage', 'patterns.coveredDays': '{n} abgedeckte Tage', 'patterns.insufficient': 'Noch nicht genug Daten',
       'patterns.explain': 'Basis sind bis zu 30 abgeschlossene Tage. Berücksichtigt werden nur Zeitfenster innerhalb der beobachteten Tagesaktivität. Ruhigstes Zeitfenster = niedrigster Durchschnitt in 2 Stunden, Meiste Unterbrechungen = höchster Durchschnitt in 1 Stunde.',
       'patterns.coveragePartial': 'Der Roh-Ringspeicher deckt den gesamten 30-Tage-Zeitraum nicht mehr vollständig ab.',
       'project.settings.title': 'Projekteinstellungen', 'project.settings.desc': 'Gerätebezogene Einstellungen für Display, Rückmeldung und DY-SV17F. Änderungen gelten sofort und bleiben im ESP32 gespeichert.',
@@ -1136,7 +1136,7 @@
       'focus.trendExplain': '↓ = at least 2 fewer · → = roughly equal · ↑ = at least 2 more',
       'patterns.title': 'Work patterns', 'patterns.desc': 'Quietest observed window and the hour with the most interruptions.',
       'patterns.quiet': 'Quietest time window', 'patterns.peak': 'Most interruptions', 'patterns.basis': 'Basis',
-      'patterns.days': '{n} evaluated days', 'patterns.insufficient': 'Not enough data yet',
+      'patterns.days': '{n} evaluated days', 'patterns.coveredDays': '{n} covered days', 'patterns.insufficient': 'Not enough data yet',
       'patterns.explain': 'Uses up to 30 completed days. Only windows inside observed daily activity are considered. Quietest = lowest 2-hour average; most interruptions = highest 1-hour average.',
       'patterns.coveragePartial': 'The raw ring no longer fully covers the complete 30-day period.',
       'project.settings.title': 'Project settings', 'project.settings.desc': 'Device settings for display, feedback and DY-SV17F. Changes apply immediately and remain stored on the ESP32.',
@@ -1151,7 +1151,7 @@
       'focus.trendExplain': '↓ = almeno 2 in meno · → = circa uguale · ↑ = almeno 2 in più',
       'patterns.title': 'Schemi di lavoro', 'patterns.desc': 'Finestra osservata più tranquilla e ora con più interruzioni.',
       'patterns.quiet': 'Finestra più tranquilla', 'patterns.peak': 'Più interruzioni', 'patterns.basis': 'Base',
-      'patterns.days': '{n} giorni analizzati', 'patterns.insufficient': 'Dati ancora insufficienti',
+      'patterns.days': '{n} giorni analizzati', 'patterns.coveredDays': '{n} giorni coperti', 'patterns.insufficient': 'Dati ancora insufficienti',
       'patterns.explain': 'Usa fino a 30 giorni completati. Considera solo finestre dentro l’attività giornaliera osservata. Più tranquilla = media minima su 2 ore; più interruzioni = media massima su 1 ora.',
       'patterns.coveragePartial': 'L’anello dei dati grezzi non copre più completamente i 30 giorni.',
       'project.settings.title': 'Impostazioni progetto', 'project.settings.desc': 'Impostazioni del dispositivo per display, feedback e DY-SV17F. Le modifiche sono immediate e salvate nell’ESP32.',
@@ -1166,7 +1166,7 @@
       'focus.trendExplain': '↓ = au moins 2 de moins · → = environ égal · ↑ = au moins 2 de plus',
       'patterns.title': 'Rythmes de travail', 'patterns.desc': 'Créneau observé le plus calme et heure avec le plus d’interruptions.',
       'patterns.quiet': 'Créneau le plus calme', 'patterns.peak': 'Plus d’interruptions', 'patterns.basis': 'Base',
-      'patterns.days': '{n} jours évalués', 'patterns.insufficient': 'Pas encore assez de données',
+      'patterns.days': '{n} jours évalués', 'patterns.coveredDays': '{n} jours couverts', 'patterns.insufficient': 'Pas encore assez de données',
       'patterns.explain': 'Jusqu’à 30 jours terminés sont utilisés. Seuls les créneaux dans l’activité journalière observée comptent. Plus calme = moyenne minimale sur 2 h ; plus d’interruptions = moyenne maximale sur 1 h.',
       'patterns.coveragePartial': 'L’anneau brut ne couvre plus entièrement la période de 30 jours.',
       'project.settings.title': 'Paramètres du projet', 'project.settings.desc': 'Paramètres de l’appareil pour affichage, retour et DY-SV17F. Les modifications sont immédiates et enregistrées sur l’ESP32.',
@@ -1181,7 +1181,7 @@
       'focus.trendExplain': '↓ = mindestens 2 weniger · → = ungefähr gleich · ↑ = mindestens 2 mehr',
       'patterns.title': 'Arbeitsmuster', 'patterns.desc': 'Ruhigschts beobachtets Zeitfenster ond d Stond mit de meischta Unterbrechunga.',
       'patterns.quiet': 'Ruhigschts Zeitfenster', 'patterns.peak': 'Meischte Unterbrechunga', 'patterns.basis': 'Basis',
-      'patterns.days': '{n} ausgwertete Däg', 'patterns.insufficient': 'No net gnug Daten',
+      'patterns.days': '{n} ausgwertete Däg', 'patterns.coveredDays': '{n} abdeckte Däg', 'patterns.insufficient': 'No net gnug Daten',
       'patterns.explain': 'Basis send bis zu 30 fertige Däg. Bloß Zeitfenster innerhalb dr beobachteta Tagesaktivität zählet. Ruhigschts = kleinschter 2-Stonda-Schnitt; meischte = größter 1-Stond-Schnitt.',
       'patterns.coveragePartial': 'Dr Roh-Ring deckt dia ganze 30 Däg nemme vollständig ab.',
       'project.settings.title': 'Projekteinstellungen', 'project.settings.desc': 'Geräteeinstellungen für Display, Rückmeldung ond DY-SV17F. Ändrunga geltet glei ond bleibet em ESP32 gspeichert.',
@@ -1196,7 +1196,7 @@
       'focus.trendExplain': '↓ = mindestens 2 weniger · → = ungefähr gleich · ↑ = mindestens 2 mehr',
       'patterns.title': 'Arbeitsmuster', 'patterns.desc': 'Ruhigschts Zeitfenster ond d Stond mit de meischta Unterbrechunga.',
       'patterns.quiet': 'Ruhigschts Zeitfenster', 'patterns.peak': 'Meischte Unterbrechunga', 'patterns.basis': 'Basis',
-      'patterns.days': '{n} ausgwertete Däg', 'patterns.insufficient': 'No net gnug Daten',
+      'patterns.days': '{n} ausgwertete Däg', 'patterns.coveredDays': '{n} abdeckte Däg', 'patterns.insufficient': 'No net gnug Daten',
       'patterns.explain': 'Bis zu 30 fertige Däg. Bloß beobachtete Tageszeit zählt. Ruhigschts = 2-Stonda-Schnitt, meischte = 1-Stond-Schnitt.',
       'patterns.coveragePartial': 'Dr Roh-Ring deckt dia 30 Däg nemme ganz ab.',
       'project.settings.title': 'Projekteinstellungen', 'project.settings.desc': 'Geräteeinstellungen für Display, Rückmeldung ond DY-SV17F. Ändrunga bleibet gspeichert.',
@@ -1211,7 +1211,7 @@
       'focus.trendExplain': '↓ = mindestens 2 weniger · → = ungefähr gleich · ↑ = mindestens 2 mehr',
       'patterns.title': 'Arbeitsmuster', 'patterns.desc': 'Ruhigschts Zeitfenster ond d Stond mit de meischta Unterbrechunga.',
       'patterns.quiet': 'Ruhigschts Zeitfenster', 'patterns.peak': 'Meischte Unterbrechunga', 'patterns.basis': 'Basis',
-      'patterns.days': '{n} ausgwertete Däg', 'patterns.insufficient': 'No it gnug Daten',
+      'patterns.days': '{n} ausgwertete Däg', 'patterns.coveredDays': '{n} abdeckte Däg', 'patterns.insufficient': 'No it gnug Daten',
       'patterns.explain': 'Bis zu 30 fertige Däg. Bloß beobachtete Tageszeit zählt. Ruhigschts = 2-Stonda-Schnitt, meischte = 1-Stond-Schnitt.',
       'patterns.coveragePartial': 'Dr Roh-Ring deckt dia 30 Däg nimme ganz ab.',
       'project.settings.title': 'Projekteinstellungen', 'project.settings.desc': 'Geräteeinstellungen für Display, Rückmeldung ond DY-SV17F. Ändrunga bleibet gspeichert.',
@@ -2379,10 +2379,12 @@
     const grid = el('div', 'focus-insight-grid patterns-grid');
     const quiet = el('div', 'focus-insight-item');
     const quietLabel = el('span', 'focus-insight-label'); quietLabel.textContent = t('patterns.quiet');
-    const quietValue = el('strong', 'focus-insight-value'); quiet.append(quietLabel, quietValue);
+    const quietValue = el('strong', 'focus-insight-value');
+    const quietMeta = el('small', 'focus-insight-meta'); quiet.append(quietLabel, quietValue, quietMeta);
     const peak = el('div', 'focus-insight-item');
     const peakLabel = el('span', 'focus-insight-label'); peakLabel.textContent = t('patterns.peak');
-    const peakValue = el('strong', 'focus-insight-value'); peak.append(peakLabel, peakValue);
+    const peakValue = el('strong', 'focus-insight-value');
+    const peakMeta = el('small', 'focus-insight-meta'); peak.append(peakLabel, peakValue, peakMeta);
     const basis = el('div', 'focus-insight-item');
     const basisLabel = el('span', 'focus-insight-label'); basisLabel.textContent = t('patterns.basis');
     const basisValue = el('strong', 'focus-insight-value'); basis.append(basisLabel, basisValue);
@@ -2394,12 +2396,14 @@
     const update = () => {
       const patterns = state.interruptions.patterns || {};
       quietValue.textContent = patterns.quietSufficient ? patternRange(patterns.quietStartHour, patterns.quietEndHour) : t('patterns.insufficient');
+      quietMeta.textContent = patterns.quietSufficient ? t('patterns.coveredDays').replace('{n}', String(Number(patterns.quietCoveredDays || 0))) : '';
       peakValue.textContent = patterns.peakSufficient ? patternRange(patterns.peakStartHour, patterns.peakEndHour) : t('patterns.insufficient');
+      peakMeta.textContent = patterns.peakSufficient ? t('patterns.coveredDays').replace('{n}', String(Number(patterns.peakCoveredDays || 0))) : '';
       basisValue.textContent = t('patterns.days').replace('{n}', String(Number(patterns.evaluatedDays || 0)));
       coverage.hidden = patterns.coverageComplete !== false;
       coverage.textContent = coverage.hidden ? '' : t('patterns.coveragePartial');
     };
-    Bindings.add(['interruptions.patterns.evaluatedDays','interruptions.patterns.coverageComplete','interruptions.patterns.quietSufficient','interruptions.patterns.quietStartHour','interruptions.patterns.quietEndHour','interruptions.patterns.peakSufficient','interruptions.patterns.peakStartHour','interruptions.patterns.peakEndHour'], update);
+    Bindings.add(['interruptions.patterns.evaluatedDays','interruptions.patterns.coverageComplete','interruptions.patterns.quietSufficient','interruptions.patterns.quietStartHour','interruptions.patterns.quietEndHour','interruptions.patterns.quietCoveredDays','interruptions.patterns.peakSufficient','interruptions.patterns.peakStartHour','interruptions.patterns.peakEndHour','interruptions.patterns.peakCoveredDays'], update);
     return root;
   }
 

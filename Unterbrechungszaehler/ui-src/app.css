@@ -544,3 +544,5 @@ button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible
 @media (max-width: 480px) {
   .focus-insight-grid, .patterns-grid { grid-template-columns: 1fr; }
 }
+
+.focus-insight-meta { display: block; margin-top: 5px; color: var(--muted); font-size: .72rem; }
