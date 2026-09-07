@@ -19,14 +19,16 @@ constexpr uint8_t MIN_COVERED_DAYS = ProjectConfig::FOCUS_PATTERN_MIN_COVERED_DA
 
 struct DayData {
   uint16_t dayIndex = 0;
-  uint16_t count = 0;
+  uint32_t count = 0;
   uint32_t firstSecond = 86400U;
   uint32_t lastSecond = 0U;
-  uint16_t hours[24]{};
+  uint32_t hours[24]{};
 };
 
 Snapshot current;
+Snapshot stableDuringScan;
 bool dirty = true;
+bool scanning = false;
 uint32_t lastScanMs = 0;
 uint16_t cachedTodayIndex = 0;
 uint32_t cachedLastTodayEpoch = 0;
@@ -99,7 +101,7 @@ void calculatePatterns(DayData (&days)[PATTERN_DAYS]) {
       if (day.count < 2U ||
           !FocusInsightsLogic::windowCovered(day.firstSecond, day.lastSecond, startHour, 2U)) continue;
       ++candidate.coveredDays;
-      candidate.eventSum += static_cast<uint32_t>(day.hours[startHour]) + day.hours[startHour + 1U];
+      candidate.eventSum += day.hours[startHour] + day.hours[startHour + 1U];
     }
     if (candidate.coveredDays >= MIN_COVERED_DAYS && FocusInsightsLogic::betterQuiet(candidate, bestQuiet)) {
       bestQuiet = candidate;
@@ -133,6 +135,9 @@ void calculatePatterns(DayData (&days)[PATTERN_DAYS]) {
 }
 
 void scan() {
+  if (scanning) return;
+  stableDuringScan = current;
+  scanning = true;
   current = Snapshot{};
   cachedLastTodayEpoch = 0U;
   cachedLongestTodayCompleted = 0U;
@@ -144,6 +149,7 @@ void scan() {
     cachedTodayIndex = 0U;
     dirty = false;
     lastScanMs = millis();
+    scanning = false;
     return;
   }
 
@@ -205,7 +211,7 @@ void scan() {
               const uint32_t sod = secondOfDay(local);
               day.firstSecond = std::min(day.firstSecond, sod);
               day.lastSecond = std::max(day.lastSecond, sod);
-              if (local.hour < 24U && day.hours[local.hour] != UINT16_MAX) ++day.hours[local.hour];
+              if (local.hour < 24U) ++day.hours[local.hour];
             }
           }
 
@@ -236,13 +242,16 @@ void scan() {
 
   dirty = false;
   lastScanMs = millis();
+  scanning = false;
 }
 
 }  // namespace
 
 void begin() {
   current = Snapshot{};
+  stableDuringScan = Snapshot{};
   dirty = true;
+  scanning = false;
   lastScanMs = 0U;
   cachedTodayIndex = 0U;
   cachedLastTodayEpoch = 0U;
@@ -251,12 +260,14 @@ void begin() {
 }
 
 void update() {
+  if (scanning) return;
   const TimeTypes::Snapshot time = TimeService::now();
   ProjectTime::LocalDateTime local;
   const bool localValid = time.valid && time.epochMs >= 0 && ProjectTime::fromEpochMs(time.epochMs, local);
+  const bool timeValidityChanged = localValid != current.timeValid;
   const bool dayChanged = localValid && cachedTodayIndex != 0U && local.dayIndex != cachedTodayIndex;
   const uint32_t nowMs = millis();
-  if (dirty || dayChanged || lastScanMs == 0U || due(nowMs, lastScanMs + CACHE_MAX_AGE_MS)) {
+  if (dirty || timeValidityChanged || dayChanged || lastScanMs == 0U || due(nowMs, lastScanMs + CACHE_MAX_AGE_MS)) {
     scan();
   } else {
     refreshDynamicCurrent();
@@ -268,6 +279,7 @@ void markDirty() {
 }
 
 const Snapshot &snapshot() {
+  if (scanning) return stableDuringScan;
   update();
   return current;
 }
