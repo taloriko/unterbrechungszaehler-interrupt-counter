@@ -4,6 +4,7 @@
 
 #include "audio_dy_sv17f.h"
 #include "display_views.h"
+#include "focus_insights.h"
 #include "gpio_module.h"
 #include "interruption_aggregates.h"
 #include "physical_button_guard.h"
@@ -317,6 +318,8 @@ void processPersistence() {
     SerialLog::warning("STATS", "Raw event persisted but daily aggregate update failed; raw data remains source of truth");
   }
   popQueue();
+  FocusInsights::markDirty();
+  DisplayViews::requestHomeRefresh();
   refreshStorageState();
   char deltaText[24];
   if (event.deltaSeconds == InterruptionTypes::DELTA_FIRST_OF_DAY) {
@@ -342,6 +345,7 @@ void begin() {
   currentSummary.soundEnabled = ProjectPreferences::soundEnabled();
 
   InterruptionStore::begin();
+  FocusInsights::begin();
   if (InterruptionStore::ready()) aggregatesStarted = InterruptionAggregates::begin();
   aggregatesReadyLast = aggregatesStarted && InterruptionAggregates::ready();
   if (aggregatesReadyLast) {
@@ -411,6 +415,7 @@ void update() {
   serviceUrgent();
   processPersistence();
   refreshStorageState();
+  FocusInsights::update();
 }
 
 void serviceUrgent() {

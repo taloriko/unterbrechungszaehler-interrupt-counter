@@ -14,7 +14,9 @@ enum class DisplayMode : uint8_t {
   CountOnly = 1,
   LastOnly = 2,
   DayProgress = 3,
-  Focus = 4
+  Focus = 4,
+  QuietPhases = 5,
+  WorkPatterns = 6
 };
 
 void begin();

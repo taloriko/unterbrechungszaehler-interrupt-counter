@@ -503,3 +503,44 @@ button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible
   .project-setting-row { grid-template-columns: 1fr; gap: 7px; }
   .project-setting-switch { grid-template-columns: minmax(0, 1fr) auto; }
 }
+
+
+/* Focus & Insights: compact numerical summaries without a second chart layer. */
+.focus-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.focus-insight-item {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-soft);
+}
+.focus-insight-label {
+  display: block;
+  font-size: .78rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.focus-insight-value {
+  display: block;
+  font-size: clamp(1.05rem, 2.4vw, 1.55rem);
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.insight-explanation {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: .82rem;
+  line-height: 1.45;
+}
+.insight-explanation.compact { margin-top: 5px; font-size: .76rem; }
+.patterns-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 760px) {
+  .focus-insight-grid, .patterns-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+  .focus-insight-grid, .patterns-grid { grid-template-columns: 1fr; }
+}

@@ -6,15 +6,16 @@
 #include "interruption_service.h"
 #include "interruption_store.h"
 #include "interruption_types.h"
+#include "project_config.h"
 #include "project_time.h"
 #include "time_service.h"
 
 namespace FocusInsights {
 namespace {
 
-constexpr uint32_t CACHE_MAX_AGE_MS = 60000U;
-constexpr uint8_t PATTERN_DAYS = 30U;
-constexpr uint8_t MIN_COVERED_DAYS = 5U;
+constexpr uint32_t CACHE_MAX_AGE_MS = ProjectConfig::FOCUS_INSIGHTS_CACHE_MAX_AGE_MS;
+constexpr uint8_t PATTERN_DAYS = ProjectConfig::FOCUS_PATTERN_DAYS;
+constexpr uint8_t MIN_COVERED_DAYS = ProjectConfig::FOCUS_PATTERN_MIN_COVERED_DAYS;
 
 struct DayData {
   uint16_t dayIndex = 0;

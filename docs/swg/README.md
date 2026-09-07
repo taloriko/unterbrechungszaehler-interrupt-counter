@@ -248,3 +248,7 @@ UART-Wiedergabstatus ond dr rohe BUSY-Pegel send jetzt sauber trennt ond hend ih
 ## Anti-Spam am echte Knopf (3.4.0)
 
 A gültiger DI1/GPIO-Druck macht 10 Sekunda Sperrzeit. Weitere echte Knopfdrück in der Zeit werdet weder gspeichert no gezählt ond mache CSV, Heatmaps ond Ø-Abständ net kaputt. Dafür kommt sofort Track 2 ond s OLED flimmert kurz wia a alter Fernseher mit „NET SO HEKTISCH!“. Web-Klicks send unabhängig. Track 1 bleibt Boot/Test, Track 2 isch Anti-Spam, normale Tön fanget bei Track 3 a.
+
+## Fokus & Ruh
+
+Aktuelle Ruhephase, Tages-/Wocha-Bestwert ond dr 120-Minuta-Trend kommet aus de vorhandena gültige Rohereignisse. Arbeitsmuster nehmet bis zu 30 fertige Däg ond bloß vollständig beobachtete Zeitfenster. D Projekteinstellungen send unter **Einstellungen → Projekteinstellungen**. S 9-Byte-Raw-Format bleibt wia s isch.

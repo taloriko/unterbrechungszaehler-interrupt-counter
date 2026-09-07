@@ -4,6 +4,7 @@
 
 #include "audio_dy_sv17f.h"
 #include "hardware_registry.h"
+#include "focus_insights.h"
 #include "interruption_aggregates.h"
 #include "interruption_service.h"
 #include "interruption_store.h"
@@ -106,6 +107,36 @@ void appendSummaryObjectInternal(String &out) {
     }
   }
   removeTrailingComma(out);
+  out += "},";
+
+  const auto &insights = FocusInsights::snapshot();
+  JsonUtils::appendKey(out, "focus");
+  out += '{';
+  fieldBool(out, "timeValid", insights.timeValid);
+  fieldBool(out, "currentPhaseAvailable", insights.currentPhaseAvailable);
+  fieldUInt(out, "currentPhaseSeconds", insights.currentPhaseSeconds);
+  fieldBool(out, "longestTodayAvailable", insights.longestTodayAvailable);
+  fieldUInt(out, "longestTodaySeconds", insights.longestTodaySeconds);
+  fieldBool(out, "longestWeekAvailable", insights.longestWeekAvailable);
+  fieldUInt(out, "longestWeekSeconds", insights.longestWeekSeconds);
+  fieldUInt(out, "trendPrevious60", insights.trendPrevious60);
+  fieldUInt(out, "trendLast60", insights.trendLast60);
+  fieldString(out, "trendDirection", FocusInsights::trendDirectionName(insights.trendDirection));
+  fieldUInt(out, "generatedEpochSeconds", insights.generatedEpochSeconds, false);
+  out += "},";
+
+  JsonUtils::appendKey(out, "patterns");
+  out += '{';
+  fieldUInt(out, "evaluatedDays", insights.evaluatedDays);
+  fieldBool(out, "coverageComplete", insights.patternsCoverageComplete);
+  fieldBool(out, "quietSufficient", insights.quietSufficient);
+  fieldUInt(out, "quietStartHour", insights.quietStartHour);
+  fieldUInt(out, "quietEndHour", insights.quietEndHour);
+  fieldUInt(out, "quietCoveredDays", insights.quietCoveredDays);
+  fieldBool(out, "peakSufficient", insights.peakSufficient);
+  fieldUInt(out, "peakStartHour", insights.peakStartHour);
+  fieldUInt(out, "peakEndHour", insights.peakEndHour);
+  fieldUInt(out, "peakCoveredDays", insights.peakCoveredDays, false);
   out += '}';
   out += '}';
 }
