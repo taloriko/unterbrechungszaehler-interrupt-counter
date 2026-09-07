@@ -1,0 +1,42 @@
+name: Apply 3.4.0 anti-spam patch
+
+on:
+  push:
+    branches:
+      - feature/3.4.0-physical-button-anti-spam
+    paths:
+      - .github/patch_340.py
+      - .github/workflows/patch-340.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Apply 3.4.0 patch
+        run: python .github/patch_340.py
+      - name: Rebuild embedded Web UI
+        run: python Unterbrechungszaehler/tools/build_web.py
+      - name: Portable release checks
+        run: python Unterbrechungszaehler/tools/release_check.py
+      - name: Remove temporary patch helpers
+        run: rm -f .github/patch_340.py .github/workflows/patch-340.yml
+      - name: Commit feature implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Implement 3.4.0 physical-button anti-spam feedback"
+          git push
