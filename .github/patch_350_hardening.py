@@ -22,7 +22,6 @@ replacements = {
     "'patterns.days': '{n} ausgwertete Däg', 'patterns.insufficient':": "'patterns.days': '{n} ausgwertete Däg', 'patterns.coveredDays': '{n} abdeckte Däg', 'patterns.insufficient':",
 }
 text = APP.read_text(encoding="utf-8")
-# swg/alb/ob share the same source phrase, so replace all three at once after exact language count validation.
 for old, new in list(replacements.items())[:4]:
     if text.count(old) != 1:
         raise RuntimeError(f"translation anchor count {old!r}: {text.count(old)}")
@@ -34,7 +33,6 @@ if text.count(swg_old) != 3:
 text = text.replace(swg_old, swg_new)
 APP.write_text(text, encoding="utf-8")
 
-# Show the actual coverage beside each derived result while retaining total evaluated days as the common basis.
 replace_once(
     APP,
     "    const quietValue = el('strong', 'focus-insight-value'); quiet.append(quietLabel, quietValue);",
@@ -64,20 +62,18 @@ replace_once(
     "'interruptions.patterns.quietEndHour','interruptions.patterns.quietCoveredDays','interruptions.patterns.peakSufficient','interruptions.patterns.peakStartHour','interruptions.patterns.peakEndHour','interruptions.patterns.peakCoveredDays'"
 )
 
-# Small subdued meta line.
 css = FW / "ui-src" / "app.css"
 css_text = css.read_text(encoding="utf-8")
 if '.focus-insight-meta {' not in css_text:
     css_text += "\n.focus-insight-meta { display: block; margin-top: 5px; color: var(--muted); font-size: .72rem; }\n"
 css.write_text(css_text, encoding="utf-8")
 
-# Strengthen release checks for the 3.5-specific guarantees.
 rc = RC.read_text(encoding="utf-8")
 anchor = '    check("trendPrevious60" in JS and "trendLast60" in JS and "focus.explain" in JS, "explained 120-minute trend on Home")\n'
 extra = (
     '    check("quietCoveredDays" in JS and "peakCoveredDays" in JS and "patterns.coveredDays" in JS, "work-pattern results expose actual covered-day basis")\n'
     '    check("if (scanning) return stableDuringScan" in insights_cpp and "timeValidityChanged" in insights_cpp, "Focus scan is reentrancy-safe and reacts to time validity changes")\n'
-    '    check("Preferences" not in insights_cpp and "LittleFS" not in insights_cpp and "put" not in insights_cpp, "Focus & Insights adds no persistent storage writes")\n'
+    '    check("Preferences" not in insights_cpp and "LittleFS" not in insights_cpp and "appendRaw" not in insights_cpp and "writeSequence" not in insights_cpp, "Focus & Insights adds no persistent storage writes")\n'
 )
 if rc.count(anchor) != 1:
     raise RuntimeError('release-check insertion anchor missing')
