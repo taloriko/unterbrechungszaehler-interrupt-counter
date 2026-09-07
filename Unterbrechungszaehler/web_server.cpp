@@ -257,7 +257,7 @@ void handleProjectPreferences() {
     ok = InterruptionService::setSoundVolumePercent(static_cast<uint8_t>(value));
   } else if (hasTrack) {
     uint32_t value = 0;
-    if (!parseUnsignedArg(server.arg("soundTrack"), 2, 65535, value)) {
+    if (!parseUnsignedArg(server.arg("soundTrack"), ProjectConfig::INTERRUPTION_SOUND_FIRST_NORMAL_TRACK, 65535, value)) {
       server.send(400, "application/json; charset=utf-8", "{\"ok\":false,\"error\":\"invalid_track\"}");
       return;
     }

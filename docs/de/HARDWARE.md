@@ -117,3 +117,9 @@ Die vollständige technische Verdrahtungsdokumentation liegt zusätzlich in [`..
 ## OLED-Einstellungen ab 3.2.0
 
 Das SH1106 kann persistent um 180° gedreht werden. Standardwerte einer frischen Konfiguration sind 65 % Helligkeit und 5 % gedimmte Helligkeit. Der Bootscreen bleibt mindestens vier Sekunden sichtbar und blockiert die übrigen Gerätefunktionen nicht.
+
+### Trackbelegung ab 3.4.0
+
+- `00001` – Boot/Test
+- `00002` – Anti-Spam bei erneutem physischen Druck innerhalb 10 Sekunden
+- `00003` und höher – normale Unterbrechungstöne; Rotation nur über 3…N

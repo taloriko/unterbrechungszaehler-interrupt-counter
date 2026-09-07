@@ -49,6 +49,9 @@ uint16_t musicCount();
 
 // Existing playback path remains unchanged; 3.3.2 fixes only diagnostic test completion.
 bool playTrack(uint16_t trackNumber);
+// Immediate local-feedback command. It may replace only a pending normal
+// play verification; probes/manual diagnostics keep exclusive ownership.
+bool playPriorityFeedbackTrack(uint16_t trackNumber);
 bool playTestTone();
 bool stop();
 bool pause();

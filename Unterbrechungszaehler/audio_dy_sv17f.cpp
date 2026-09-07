@@ -664,6 +664,33 @@ bool playTrack(uint16_t trackNumber) {
   return true;
 }
 
+bool playPriorityFeedbackTrack(uint16_t trackNumber) {
+  if (!HardwareConfig::ENABLE_AUDIO_DY_SV17F || !uartReady || trackNumber == 0U) return false;
+  if (probeActive || manualTestActive) return false;
+  if (waitingFor != WaitKind::None && waitingFor != WaitKind::VerifyPlay) return false;
+  if (deferredAction != DeferredAction::None && deferredAction != DeferredAction::VerifyPlay) return false;
+
+  // A repeated physical press should be audible immediately. Replacing a
+  // pending normal play-state verification is safe: its eventual UART answer
+  // is ignored while no query is waiting. Diagnostic/probe traffic is never
+  // preempted by this fast feedback path.
+  bool replacedNormalVerification = false;
+  if (waitingFor == WaitKind::VerifyPlay) {
+    waitingFor = WaitKind::None;
+    verifyExpectation = VerifyExpectation::Any;
+    replacedNormalVerification = true;
+  }
+  if (deferredAction == DeferredAction::VerifyPlay) {
+    deferredAction = DeferredAction::None;
+    replacedNormalVerification = true;
+  }
+  sendPlayCommand(trackNumber);
+  // scheduleVerify() marks health as Checking. A deliberately superseded normal
+  // verification must not leave that diagnostic state stuck forever.
+  if (replacedNormalVerification && isDetected) setHealth(StatusRegistry::State::Ok);
+  return true;
+}
+
 bool playTestTone() {
   if (!HardwareConfig::ENABLE_AUDIO_DY_SV17F || !commandPathIdle()) return false;
   resetAudioTest();

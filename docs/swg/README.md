@@ -170,7 +170,7 @@ S **DY-SV17F** hot **32 Mbit / 4 MByte internen Flash** für **MP3** ond **WAV**
 2. Dr interne Speicher vom DY-SV17F am Rechner aufmacha.
 3. D Dateien **direkt ins Hauptverzeichnis/Root** kopiera, net in Unterordner.
 4. Fünfstellig benenna: `00001.mp3`, `00002.mp3`, `00003.mp3`, …; WAV geht entsprechend genauso.
-5. `00001` isch bloß dr **Boot-Ton**. Ab `00002` send d Unterbrechungstön; Rotation nimmt Track **2…N**.
+5. `00001` isch bloß dr **Boot-Ton**. Ab `00002` send d Unterbrechungstön; Rotation nimmt Track **3…N**.
 6. Speicher sauber auswerfa ond Micro-USB abzieha, bevor dr Ton getestet wird.
 
 > [!IMPORTANT]
@@ -244,3 +244,7 @@ Bei de Heatmaps kannsch jetzt **Beides**, **Knopf / GPIO** oder **Web** auswähl
 ## DY-SV17F-Diagnose 3.3.1
 
 UART-Wiedergabstatus ond dr rohe BUSY-Pegel send jetzt sauber trennt ond hend ihre Messzeit dabei. `Prüfen` bleibt still; `Ton testen` schaut zusätzlich nach BUSY-Flanka ond fragt s vermutete End no amol per UART ab. BUSY isch bloß Diagnose ond net nötig, dass dr Ton funktioniert.
+
+## Anti-Spam am echte Knopf (3.4.0)
+
+A gültiger DI1/GPIO-Druck macht 10 Sekunda Sperrzeit. Weitere echte Knopfdrück in der Zeit werdet weder gspeichert no gezählt ond mache CSV, Heatmaps ond Ø-Abständ net kaputt. Dafür kommt sofort Track 2 ond s OLED flimmert kurz wia a alter Fernseher mit „NET SO HEKTISCH!“. Web-Klicks send unabhängig. Track 1 bleibt Boot/Test, Track 2 isch Anti-Spam, normale Tön fanget bei Track 3 a.
