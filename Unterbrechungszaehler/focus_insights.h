@@ -14,8 +14,8 @@ struct Snapshot {
   uint32_t longestTodaySeconds = 0;
   bool longestWeekAvailable = false;
   uint32_t longestWeekSeconds = 0;
-  uint16_t trendPrevious60 = 0;
-  uint16_t trendLast60 = 0;
+  uint32_t trendPrevious60 = 0;
+  uint32_t trendLast60 = 0;
   FocusInsightsLogic::TrendDirection trendDirection = FocusInsightsLogic::TrendDirection::Stable;
 
   bool patternsCoverageComplete = false;
