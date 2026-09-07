@@ -137,19 +137,9 @@ Den Rest macht das Gerät.
 - **MagSafe-Ring für Akku oder Halterungen**
   Weil Klettband zwar funktioniert, aber Magnete einfach mehr nach Zukunft aussehen.
 
-## Versionsstand 3.x
+## Versionsverlauf
 
-| Version | Technische Erweiterung |
-|---|---|
-| 3.0.0 | Neue modulare ESP32-Baseline mit GPIO-/Web-Erfassung, 100.000 Rohereignissen, 2.300 Tagesaggregaten, Heatmaps, CSV, RTC/OLED/DY-SV17F und OTA. |
-| 3.0.1 | Passwortgeschützter Fallback-AP und bereinigte OTA-/AP-Statusdarstellung. |
-| 3.1.0 | Heatmap-Metrik Ø Abstand, persistenter Display-Master, nicht blockierender Displaytest und dokumentiertes Soundpaket. |
-| 3.2.0 | Persistente OLED-Sprache/Rotation/Helligkeit, fünf Displaymodi, DY-SV17F-Lautstärke und Rotation als Standard. |
-| 3.3.0 | Vollständiger Datenbank-Reset, Herkunftsfilter für Heatmaps und konkrete Speicherfehlerdiagnose. |
-| 3.3.1 | Getrennte DY-SV17F-UART-/BUSY-Diagnose mit Messzeitpunkten und manuellem End-to-End-Audiotest. |
-| 3.3.2 | Audiotest bestätigt das Trackende über gezielte UART-Statusabfragen; BUSY bleibt Zusatzdiagnose. |
-| 3.4.0 | 10-s-Anti-Spam für den physischen Knopf, Track 2 reserviert, normale Töne ab Track 3 und OLED-TV-Störfeedback. |
-| 3.4.1 | WebUI verfolgt den manuellen Audiotest bis zum Abschluss; die OLED-TV-Störung läuft nach dem ersten verworfenen Druck bis zum Ende der aktiven 10-s-Sperre und wird durch weitere Spam-Drücke nicht neu gestartet. |
+Der vollständige technische Versionsverlauf steht im [Changelog](CHANGELOG.md).
 
 ## Pinbelegung
 
@@ -199,9 +189,9 @@ Falsch:
 > [!IMPORTANT]
 > **Solange das DY-SV17F per Micro-USB mit dem Computer verbunden ist bzw. sein interner Speicher über USB verwendet wird, funktioniert die normale Soundausgabe nicht.** Nach dem Kopieren deshalb den Datenträger auswerfen, USB trennen und erst dann Soundtest, Boot-Ton oder Unterbrechungston prüfen.
 
-Ab 3.2.0 ist die Lautstärke in der Weboberfläche von **0–100 %** einstellbar; bei einer frischen Konfiguration sind **100 %** voreingestellt. Der Standardmodus für Unterbrechungstöne ist **Wechseln/Rotation**. Seit 3.4.0 ist Track 2 für Anti-Spam reserviert; normale feste und rotierende Unterbrechungstöne beginnen bei Track 3.
+Die Lautstärke ist in der Weboberfläche von **0–100 %** einstellbar; bei einer frischen Konfiguration sind **100 %** voreingestellt. Der Standardmodus für Unterbrechungstöne ist **Wechseln/Rotation**. Track 2 ist für Anti-Spam reserviert; normale feste und rotierende Unterbrechungstöne beginnen bei Track 3.
 
-## Display in 3.2.0
+## Display
 
 Das SH1106 folgt der in der Weboberfläche gewählten Sprache. Die Sprache wird zusätzlich auf dem ESP32 gespeichert, damit das OLED sie auch direkt nach einem Neustart kennt. Der kompakte OLED-Font bleibt bewusst klein: Umlaute und Akzente werden bei Bedarf lesbar nach ASCII umgesetzt, zum Beispiel `ä → AE`, `ö → OE`, `ü → UE`, `ß → SS` und `é → E`.
 
@@ -232,7 +222,6 @@ Die fünf Displaymodi sind:
 - [Speicherformat](Unterbrechungszaehler/STORAGE_FORMAT.md)
 - [Zeitarchitektur](Unterbrechungszaehler/TIME_ARCHITECTURE.md)
 - [Testbericht](Unterbrechungszaehler/TEST_REPORT.md)
-- [Changelog](CHANGELOG.md)
 
 ## Screenshots
 
@@ -278,25 +267,25 @@ MIT. Benutzen, verändern, erweitern und daraus etwas Eigenes bauen ist ausdrüc
 
 GitHub: [taloriko](https://github.com/taloriko)
 
-## Datenpflege & Herkunftsfilter in 3.3.0
+## Datenpflege & Herkunftsfilter
 
 Die Heatmaps lassen sich zusätzlich nach der Herkunft filtern: **Beides** (Standard), **Knopf / GPIO** oder **Web**. Die Herkunft steckt bereits im kompakten Rohdatensatz. Sobald nach einer einzelnen Herkunft gefiltert wird, wertet das Gerät deshalb den noch vorhandenen Roh-Ringspeicher aus und weist auf eine eventuell unvollständige Abdeckung hin. Das Datenformat wird dafür nicht aufgebläht und bleibt offen für spätere Quellen wie API.
 
 Unter **Daten & Export** kann die komplette Ereignisdatenbank bewusst gelöscht werden. Als Schutz gegen versehentliches Löschen muss exakt der Projektname `Unterbrechungszähler` eingegeben werden. Danach werden Rohereignisse und Tagesaggregate entfernt und das Gerät startet neu. Unter **Gerät → Speicher** wird bei einem Speicherproblem zusätzlich die konkrete interne Fehlerursache angezeigt.
 
-### DY-SV17F-Diagnose in 3.3.1
+### DY-SV17F-Diagnose
 
 Die Soundwiedergabe blieb funktional unverändert. Die Diagnose unterscheidet jetzt sauber zwischen der letzten **UART-Protokollantwort** und dem rohen **BUSY-Pegel an GPIO39**. `Prüfen` bleibt lautlos. `Ton testen` kann zusätzlich einen kontrollierten End-to-End-Test durchführen und die BUSY-Polarität nur dann bestätigen, wenn UART und ein vollständiger BUSY-Zyklus zusammenpassen. BUSY ist reine Zusatzdiagnose und keine Voraussetzung für die Wiedergabe.
 
-## Anti-Spam am echten Knopf (3.4.0)
+## Anti-Spam am echten Knopf
 
-Der physische DI1/GPIO-Knopf besitzt ab 3.4.0 eine feste **10-Sekunden-Sperre**: Der erste Druck zählt, weitere physische Drücke innerhalb von weniger als 10 Sekunden werden vollständig aus Rohdaten, Tagesstatistik, CSV, Heatmaps und Ø-Abständen verworfen. Web-Ereignisse bleiben unabhängig. Ein verworfener Druck verlängert die Sperre nicht.
+Der physische DI1/GPIO-Knopf besitzt eine feste **10-Sekunden-Sperre**: Der erste Druck zählt, weitere physische Drücke innerhalb von weniger als 10 Sekunden werden vollständig aus Rohdaten, Tagesstatistik, CSV, Heatmaps und Ø-Abständen verworfen. Web-Ereignisse bleiben unabhängig. Ein verworfener Druck verlängert die Sperre nicht.
 
 Ein verworfener physischer Druck löst **Track 2** als reservierten Anti-Spam-Ton aus. Das OLED startet beim ersten verworfenen Druck der laufenden Sperrphase eine nicht blockierende alte-TV-Störung mit „ZU SCHNELL!“ und hält sie bis zum Ende dieser 10-Sekunden-Sperre aktiv. Weitere verworfene Drücke können Track 2 erneut auslösen, starten die OLED-Animation jedoch nicht neu und verlängern die Sperre nicht. Tonkommando und erster Störframe haben im Fast-Path Priorität vor Logging und Statistikarbeit. Bei ausgeschaltetem Sound/Display wird die jeweilige Benutzerpräferenz respektiert.
 
 Trackbelegung: `00001` = Boot/Test, `00002` = Anti-Spam, `00003` und höher = normale Unterbrechungstöne. Der Wechselmodus rotiert entsprechend nur über **3…N**.
 
 
-## DY-SV17F-Webdiagnose in 3.4.1
+## DY-SV17F-Webdiagnose
 
 Nach einem manuellen **Ton testen** verfolgt die Weboberfläche den Hardwarestatus ausschließlich für die Dauer dieses expliziten Tests. Die Abfrage erfolgt temporär in 500-ms-Abständen und endet automatisch, sobald die Firmware den Audiotest abgeschlossen hat; als Sicherheitsgrenze gelten 120 Sekunden. Außerhalb eines gestarteten Audiotests entsteht dadurch kein zusätzlicher permanenter Polling-Timer.
