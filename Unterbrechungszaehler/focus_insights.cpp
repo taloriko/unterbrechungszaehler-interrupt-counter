@@ -27,6 +27,7 @@ struct DayData {
 
 Snapshot current;
 Snapshot stableDuringScan;
+DayData scanDays[PATTERN_DAYS]{};
 bool dirty = true;
 bool scanning = false;
 uint32_t lastScanMs = 0;
@@ -42,6 +43,10 @@ bool due(uint32_t now, uint32_t deadline) {
 uint32_t secondOfDay(const ProjectTime::LocalDateTime &local) {
   return static_cast<uint32_t>(local.hour) * 3600U +
          static_cast<uint32_t>(local.minute) * 60U + local.second;
+}
+
+void clearScanDays() {
+  for (auto &day : scanDays) day = DayData{};
 }
 
 void serviceInputDuringScan(uint16_t &counter) {
@@ -142,6 +147,7 @@ void scan() {
   cachedLastTodayEpoch = 0U;
   cachedLongestTodayCompleted = 0U;
   cachedLongestWeekCompleted = 0U;
+  clearScanDays();
 
   const TimeTypes::Snapshot time = TimeService::now();
   ProjectTime::LocalDateTime nowLocal;
@@ -165,7 +171,6 @@ void scan() {
   const uint32_t previousWindowStart = nowSeconds >= 7200U ? nowSeconds - 7200U : 0U;
   const uint32_t currentWindowStart = nowSeconds >= 3600U ? nowSeconds - 3600U : 0U;
 
-  DayData days[PATTERN_DAYS]{};
   const uint64_t first = InterruptionStore::oldestSequence();
   const uint64_t last = InterruptionStore::newestSequence();
   uint16_t scanCounter = 0U;
@@ -205,7 +210,7 @@ void scan() {
           if (local.dayIndex < nowLocal.dayIndex && local.dayIndex >= patternStart) {
             const uint16_t ageDays = static_cast<uint16_t>(nowLocal.dayIndex - local.dayIndex);
             if (ageDays >= 1U && ageDays <= PATTERN_DAYS) {
-              DayData &day = days[ageDays - 1U];
+              DayData &day = scanDays[ageDays - 1U];
               if (day.dayIndex == 0U) day.dayIndex = local.dayIndex;
               ++day.count;
               const uint32_t sod = secondOfDay(local);
@@ -226,7 +231,7 @@ void scan() {
   }
 
   current.trendDirection = FocusInsightsLogic::classifyTrend(current.trendPrevious60, current.trendLast60);
-  calculatePatterns(days);
+  calculatePatterns(scanDays);
 
   const uint32_t stored = InterruptionStore::count();
   const uint32_t capacity = InterruptionStore::capacity();
@@ -250,6 +255,7 @@ void scan() {
 void begin() {
   current = Snapshot{};
   stableDuringScan = Snapshot{};
+  clearScanDays();
   dirty = true;
   scanning = false;
   lastScanMs = 0U;
