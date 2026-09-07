@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.4.1."""
+"""Portable release checks for Unterbrechungszaehler 3.5.0."""
 from __future__ import annotations
 
 import gzip
@@ -60,7 +60,7 @@ def main() -> None:
     partitions = (ROOT / "partitions.csv").read_text(encoding="utf-8")
 
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.4.1"' in config, "project version 3.4.1")
+    check('SOFTWARE_VERSION[] = "3.5.0"' in config, "project version 3.5.0")
     check(
         'AVAILABLE_LANGUAGES_JSON[] = "[\\\"de\\\",\\\"en\\\",\\\"it\\\",\\\"fr\\\",\\\"swg\\\",\\\"swg-alb\\\",\\\"swg-ob\\\"]"' in config,
         "declared UI languages",
@@ -79,7 +79,7 @@ def main() -> None:
     check("SOUND_VOLUME_DEFAULT_PERCENT = 100" in project, "sound volume default 100 percent")
     check("INTERRUPTION_SOUND_MODE_DEFAULT = ProjectPreferences::SoundMode::Rotate" in project, "rotating sound is the fresh default")
     check("DISPLAY_ROTATION_180_DEFAULT = false" in project and "displayRotation180" in JS, "persistent 180-degree display option")
-    check("day-progress" in JS and "project.displayMode.focus" in JS, "five OLED display modes exposed")
+    check("day-progress" in JS and "quiet-phases" in JS and "work-patterns" in JS, "seven OLED display modes exposed")
     check("normalizeDisplayText" in (ROOT / "display_sh1106.cpp").read_text(encoding="utf-8") and 'append("AE")' in (ROOT / "display_sh1106.cpp").read_text(encoding="utf-8"), "OLED UTF-8 transliteration fallback")
     check("ProjectPreferences::language()" in (ROOT / "display_views.cpp").read_text(encoding="utf-8") and 'prefs.putString(key' in (ROOT / "project_preferences.cpp").read_text(encoding="utf-8"), "OLED language follows persistent UI language")
     check("soundVolume" in JS and "setVolumePercent" in (ROOT / "audio_dy_sv17f.cpp").read_text(encoding="utf-8"), "DY-SV17F volume control")
@@ -128,7 +128,18 @@ def main() -> None:
     check(JS.count("setInterval(") == 1, "exactly one permanent frontend interval")
     check("const weeks = Array.from({ length: 53 }, (_, i) => String(i + 1))" in JS, "calendar-week heatmap headers use numbers only")
     check("Bindings.notify('analytics.monthWeek')" in JS and "Bindings.notify('analytics.hourly')" in JS, "manual heatmap filters trigger targeted rerender")
-    check("projectSettings: renderProjectSettings" in JS, "Home project settings card")
+    check("focusInsights: renderFocusInsights" in JS and "workPatterns: renderWorkPatterns" in JS, "Focus & Insights web renderers")
+    home_block = JS.split("home: {", 1)[1].split("analytics: {", 1)[0]
+    settings_block = JS.split("settings: {", 1)[1].split("}\n    }\n  };", 1)[0]
+    check("projectSettings" not in home_block and "projectSettings" in settings_block, "project settings moved from Home to Settings without duplication")
+    check("FOCUS_INSIGHTS_CACHE_MAX_AGE_MS = 60000" in project and "FOCUS_PATTERN_DAYS = 30" in project and "FOCUS_PATTERN_MIN_COVERED_DAYS = 5" in project, "bounded Focus & Insights cache policy")
+    insights_cpp = (ROOT / "focus_insights.cpp").read_text(encoding="utf-8")
+    check("InterruptionStore::readSequence" in insights_cpp and "local.dayIndex < earliestNeeded" in insights_cpp, "bounded newest-to-oldest raw insights scan")
+    check("windowCovered" in insights_cpp and "MIN_COVERED_DAYS" in insights_cpp, "observed-activity coverage rule for work patterns")
+    check("trendPrevious60" in JS and "trendLast60" in JS and "focus.explain" in JS, "explained 120-minute trend on Home")
+    check("quietCoveredDays" in JS and "peakCoveredDays" in JS and "patterns.coveredDays" in JS, "work-pattern results expose actual covered-day basis")
+    check("if (scanning) return stableDuringScan" in insights_cpp and "timeValidityChanged" in insights_cpp, "Focus scan is reentrancy-safe and reacts to time validity changes")
+    check("Preferences" not in insights_cpp and "LittleFS" not in insights_cpp and "appendRaw" not in insights_cpp and "writeSequence" not in insights_cpp, "Focus & Insights adds no persistent storage writes")
     check("SoundMode::Rotate" in (ROOT / "project_preferences.cpp").read_text(encoding="utf-8"), "rotating interruption sound mode")
     service_cpp = (ROOT / "interruption_service.cpp").read_text(encoding="utf-8")
     check("Track 1 = boot/test, track 2 = anti-spam" in service_cpp, "tracks 1/2 reserved from normal rotation")
@@ -190,6 +201,12 @@ def main() -> None:
     subprocess.run(["g++", "-std=c++17", "-I", str(ROOT), str(ROOT / "tools" / "test_physical_button_guard.cpp"), "-o", str(guard_binary)], check=True)
     subprocess.run([str(guard_binary)], check=True)
     guard_binary.unlink(missing_ok=True)
+
+    insights_binary = ROOT / "tools" / ".test_focus_insights"
+    subprocess.run(["g++", "-std=c++17", "-I", str(ROOT), str(ROOT / "tools" / "test_focus_insights.cpp"), "-o", str(insights_binary)], check=True)
+    subprocess.run([str(insights_binary)], check=True)
+    insights_binary.unlink(missing_ok=True)
+    check(True, "Focus & Insights host rules")
     subprocess.run([sys.executable, str(ROOT / "tools" / "test_interruption_storage.py")], check=True)
     subprocess.run([sys.executable, "-m", "py_compile", str(ROOT / "tools" / "build_web.py"), str(ROOT / "tools" / "test_interruption_storage.py"), str(ROOT / "tools" / "release_check.py")], check=True)
     if subprocess.run(["node", "--check", str(ROOT / "ui-src" / "app.js")], check=False).returncode != 0:

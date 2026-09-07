@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.5.0
+
+- neue Home-Karte **Fokus & Ruhe** mit aktueller Ruhephase, längster Ruhephase heute, längster Ruhephase der laufenden Woche und erklärtem 120-Minuten-Trend
+- Ruhephasen werden ausschließlich zwischen gültigen Unterbrechungen desselben lokalen Tages bzw. von der letzten heutigen Unterbrechung bis jetzt berechnet; keine künstlichen Nacht- oder Mitternachtsphasen
+- Trend vergleicht die letzten 60 Minuten mit den 60 Minuten davor; Differenzen ab ±2 werden als steigend/fallend, kleinere Abweichungen als stabil dargestellt
+- neue Auswertung **Arbeitsmuster**: ruhigstes vollständig beobachtetes 2-Stunden-Fenster und vollständig beobachtete Einzelstunde mit den meisten Unterbrechungen
+- Arbeitsmuster verwenden maximal 30 abgeschlossene Tage, mindestens fünf abgedeckte Tage pro Ergebnis und ausschließlich Zeitfenster innerhalb der beobachteten Tagesaktivität
+- zentrale RAM-Cache-Berechnung scannt den Raw-Ring nur bis zum benötigten Zeithorizont, wird nach neuen gültigen Ereignissen ungültig und spätestens nach 60 Sekunden aktualisiert
+- neue OLED-Modi **Ruhephasen** und **Arbeitsmuster** mit großen, nicht blockierend wechselnden Seiten; bestehende Displaymodi bleiben unverändert
+- bisherige Home-Projekteinstellungen unverändert nach **Einstellungen → Projekteinstellungen** verschoben; API, NVS-Keys, Wertebereiche und Persistenz bleiben gleich
+- neue Focus-/Insight-Texte in Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch und Oberschwäbisch
+- RawEvent bleibt 9 Byte; kein neues persistentes Focus-/Insight-Format und keine zusätzlichen Flash-Schreibvorgänge
+
 ## 3.4.1
 
 - Weboberfläche verfolgt einen ausdrücklich gestarteten DY-SV17F-Audiotest bis zum Firmware-Abschluss; temporär 500 ms, maximal 120 s, kein zusätzliches permanentes Polling

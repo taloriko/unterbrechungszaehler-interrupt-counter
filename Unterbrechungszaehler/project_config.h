@@ -73,4 +73,12 @@ constexpr char FS_PREF_NAMESPACE[] = "interruptfs";
 // Analytics is active and the document is visible.
 constexpr uint32_t LIVE_POLL_INTERVAL_MS = 1000;
 
+// Focus & Insights scans only the retained horizon needed for the current
+// week, the 120-minute trend and up to 30 completed local days. Results
+// are cached in RAM; no additional persistent data is written.
+constexpr uint32_t FOCUS_INSIGHTS_CACHE_MAX_AGE_MS = 60000;
+constexpr uint8_t FOCUS_PATTERN_DAYS = 30;
+constexpr uint8_t FOCUS_PATTERN_MIN_COVERED_DAYS = 5;
+constexpr uint32_t DISPLAY_INSIGHTS_PAGE_MS = 4000;
+
 }  // namespace ProjectConfig

@@ -267,3 +267,7 @@ UART playback status and the raw BUSY level are shown separately with measuremen
 ## Physical-button anti-spam (3.4.0)
 
 An accepted DI1/GPIO press starts a fixed 10-second window. Further physical presses inside that window are neither stored nor counted and do not affect CSV, heatmaps, or average intervals. They only trigger immediate local anti-spam feedback: track 2 plus roughly one second of non-blocking old-TV OLED flicker. Web events remain independent. Track 1 stays boot/test, track 2 is reserved, and normal interruption sounds start at track 3.
+
+## Focus & quiet time
+
+The current quiet phase, daily/weekly longest phases and the 120-minute trend are calculated from existing valid raw events. Work patterns use up to 30 completed days and only fully observed time windows. Project settings are located under **Settings → Project settings**. The 9-byte raw format is unchanged.

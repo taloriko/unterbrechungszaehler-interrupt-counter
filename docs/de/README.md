@@ -56,3 +56,7 @@ UART-Wiedergabestatus und BUSY-Pegel werden getrennt und mit Messzeit dargestell
 ## Anti-Spam am physischen Knopf (3.4.0)
 
 Ein gültiger DI1/GPIO-Druck startet eine feste 10-Sekunden-Sperre. Weitere physische Drücke innerhalb dieser Zeit werden nicht gespeichert oder gezählt und beeinflussen weder CSV noch Heatmaps oder Ø-Abstände. Sie lösen ausschließlich das schnelle lokale Anti-Spam-Feedback aus: Track 2 plus etwa eine Sekunde OLED-TV-Flimmern. Web-Ereignisse sind von dieser Sperre unabhängig. Track 1 bleibt Boot/Test, Track 2 ist reserviert, normale Töne beginnen bei Track 3.
+
+## Fokus & Ruhe
+
+Die aktuelle Ruhephase, Tages-/Wochenbestwerte und der 120-Minuten-Trend werden aus den bestehenden gültigen Rohereignissen berechnet. Arbeitsmuster verwenden bis zu 30 abgeschlossene Tage und nur vollständig beobachtete Zeitfenster. Die Projekteinstellungen befinden sich unter **Einstellungen → Projekteinstellungen**. Das 9-Byte-Raw-Format bleibt unverändert.

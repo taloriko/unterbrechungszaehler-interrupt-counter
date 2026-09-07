@@ -1,3 +1,12 @@
+# Release 3.5.0
+
+- Fokus-&-Ruhe-Karte auf Home mit aktueller/längster Tages-/Wochenphase und erklärtem 120-Minuten-Trend
+- Arbeitsmuster aus bis zu 30 abgeschlossenen Tagen: ruhigstes vollständig beobachtetes 2-h-Fenster und stärkste vollständig beobachtete 1-h-Stunde, jeweils ab fünf abgedeckten Tagen
+- zwei neue große OLED-Modi für Ruhephasen und Arbeitsmuster, nicht blockierend und sprachabhängig
+- Projekteinstellungen aus Home unverändert in eine eigene Kachel unter Einstellungen verschoben
+- zentrale, maximal 60 s alte RAM-Auswertung statt permanenter Raw-Ring-Scans; kein neues Speicherformat, RawEvent weiterhin 9 Byte
+- alle sieben vorhandenen UI-Sprachen nachgezogen
+
 # Release 3.4.1
 
 - temporäre 500-ms-Web-Nachführung eines manuellen DY-SV17F-Audiotests bis zum Abschluss, maximal 120 s

@@ -78,7 +78,7 @@ SoundMode sanitizedSoundMode(uint8_t raw) {
 }
 
 DisplayMode sanitizedMode(uint8_t raw) {
-  return raw <= static_cast<uint8_t>(DisplayMode::Focus)
+  return raw <= static_cast<uint8_t>(DisplayMode::WorkPatterns)
              ? static_cast<DisplayMode>(raw)
              : ProjectConfig::DISPLAY_MODE_DEFAULT;
 }
@@ -243,6 +243,8 @@ const char *displayModeName() {
     case DisplayMode::LastOnly: return "last";
     case DisplayMode::DayProgress: return "day-progress";
     case DisplayMode::Focus: return "focus";
+    case DisplayMode::QuietPhases: return "quiet-phases";
+    case DisplayMode::WorkPatterns: return "work-patterns";
     case DisplayMode::Standard:
     default: return "standard";
   }
@@ -255,6 +257,8 @@ bool parseDisplayMode(const char *value, DisplayMode &parsed) {
   else if (strcmp(value, "last") == 0) parsed = DisplayMode::LastOnly;
   else if (strcmp(value, "day-progress") == 0) parsed = DisplayMode::DayProgress;
   else if (strcmp(value, "focus") == 0) parsed = DisplayMode::Focus;
+  else if (strcmp(value, "quiet-phases") == 0) parsed = DisplayMode::QuietPhases;
+  else if (strcmp(value, "work-patterns") == 0) parsed = DisplayMode::WorkPatterns;
   else return false;
   return true;
 }

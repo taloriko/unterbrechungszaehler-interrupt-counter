@@ -1112,6 +1112,115 @@
   };
   Object.entries(I18N_340).forEach(([code, labels]) => Object.assign(I18N[code], labels));
 
+  const I18N_350 = {
+    de: {
+      'focus.card.title': 'Fokus & Ruhe', 'focus.card.desc': 'Ungestörte Phasen und der dezente Trend der letzten 120 Minuten.',
+      'focus.current': 'Aktuelle Ruhephase', 'focus.today': 'Längste heute', 'focus.week': 'Längste Woche', 'focus.trend': 'Trend 120 min',
+      'focus.noBasis': 'Noch keine Basis', 'focus.trend.falling': 'fallend', 'focus.trend.stable': 'stabil', 'focus.trend.rising': 'steigend',
+      'focus.explain': 'Ruhephase = Zeit seit bzw. zwischen gültigen Unterbrechungen am selben Tag. Der 120-min-Trend vergleicht die letzten 60 Minuten mit den 60 Minuten davor.',
+      'focus.trendExplain': '↓ = mindestens 2 weniger · → = ungefähr gleich · ↑ = mindestens 2 mehr',
+      'patterns.title': 'Arbeitsmuster', 'patterns.desc': 'Ruhigste beobachtete Zeit und Stunde mit den meisten Unterbrechungen.',
+      'patterns.quiet': 'Ruhigstes Zeitfenster', 'patterns.peak': 'Meiste Unterbrechungen', 'patterns.basis': 'Basis',
+      'patterns.days': '{n} ausgewertete Tage', 'patterns.coveredDays': '{n} abgedeckte Tage', 'patterns.insufficient': 'Noch nicht genug Daten',
+      'patterns.explain': 'Basis sind bis zu 30 abgeschlossene Tage. Berücksichtigt werden nur Zeitfenster innerhalb der beobachteten Tagesaktivität. Ruhigstes Zeitfenster = niedrigster Durchschnitt in 2 Stunden, Meiste Unterbrechungen = höchster Durchschnitt in 1 Stunde.',
+      'patterns.coveragePartial': 'Der Roh-Ringspeicher deckt den gesamten 30-Tage-Zeitraum nicht mehr vollständig ab.',
+      'project.settings.title': 'Projekteinstellungen', 'project.settings.desc': 'Gerätebezogene Einstellungen für Display, Rückmeldung und DY-SV17F. Änderungen gelten sofort und bleiben im ESP32 gespeichert.',
+      'view.settings.desc': 'Projekt- und Browserdarstellungseinstellungen an einer Stelle.',
+      'project.displayMode.quietPhases': 'Ruhephasen – Aktuell / Heute / Woche / 120 min', 'project.displayMode.workPatterns': 'Arbeitsmuster – ruhigste / meiste'
+    },
+    en: {
+      'focus.card.title': 'Focus & quiet time', 'focus.card.desc': 'Uninterrupted phases and a restrained trend for the last 120 minutes.',
+      'focus.current': 'Current quiet phase', 'focus.today': 'Longest today', 'focus.week': 'Longest week', 'focus.trend': '120 min trend',
+      'focus.noBasis': 'No basis yet', 'focus.trend.falling': 'falling', 'focus.trend.stable': 'stable', 'focus.trend.rising': 'rising',
+      'focus.explain': 'Quiet phase = time since or between valid interruptions on the same day. The 120-minute trend compares the last 60 minutes with the 60 minutes before them.',
+      'focus.trendExplain': '↓ = at least 2 fewer · → = roughly equal · ↑ = at least 2 more',
+      'patterns.title': 'Work patterns', 'patterns.desc': 'Quietest observed window and the hour with the most interruptions.',
+      'patterns.quiet': 'Quietest time window', 'patterns.peak': 'Most interruptions', 'patterns.basis': 'Basis',
+      'patterns.days': '{n} evaluated days', 'patterns.coveredDays': '{n} covered days', 'patterns.insufficient': 'Not enough data yet',
+      'patterns.explain': 'Uses up to 30 completed days. Only windows inside observed daily activity are considered. Quietest = lowest 2-hour average; most interruptions = highest 1-hour average.',
+      'patterns.coveragePartial': 'The raw ring no longer fully covers the complete 30-day period.',
+      'project.settings.title': 'Project settings', 'project.settings.desc': 'Device settings for display, feedback and DY-SV17F. Changes apply immediately and remain stored on the ESP32.',
+      'view.settings.desc': 'Project and browser appearance settings in one place.',
+      'project.displayMode.quietPhases': 'Quiet phases – current / today / week / 120 min', 'project.displayMode.workPatterns': 'Work patterns – quietest / most'
+    },
+    it: {
+      'focus.card.title': 'Focus e quiete', 'focus.card.desc': 'Fasi senza interruzioni e tendenza discreta degli ultimi 120 minuti.',
+      'focus.current': 'Fase attuale', 'focus.today': 'Più lunga oggi', 'focus.week': 'Più lunga settimana', 'focus.trend': 'Trend 120 min',
+      'focus.noBasis': 'Ancora nessuna base', 'focus.trend.falling': 'in calo', 'focus.trend.stable': 'stabile', 'focus.trend.rising': 'in aumento',
+      'focus.explain': 'Fase di quiete = tempo dall’ultima o tra due interruzioni valide nello stesso giorno. Il trend 120 min confronta gli ultimi 60 minuti con i 60 precedenti.',
+      'focus.trendExplain': '↓ = almeno 2 in meno · → = circa uguale · ↑ = almeno 2 in più',
+      'patterns.title': 'Schemi di lavoro', 'patterns.desc': 'Finestra osservata più tranquilla e ora con più interruzioni.',
+      'patterns.quiet': 'Finestra più tranquilla', 'patterns.peak': 'Più interruzioni', 'patterns.basis': 'Base',
+      'patterns.days': '{n} giorni analizzati', 'patterns.coveredDays': '{n} giorni coperti', 'patterns.insufficient': 'Dati ancora insufficienti',
+      'patterns.explain': 'Usa fino a 30 giorni completati. Considera solo finestre dentro l’attività giornaliera osservata. Più tranquilla = media minima su 2 ore; più interruzioni = media massima su 1 ora.',
+      'patterns.coveragePartial': 'L’anello dei dati grezzi non copre più completamente i 30 giorni.',
+      'project.settings.title': 'Impostazioni progetto', 'project.settings.desc': 'Impostazioni del dispositivo per display, feedback e DY-SV17F. Le modifiche sono immediate e salvate nell’ESP32.',
+      'view.settings.desc': 'Impostazioni del progetto e dell’aspetto del browser in un unico punto.',
+      'project.displayMode.quietPhases': 'Fasi di quiete – attuale / oggi / settimana / 120 min', 'project.displayMode.workPatterns': 'Schemi di lavoro – quiete / picco'
+    },
+    fr: {
+      'focus.card.title': 'Focus & calme', 'focus.card.desc': 'Périodes sans interruption et tendance discrète sur les 120 dernières minutes.',
+      'focus.current': 'Période actuelle', 'focus.today': 'Plus longue aujourd’hui', 'focus.week': 'Plus longue semaine', 'focus.trend': 'Tendance 120 min',
+      'focus.noBasis': 'Pas encore de base', 'focus.trend.falling': 'en baisse', 'focus.trend.stable': 'stable', 'focus.trend.rising': 'en hausse',
+      'focus.explain': 'Période calme = temps depuis ou entre des interruptions valides le même jour. La tendance 120 min compare les 60 dernières minutes aux 60 précédentes.',
+      'focus.trendExplain': '↓ = au moins 2 de moins · → = environ égal · ↑ = au moins 2 de plus',
+      'patterns.title': 'Rythmes de travail', 'patterns.desc': 'Créneau observé le plus calme et heure avec le plus d’interruptions.',
+      'patterns.quiet': 'Créneau le plus calme', 'patterns.peak': 'Plus d’interruptions', 'patterns.basis': 'Base',
+      'patterns.days': '{n} jours évalués', 'patterns.coveredDays': '{n} jours couverts', 'patterns.insufficient': 'Pas encore assez de données',
+      'patterns.explain': 'Jusqu’à 30 jours terminés sont utilisés. Seuls les créneaux dans l’activité journalière observée comptent. Plus calme = moyenne minimale sur 2 h ; plus d’interruptions = moyenne maximale sur 1 h.',
+      'patterns.coveragePartial': 'L’anneau brut ne couvre plus entièrement la période de 30 jours.',
+      'project.settings.title': 'Paramètres du projet', 'project.settings.desc': 'Paramètres de l’appareil pour affichage, retour et DY-SV17F. Les modifications sont immédiates et enregistrées sur l’ESP32.',
+      'view.settings.desc': 'Paramètres du projet et de l’affichage du navigateur au même endroit.',
+      'project.displayMode.quietPhases': 'Périodes calmes – actuel / jour / semaine / 120 min', 'project.displayMode.workPatterns': 'Rythmes de travail – calme / maximum'
+    },
+    swg: {
+      'focus.card.title': 'Fokus & Ruh', 'focus.card.desc': 'Ungstörte Phase ond dr dezente Trend vo de letschta 120 Minuta.',
+      'focus.current': 'Aktuelle Ruhephase', 'focus.today': 'Längste heit', 'focus.week': 'Längste Woch', 'focus.trend': 'Trend 120 min',
+      'focus.noBasis': 'No koi Basis', 'focus.trend.falling': 'fallend', 'focus.trend.stable': 'stabil', 'focus.trend.rising': 'steigend',
+      'focus.explain': 'Ruhephase = Zeit seit oder zwischa gültige Unterbrechunga am selba Dag. Dr 120-min-Trend vergleicht dia letschta 60 Minuta mit de 60 davor.',
+      'focus.trendExplain': '↓ = mindestens 2 weniger · → = ungefähr gleich · ↑ = mindestens 2 mehr',
+      'patterns.title': 'Arbeitsmuster', 'patterns.desc': 'Ruhigschts beobachtets Zeitfenster ond d Stond mit de meischta Unterbrechunga.',
+      'patterns.quiet': 'Ruhigschts Zeitfenster', 'patterns.peak': 'Meischte Unterbrechunga', 'patterns.basis': 'Basis',
+      'patterns.days': '{n} ausgwertete Däg', 'patterns.coveredDays': '{n} abdeckte Däg', 'patterns.insufficient': 'No net gnug Daten',
+      'patterns.explain': 'Basis send bis zu 30 fertige Däg. Bloß Zeitfenster innerhalb dr beobachteta Tagesaktivität zählet. Ruhigschts = kleinschter 2-Stonda-Schnitt; meischte = größter 1-Stond-Schnitt.',
+      'patterns.coveragePartial': 'Dr Roh-Ring deckt dia ganze 30 Däg nemme vollständig ab.',
+      'project.settings.title': 'Projekteinstellungen', 'project.settings.desc': 'Geräteeinstellungen für Display, Rückmeldung ond DY-SV17F. Ändrunga geltet glei ond bleibet em ESP32 gspeichert.',
+      'view.settings.desc': 'Projekt- ond Browserdarstellungseinstellungen an oim Platz.',
+      'project.displayMode.quietPhases': 'Ruhephase – aktuell / heit / Woch / 120 min', 'project.displayMode.workPatterns': 'Arbeitsmuster – ruhig / meischte'
+    },
+    'swg-alb': {
+      'focus.card.title': 'Fokus & Ruh', 'focus.card.desc': 'Ungstörte Phase ond dr Trend vo de letschta 120 Minuta.',
+      'focus.current': 'Aktuelle Ruhephase', 'focus.today': 'Längste heit', 'focus.week': 'Längste Woch', 'focus.trend': 'Trend 120 min',
+      'focus.noBasis': 'No koi Basis', 'focus.trend.falling': 'fallend', 'focus.trend.stable': 'stabil', 'focus.trend.rising': 'steigend',
+      'focus.explain': 'Ruhephase = Zeit seit oder zwischa gültige Unterbrechunga am selba Dag. Dr Trend vergleicht 60 Minuta mit de 60 davor.',
+      'focus.trendExplain': '↓ = mindestens 2 weniger · → = ungefähr gleich · ↑ = mindestens 2 mehr',
+      'patterns.title': 'Arbeitsmuster', 'patterns.desc': 'Ruhigschts Zeitfenster ond d Stond mit de meischta Unterbrechunga.',
+      'patterns.quiet': 'Ruhigschts Zeitfenster', 'patterns.peak': 'Meischte Unterbrechunga', 'patterns.basis': 'Basis',
+      'patterns.days': '{n} ausgwertete Däg', 'patterns.coveredDays': '{n} abdeckte Däg', 'patterns.insufficient': 'No net gnug Daten',
+      'patterns.explain': 'Bis zu 30 fertige Däg. Bloß beobachtete Tageszeit zählt. Ruhigschts = 2-Stonda-Schnitt, meischte = 1-Stond-Schnitt.',
+      'patterns.coveragePartial': 'Dr Roh-Ring deckt dia 30 Däg nemme ganz ab.',
+      'project.settings.title': 'Projekteinstellungen', 'project.settings.desc': 'Geräteeinstellungen für Display, Rückmeldung ond DY-SV17F. Ändrunga bleibet gspeichert.',
+      'view.settings.desc': 'Projekt- ond Browsereinstellungen an oim Platz.',
+      'project.displayMode.quietPhases': 'Ruhephase – aktuell / heit / Woch / 120 min', 'project.displayMode.workPatterns': 'Arbeitsmuster – ruhig / meischte'
+    },
+    'swg-ob': {
+      'focus.card.title': 'Fokus & Ruh', 'focus.card.desc': 'Ungstörte Phase ond dr Trend vo de letschta 120 Minuta.',
+      'focus.current': 'Aktuelle Ruhephase', 'focus.today': 'Längste heit', 'focus.week': 'Längste Woch', 'focus.trend': 'Trend 120 min',
+      'focus.noBasis': 'No koi Basis', 'focus.trend.falling': 'fallend', 'focus.trend.stable': 'stabil', 'focus.trend.rising': 'steigend',
+      'focus.explain': 'Ruhephase = Zeit seit oder zwischa gültige Unterbrechunga am selba Dag. Dr Trend vergleicht 60 Minuta mit de 60 davor.',
+      'focus.trendExplain': '↓ = mindestens 2 weniger · → = ungefähr gleich · ↑ = mindestens 2 mehr',
+      'patterns.title': 'Arbeitsmuster', 'patterns.desc': 'Ruhigschts Zeitfenster ond d Stond mit de meischta Unterbrechunga.',
+      'patterns.quiet': 'Ruhigschts Zeitfenster', 'patterns.peak': 'Meischte Unterbrechunga', 'patterns.basis': 'Basis',
+      'patterns.days': '{n} ausgwertete Däg', 'patterns.coveredDays': '{n} abdeckte Däg', 'patterns.insufficient': 'No it gnug Daten',
+      'patterns.explain': 'Bis zu 30 fertige Däg. Bloß beobachtete Tageszeit zählt. Ruhigschts = 2-Stonda-Schnitt, meischte = 1-Stond-Schnitt.',
+      'patterns.coveragePartial': 'Dr Roh-Ring deckt dia 30 Däg nimme ganz ab.',
+      'project.settings.title': 'Projekteinstellungen', 'project.settings.desc': 'Geräteeinstellungen für Display, Rückmeldung ond DY-SV17F. Ändrunga bleibet gspeichert.',
+      'view.settings.desc': 'Projekt- ond Browsereinstellungen an oim Platz.',
+      'project.displayMode.quietPhases': 'Ruhephase – aktuell / heit / Woch / 120 min', 'project.displayMode.workPatterns': 'Arbeitsmuster – ruhig / meischte'
+    }
+  };
+  Object.entries(I18N_350).forEach(([code, labels]) => Object.assign(I18N[code], labels));
+
   const STORAGE_STATUS_LABELS = {
     de: { 'status.ready': 'Bereit', 'status.unavailable': 'Nicht verfügbar' },
     en: { 'status.ready': 'Ready', 'status.unavailable': 'Unavailable' },
@@ -1175,14 +1284,15 @@
           { id: 'interruptions-home', titleKey: 'interruptions.title', descriptionKey: 'interruptions.desc', icon: 'interrupt', width: 'full', components: [
             { type: 'interruptionHome' }
           ] },
-          { id: 'project-settings', titleKey: 'project.settings.title', descriptionKey: 'project.settings.desc', icon: 'settings', width: 'full', components: [
-            { type: 'projectSettings' }
+          { id: 'focus-insights', titleKey: 'focus.card.title', descriptionKey: 'focus.card.desc', icon: 'clock', width: 'full', components: [
+            { type: 'focusInsights' }
           ] }
         ]
       },
       analytics: {
         titleKey: 'view.analytics.title', descriptionKey: 'view.analytics.desc',
         cards: [
+          { id: 'work-patterns', titleKey: 'patterns.title', descriptionKey: 'patterns.desc', icon: 'clock', width: 'full', components: [{ type: 'workPatterns' }] },
           { id: 'heatmap-hourly', titleKey: 'analytics.hourly.title', descriptionKey: 'analytics.hourly.desc', icon: 'analytics', width: 'full', components: [{ type: 'heatmapHourly' }] },
           { id: 'heatmap-month-week', titleKey: 'analytics.monthWeek.title', descriptionKey: 'analytics.monthWeek.desc', icon: 'calendar', width: 'full', components: [{ type: 'heatmapMonthWeek' }] },
           { id: 'heatmap-year-month', titleKey: 'analytics.yearMonth.title', descriptionKey: 'analytics.yearMonth.desc', icon: 'calendar', width: 'full', components: [{ type: 'heatmapYearMonth' }] },
@@ -1252,6 +1362,9 @@
       settings: {
         titleKey: 'view.settings.title', descriptionKey: 'view.settings.desc',
         cards: [
+          { id: 'project-settings', titleKey: 'project.settings.title', descriptionKey: 'project.settings.desc', icon: 'settings', width: 'full', components: [
+            { type: 'projectSettings' }
+          ] },
           { id: 'language', titleKey: 'card.language', descriptionKey: 'card.language.desc', icon: 'language', width: 'normal', components: [
             { type: 'select', id: 'language', labelKey: 'label.language', preference: 'language', options: [
               { value: 'de', key: 'lang.de' }, { value: 'en', key: 'lang.en' }, { value: 'it', key: 'lang.it' }, { value: 'fr', key: 'lang.fr' }, { value: 'swg', key: 'lang.swg' }, { value: 'swg-alb', key: 'lang.swgAlb' }, { value: 'swg-ob', key: 'lang.swgOb' }
@@ -1360,7 +1473,7 @@
     status: { wifi: 'unknown', time: 'unknown', api: 'busy', gpio: 'disabled', rtc: 'disabled', display: 'disabled', audio: 'disabled', data: 'unknown' },
     connection: { deviceLoading: false, deviceRequested: false, deviceLoaded: false },
     device: {}, wifi: {}, memory: {}, hardware: { checking: false, modules: [] }, ota: { supported: null, currentBytes: 0, maxBytes: 0, headroomBytes: 0, usedPercent: 0 },
-    interruptions: { todayCount: 0, unassignedCount: 0, sequence: 0, persistedSequence: 0, pendingCount: 0, droppedCount: 0, storageState: 'unavailable', soundEnabled: true, last: { available: false } },
+    interruptions: { todayCount: 0, unassignedCount: 0, sequence: 0, persistedSequence: 0, pendingCount: 0, droppedCount: 0, storageState: 'unavailable', soundEnabled: true, last: { available: false }, focus: { timeValid: false, currentPhaseAvailable: false, longestTodayAvailable: false, longestWeekAvailable: false, trendPrevious60: 0, trendLast60: 0, trendDirection: 'stable' }, patterns: { evaluatedDays: 0, coverageComplete: true, quietSufficient: false, peakSufficient: false } },
     projectSettings: { soundEnabled: true, soundVolume: 100, soundMode: 'rotate', soundTrack: 3, soundTrackCount: 0, language: 'en', languageStored: false, displayEnabled: true, displayRotation180: false, displayFlashEnabled: true, displayMode: 'standard', displayBrightness: 65, displayDimAfterMinutes: 10, displayDimBrightness: 5 },
     analytics: { loaded: false, loading: false, dirty: false, error: '', storage: null, hourly: null, monthWeek: null, yearMonth: null, hourlyMode: 'week', metric: 'count', source: 'all' },
     time: { valid: false, source: 'relative', quality: 'relative', epochMs: 0, syncPerf: 0 },
@@ -2216,6 +2329,84 @@
     return root;
   }
 
+
+  function insightDuration(seconds, available) {
+    return available ? formatIntervalSeconds(Number(seconds) || 0, true) : t('focus.noBasis');
+  }
+
+  function renderFocusInsights() {
+    const root = el('div', 'focus-insights');
+    const grid = el('div', 'focus-insight-grid');
+    const entries = {};
+    const add = (id, labelKey) => {
+      const item = el('div', 'focus-insight-item');
+      const label = el('span', 'focus-insight-label'); label.textContent = t(labelKey);
+      const value = el('strong', 'focus-insight-value');
+      item.append(label, value); grid.append(item); entries[id] = value;
+    };
+    add('current', 'focus.current'); add('today', 'focus.today'); add('week', 'focus.week'); add('trend', 'focus.trend');
+    const explanation = el('p', 'insight-explanation');
+    const trendExplanation = el('p', 'insight-explanation compact');
+    explanation.textContent = t('focus.explain'); trendExplanation.textContent = t('focus.trendExplain');
+    root.append(grid, explanation, trendExplanation);
+
+    const update = () => {
+      const focus = state.interruptions.focus || {};
+      let current = null;
+      if (focus.currentPhaseAvailable) {
+        const live = interruptionAgeSeconds();
+        current = live == null ? Number(focus.currentPhaseSeconds || 0) : live;
+      }
+      entries.current.textContent = insightDuration(current, current != null);
+      const longestToday = current == null ? Number(focus.longestTodaySeconds || 0) : Math.max(Number(focus.longestTodaySeconds || 0), current);
+      const longestWeek = current == null ? Number(focus.longestWeekSeconds || 0) : Math.max(Number(focus.longestWeekSeconds || 0), current);
+      entries.today.textContent = insightDuration(longestToday, !!focus.longestTodayAvailable || current != null);
+      entries.week.textContent = insightDuration(longestWeek, !!focus.longestWeekAvailable || current != null);
+      const direction = ['falling','stable','rising'].includes(focus.trendDirection) ? focus.trendDirection : 'stable';
+      const symbol = direction === 'falling' ? '↓' : direction === 'rising' ? '↑' : '→';
+      entries.trend.textContent = `${symbol} ${Number(focus.trendPrevious60 || 0)} → ${Number(focus.trendLast60 || 0)} · ${t(`focus.trend.${direction}`)}`;
+    };
+    Bindings.add(['interruptions.focus.currentPhaseAvailable','interruptions.focus.currentPhaseSeconds','interruptions.focus.longestTodayAvailable','interruptions.focus.longestTodaySeconds','interruptions.focus.longestWeekAvailable','interruptions.focus.longestWeekSeconds','interruptions.focus.trendPrevious60','interruptions.focus.trendLast60','interruptions.focus.trendDirection','interruptions.last','clock.tick'], update);
+    return root;
+  }
+
+  function patternRange(start, end) {
+    return `${String(Number(start) || 0).padStart(2, '0')}:00 – ${String(Number(end) || 0).padStart(2, '0')}:00`;
+  }
+
+  function renderWorkPatterns() {
+    const root = el('div', 'work-patterns');
+    const grid = el('div', 'focus-insight-grid patterns-grid');
+    const quiet = el('div', 'focus-insight-item');
+    const quietLabel = el('span', 'focus-insight-label'); quietLabel.textContent = t('patterns.quiet');
+    const quietValue = el('strong', 'focus-insight-value');
+    const quietMeta = el('small', 'focus-insight-meta'); quiet.append(quietLabel, quietValue, quietMeta);
+    const peak = el('div', 'focus-insight-item');
+    const peakLabel = el('span', 'focus-insight-label'); peakLabel.textContent = t('patterns.peak');
+    const peakValue = el('strong', 'focus-insight-value');
+    const peakMeta = el('small', 'focus-insight-meta'); peak.append(peakLabel, peakValue, peakMeta);
+    const basis = el('div', 'focus-insight-item');
+    const basisLabel = el('span', 'focus-insight-label'); basisLabel.textContent = t('patterns.basis');
+    const basisValue = el('strong', 'focus-insight-value'); basis.append(basisLabel, basisValue);
+    grid.append(quiet, peak, basis);
+    const explanation = el('p', 'insight-explanation'); explanation.textContent = t('patterns.explain');
+    const coverage = el('p', 'insight-explanation compact'); coverage.hidden = true;
+    root.append(grid, explanation, coverage);
+
+    const update = () => {
+      const patterns = state.interruptions.patterns || {};
+      quietValue.textContent = patterns.quietSufficient ? patternRange(patterns.quietStartHour, patterns.quietEndHour) : t('patterns.insufficient');
+      quietMeta.textContent = patterns.quietSufficient ? t('patterns.coveredDays').replace('{n}', String(Number(patterns.quietCoveredDays || 0))) : '';
+      peakValue.textContent = patterns.peakSufficient ? patternRange(patterns.peakStartHour, patterns.peakEndHour) : t('patterns.insufficient');
+      peakMeta.textContent = patterns.peakSufficient ? t('patterns.coveredDays').replace('{n}', String(Number(patterns.peakCoveredDays || 0))) : '';
+      basisValue.textContent = t('patterns.days').replace('{n}', String(Number(patterns.evaluatedDays || 0)));
+      coverage.hidden = patterns.coverageComplete !== false;
+      coverage.textContent = coverage.hidden ? '' : t('patterns.coveragePartial');
+    };
+    Bindings.add(['interruptions.patterns.evaluatedDays','interruptions.patterns.coverageComplete','interruptions.patterns.quietSufficient','interruptions.patterns.quietStartHour','interruptions.patterns.quietEndHour','interruptions.patterns.quietCoveredDays','interruptions.patterns.peakSufficient','interruptions.patterns.peakStartHour','interruptions.patterns.peakEndHour','interruptions.patterns.peakCoveredDays'], update);
+    return root;
+  }
+
   function renderProjectSettings() {
     const root = el('div', 'project-settings');
     const controls = {};
@@ -2280,7 +2471,8 @@
     addSwitch(displayGrid, 'displayEnabled', 'project.displayEnabled');
     addSelect(displayGrid, 'displayMode', 'project.displayMode', [
       ['standard','project.displayMode.standard'], ['count','project.displayMode.count'], ['last','project.displayMode.last'],
-      ['day-progress','project.displayMode.dayProgress'], ['focus','project.displayMode.focus']
+      ['day-progress','project.displayMode.dayProgress'], ['focus','project.displayMode.focus'],
+      ['quiet-phases','project.displayMode.quietPhases'], ['work-patterns','project.displayMode.workPatterns']
     ]);
     addSwitch(displayGrid, 'displayRotation180', 'project.displayRotation180');
     addRange(displayGrid, 'displayBrightness', 'project.displayBrightness', 1, 100);
@@ -2561,7 +2753,7 @@
   }
 
   function renderComponent(def) {
-    const renderers = { kv: renderKv, status: renderStatus, meter: renderMeter, select: renderSelect, switch: renderSwitch, action: renderAction, upload: renderUpload, hardware: renderHardware, timeManagement: renderTimeManagement, notice: renderNotice, list: renderList, interruptionHome: renderInterruptionHome, projectSettings: renderProjectSettings, heatmapHourly: renderHeatmapHourly, heatmapMonthWeek: renderHeatmapMonthWeek, heatmapYearMonth: renderHeatmapYearMonth, analyticsStorage: renderAnalyticsStorage };
+    const renderers = { kv: renderKv, status: renderStatus, meter: renderMeter, select: renderSelect, switch: renderSwitch, action: renderAction, upload: renderUpload, hardware: renderHardware, timeManagement: renderTimeManagement, notice: renderNotice, list: renderList, interruptionHome: renderInterruptionHome, focusInsights: renderFocusInsights, workPatterns: renderWorkPatterns, projectSettings: renderProjectSettings, heatmapHourly: renderHeatmapHourly, heatmapMonthWeek: renderHeatmapMonthWeek, heatmapYearMonth: renderHeatmapYearMonth, analyticsStorage: renderAnalyticsStorage };
     const renderer = renderers[def.type];
     return renderer ? renderer(def) : null;
   }

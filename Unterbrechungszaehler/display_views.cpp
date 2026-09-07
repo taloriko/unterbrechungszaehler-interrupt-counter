@@ -4,6 +4,7 @@
 #include <cstring>
 
 #include "display_sh1106.h"
+#include "focus_insights.h"
 #include "project_config.h"
 #include "project_preferences.h"
 #include "project_time.h"
@@ -34,6 +35,8 @@ int16_t lastContrast = -1;
 bool dimmed = false;
 bool displayPowerOn = true;
 bool manualTestWasActive = false;
+uint8_t insightsPage = 0;
+uint32_t insightsPageNextMs = 0;
 
 struct Labels {
   const char *today;
@@ -42,14 +45,20 @@ struct Labels {
   const char *focus;
   const char *average;
   const char *tooFast;
+  const char *current;
+  const char *week;
+  const char *trend120;
+  const char *quietest;
+  const char *most;
+  const char *noData;
 };
 
 const Labels &labels() {
-  static const Labels de{"HEUTE", "LETZTE", "JETZT", "FOKUS", "SCHNITT", "ZU SCHNELL!"};
-  static const Labels en{"TODAY", "LAST", "NOW", "FOCUS", "AVG", "TOO FAST!"};
-  static const Labels fr{"JOUR", "DERNIER", "MAINT", "FOCUS", "MOY", "TROP VITE!"};
-  static const Labels it{"OGGI", "ULTIMA", "ORA", "FOCUS", "MEDIA", "TROPPO PRESTO!"};
-  static const Labels swg{"HEIT", "LETSCHTE", "JETZT", "FOKUS", "SCHNITT", "NET SO HEKTISCH!"};
+  static const Labels de{"HEUTE", "LETZTE", "JETZT", "FOKUS", "SCHNITT", "ZU SCHNELL!", "AKTUELL", "WOCHE", "120 MIN", "RUHIGSTE", "MEISTE", "KEINE DATEN"};
+  static const Labels en{"TODAY", "LAST", "NOW", "FOCUS", "AVG", "TOO FAST!", "CURRENT", "WEEK", "120 MIN", "QUIETEST", "MOST", "NO DATA"};
+  static const Labels fr{"JOUR", "DERNIER", "MAINT", "FOCUS", "MOY", "TROP VITE!", "ACTUEL", "SEMAINE", "120 MIN", "PLUS CALME", "PLUS", "PAS DONNEES"};
+  static const Labels it{"OGGI", "ULTIMA", "ORA", "FOCUS", "MEDIA", "TROPPO PRESTO!", "ATTUALE", "SETTIMANA", "120 MIN", "PIU CALMA", "PIU", "NO DATI"};
+  static const Labels swg{"HEIT", "LETSCHTE", "JETZT", "FOKUS", "SCHNITT", "NET SO HEKTISCH!", "AKTUELL", "WOCHE", "120 MIN", "RUHIGSTE", "MEISTE", "KOIN DATEN"};
   const char *language = ProjectPreferences::language();
   if (strcmp(language, "en") == 0) return en;
   if (strcmp(language, "fr") == 0) return fr;
@@ -233,6 +242,70 @@ bool renderFocus(const InterruptionTypes::Summary &summary, const char *age) {
   return DisplaySh1106::present();
 }
 
+
+
+void durationText(uint32_t seconds, bool available, char out[16]) {
+  if (!available) { snprintf(out, 16, "--"); return; }
+  if (seconds < 60U) snprintf(out, 16, "%lus", static_cast<unsigned long>(seconds));
+  else if (seconds < 3600U) snprintf(out, 16, "%lum", static_cast<unsigned long>(seconds / 60U));
+  else {
+    const uint32_t hours = seconds / 3600U;
+    const uint32_t minutes = (seconds % 3600U) / 60U;
+    if (minutes) snprintf(out, 16, "%luh%02lum", static_cast<unsigned long>(hours), static_cast<unsigned long>(minutes));
+    else snprintf(out, 16, "%luh", static_cast<unsigned long>(hours));
+  }
+}
+
+bool renderQuietPhases(uint8_t page) {
+  const auto &insights = FocusInsights::snapshot();
+  DisplaySh1106::frameClear();
+  char value[16] = "--";
+  const char *heading = labels().current;
+  if (page == 0U) {
+    heading = labels().current;
+    durationText(insights.currentPhaseSeconds, insights.currentPhaseAvailable, value);
+  } else if (page == 1U) {
+    heading = labels().today;
+    durationText(insights.longestTodaySeconds, insights.longestTodayAvailable, value);
+  } else if (page == 2U) {
+    heading = labels().week;
+    durationText(insights.longestWeekSeconds, insights.longestWeekAvailable, value);
+  } else {
+    heading = labels().trend120;
+    const char *symbol = insights.trendDirection == FocusInsightsLogic::TrendDirection::Falling ? "v" :
+                         insights.trendDirection == FocusInsightsLogic::TrendDirection::Rising ? "^" : "=";
+    snprintf(value, sizeof(value), "%s", symbol);
+  }
+  DisplaySh1106::drawCenteredText(2, heading);
+  DisplaySh1106::drawHLine(0, 127, 12);
+  drawCenteredScaledAt(value, 19, page == 3U ? 5 : 4, 124);
+  if (page == 3U) {
+    char footer[24];
+    snprintf(footer, sizeof(footer), "%u > %u", static_cast<unsigned int>(insights.trendPrevious60), static_cast<unsigned int>(insights.trendLast60));
+    DisplaySh1106::drawCenteredText(53, footer);
+  }
+  return DisplaySh1106::present();
+}
+
+bool renderWorkPatterns(uint8_t page) {
+  const auto &insights = FocusInsights::snapshot();
+  const bool quiet = page == 0U;
+  const bool available = quiet ? insights.quietSufficient : insights.peakSufficient;
+  DisplaySh1106::frameClear();
+  DisplaySh1106::drawCenteredText(2, quiet ? labels().quietest : labels().most);
+  DisplaySh1106::drawHLine(0, 127, 12);
+  if (!available) {
+    drawCenteredScaledAt(labels().noData, 25, 1, 124);
+    return DisplaySh1106::present();
+  }
+  char range[16];
+  const uint8_t start = quiet ? insights.quietStartHour : insights.peakStartHour;
+  const uint8_t end = quiet ? insights.quietEndHour : insights.peakEndHour;
+  snprintf(range, sizeof(range), "%02u-%02u", static_cast<unsigned int>(start), static_cast<unsigned int>(end));
+  drawCenteredScaledAt(range, 22, 3, 124);
+  return DisplaySh1106::present();
+}
+
 bool renderHome(const InterruptionTypes::Summary &summary, const char *age, bool wifi, bool timeOk) {
   if (!DisplaySh1106::enabled() || !DisplaySh1106::detected()) return false;
   switch (ProjectPreferences::displayMode()) {
@@ -240,6 +313,8 @@ bool renderHome(const InterruptionTypes::Summary &summary, const char *age, bool
     case ProjectPreferences::DisplayMode::LastOnly: return renderLastOnly(age);
     case ProjectPreferences::DisplayMode::DayProgress: return renderDayProgress(summary, wifi, timeOk);
     case ProjectPreferences::DisplayMode::Focus: return renderFocus(summary, age);
+    case ProjectPreferences::DisplayMode::QuietPhases: return renderQuietPhases(static_cast<uint8_t>(insightsPage % 4U));
+    case ProjectPreferences::DisplayMode::WorkPatterns: return renderWorkPatterns(static_cast<uint8_t>(insightsPage % 2U));
     case ProjectPreferences::DisplayMode::Standard:
     default: return renderStandard(summary, age, wifi, timeOk);
   }
@@ -294,6 +369,8 @@ void begin(const InterruptionTypes::Summary &summary) {
   DisplaySh1106::setRotation180(ProjectPreferences::displayRotation180());
   displayPowerOn = true;
   renderRequested = true;
+  insightsPage = 0U;
+  insightsPageNextMs = millis() + ProjectConfig::DISPLAY_INSIGHTS_PAGE_MS;
   update(summary);
 }
 
@@ -407,6 +484,20 @@ void update(const InterruptionTypes::Summary &summary) {
     }
   }
 
+  const auto activeMode = ProjectPreferences::displayMode();
+  const bool rotatingInsights = activeMode == ProjectPreferences::DisplayMode::QuietPhases ||
+                                activeMode == ProjectPreferences::DisplayMode::WorkPatterns;
+  if (activeMode != lastMode) {
+    insightsPage = 0U;
+    insightsPageNextMs = nowMs + ProjectConfig::DISPLAY_INSIGHTS_PAGE_MS;
+    renderRequested = true;
+  } else if (rotatingInsights && due(nowMs, insightsPageNextMs)) {
+    const uint8_t pageCount = activeMode == ProjectPreferences::DisplayMode::QuietPhases ? 4U : 2U;
+    insightsPage = static_cast<uint8_t>((insightsPage + 1U) % pageCount);
+    insightsPageNextMs = nowMs + ProjectConfig::DISPLAY_INSIGHTS_PAGE_MS;
+    renderRequested = true;
+  }
+
   if (!renderRequested && !flashRequested && !flashActive &&
       static_cast<uint32_t>(nowMs - lastIdleEvaluationMs) < 1000U) return;
   if (flashActive && !due(nowMs, flashUntilMs)) return;
@@ -421,7 +512,7 @@ void update(const InterruptionTypes::Summary &summary) {
   char age[16]; ageText(summary, age);
   const bool wifi = WifiModule::stationConnected();
   const bool timeOk = TimeService::now().valid;
-  const auto mode = ProjectPreferences::displayMode();
+  const auto mode = activeMode;
   const bool changed = summary.todayCount != lastCount ||
                        summary.todayIntervalSumSeconds != lastIntervalSum ||
                        summary.todayIntervalSamples != lastIntervalSamples ||

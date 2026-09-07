@@ -3,7 +3,7 @@
 > [!WARNING]
 > **KI-Hinweis:** Dieses Projekt wurde maßgeblich mit Unterstützung von KI erstellt, anschließend aber praktisch getestet, überarbeitet und weiterentwickelt. Wer KI-generierten Code grundsätzlich nicht mag, darf natürlich trotzdem den Taster drücken. ;-)
 
-> **Aktueller Stand:** `3.4.1`
+> **Aktueller Stand:** `3.5.0`
 
 [Deutsch](docs/de/README.md) · [English](docs/en/README.md) · [Schwäbisch](docs/swg/README.md)
 
@@ -140,6 +140,15 @@ Den Rest macht das Gerät.
 ## Versionsverlauf
 
 Der vollständige technische Versionsverlauf steht im [Changelog](CHANGELOG.md).
+
+## Fokus & Ruhe
+
+Die Weboberfläche wertet die bereits gespeicherten gültigen Unterbrechungen zusätzlich als Ruhephasen aus. Angezeigt werden die aktuelle ungestörte Phase, der längste Wert des Tages, der längste Wert der laufenden Woche und ein zurückhaltender 120-Minuten-Trend. Der Trend vergleicht die letzten 60 Minuten mit den 60 Minuten davor; eine Differenz von mindestens zwei Ereignissen ergibt steigend bzw. fallend, kleinere Abweichungen gelten als stabil.
+
+Unter **Auswertung → Arbeitsmuster** werden bis zu 30 abgeschlossene Tage betrachtet. Ein 2-Stunden-Fenster gilt nur dann als abgedeckt, wenn es vollständig zwischen erster und letzter gültiger Unterbrechung des jeweiligen Tages liegt. Ab mindestens fünf abgedeckten Tagen wird das ruhigste 2-Stunden-Fenster sowie die einzelne Stunde mit den meisten Unterbrechungen angezeigt. Dadurch werden unbeobachtete Nachtzeiten nicht automatisch als ruhige Arbeitszeit interpretiert.
+
+Die Berechnung verwendet den bestehenden 9-Byte-Roh-Ringspeicher und schreibt keine zusätzlichen Focus-/Insight-Daten dauerhaft. Die bisher auf Home angezeigten Geräteoptionen befinden sich unverändert unter **Einstellungen → Projekteinstellungen**.
+
 
 ## Pinbelegung
 
