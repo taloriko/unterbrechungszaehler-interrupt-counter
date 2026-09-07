@@ -168,7 +168,7 @@ So kommen eigene oder die mitgelieferten Töne auf das Modul:
 2. Den am Rechner eingebundenen internen Speicher des DY-SV17F öffnen.
 3. Die Audiodateien **direkt ins Root-/Hauptverzeichnis** des Moduls kopieren. **Keine Unterordner verwenden.**
 4. Dateien fünfstellig mit führenden Nullen benennen: `00001.mp3`, `00002.mp3`, `00003.mp3`, …; alternativ entsprechend `00001.wav` usw. Nicht gleichzeitig unterschiedliche Dateien mit derselben Tracknummer ablegen.
-5. `00001` ist **Track 1 und ausschließlich der Boot-Ton**. `00002` und höher sind die Unterbrechungstöne. Im festen Modus spielt die Firmware den ausgewählten Track ab 2; im Rotationsmodus werden die erkannten Tracks **2…N** verwendet.
+5. `00001` ist **Track 1 und ausschließlich der Boot-Ton**. `00002` und höher sind die Unterbrechungstöne. Im festen Modus spielt die Firmware den ausgewählten Track ab 2; im Rotationsmodus werden die erkannten Tracks **3…N** verwendet.
 6. Datenträger anschließend sauber auswerfen und die Micro-USB-Verbindung zum Computer trennen.
 
 Richtig:
@@ -277,3 +277,11 @@ Unter **Daten & Export** kann die komplette Ereignisdatenbank bewusst gelöscht 
 ### DY-SV17F-Diagnose in 3.3.1
 
 Die Soundwiedergabe blieb funktional unverändert. Die Diagnose unterscheidet jetzt sauber zwischen der letzten **UART-Protokollantwort** und dem rohen **BUSY-Pegel an GPIO39**. `Prüfen` bleibt lautlos. `Ton testen` kann zusätzlich einen kontrollierten End-to-End-Test durchführen und die BUSY-Polarität nur dann bestätigen, wenn UART und ein vollständiger BUSY-Zyklus zusammenpassen. BUSY ist reine Zusatzdiagnose und keine Voraussetzung für die Wiedergabe.
+
+## Anti-Spam am echten Knopf (3.4.0)
+
+Der physische DI1/GPIO-Knopf besitzt ab 3.4.0 eine feste **10-Sekunden-Sperre**: Der erste Druck zählt, weitere physische Drücke innerhalb von weniger als 10 Sekunden werden vollständig aus Rohdaten, Tagesstatistik, CSV, Heatmaps und Ø-Abständen verworfen. Web-Ereignisse bleiben unabhängig. Ein verworfener Druck verlängert die Sperre nicht.
+
+Damit das trotzdem nicht unbemerkt bleibt, hat der Unsinn sein eigenes Feedback: **Track 2** ist fest als Anti-Spam-Ton reserviert und das OLED zeigt rund eine Sekunde eine nicht blockierende alte-TV-Störung mit „ZU SCHNELL!“. Tonkommando und erster Störframe haben im Fast-Path Priorität vor Logging und Statistikarbeit. Bei ausgeschaltetem Sound/Display wird die jeweilige Benutzerpräferenz respektiert.
+
+Trackbelegung: `00001` = Boot/Test, `00002` = Anti-Spam, `00003` und höher = normale Unterbrechungstöne. Der Wechselmodus rotiert entsprechend nur über **3…N**.

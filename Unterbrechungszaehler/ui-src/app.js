@@ -1065,6 +1065,53 @@
   };
   Object.entries(I18N_331).forEach(([code, labels]) => Object.assign(I18N[code], labels));
 
+
+  const I18N_340 = {
+    de: {
+      'project.soundTrackHint': 'Track 1 = Boot/Test, Track 2 = Anti-Spam. Normale Unterbrechungstöne beginnen bei Track 3.',
+      'project.soundTracksAvailable': 'Verfügbare Tracks: {n}. Wechselnd verwendet nur Track 3 bis {n}.',
+      'project.soundTracksUnknown': 'Trackanzahl nicht bekannt; im Wechselmodus dient der feste Track ab 3 als Fallback.',
+      'hardware.info.buttonCooldown': 'Anti-Spam', 'hardware.info.suppressedPresses': 'Seit Boot verworfen', 'hardware.info.lastSuppressedPress': 'Letzter verworfener Druck'
+    },
+    en: {
+      'project.soundTrackHint': 'Track 1 = boot/test, track 2 = anti-spam. Normal interruption sounds start at track 3.',
+      'project.soundTracksAvailable': 'Available tracks: {n}. Rotate mode uses only tracks 3 through {n}.',
+      'project.soundTracksUnknown': 'Track count unknown; rotate mode uses the configured fixed track >=3 as fallback.',
+      'hardware.info.buttonCooldown': 'Anti-spam', 'hardware.info.suppressedPresses': 'Suppressed since boot', 'hardware.info.lastSuppressedPress': 'Last suppressed press'
+    },
+    it: {
+      'project.soundTrackHint': 'Traccia 1 = avvio/test, traccia 2 = anti-spam. I normali suoni di interruzione iniziano dalla traccia 3.',
+      'project.soundTracksAvailable': 'Tracce disponibili: {n}. La rotazione usa solo le tracce da 3 a {n}.',
+      'project.soundTracksUnknown': 'Numero tracce sconosciuto; la rotazione usa come ripiego la traccia fissa >=3.',
+      'hardware.info.buttonCooldown': 'Anti-spam', 'hardware.info.suppressedPresses': 'Scartati dal riavvio', 'hardware.info.lastSuppressedPress': 'Ultima pressione scartata'
+    },
+    fr: {
+      'project.soundTrackHint': 'Piste 1 = démarrage/test, piste 2 = anti-spam. Les sons normaux commencent à la piste 3.',
+      'project.soundTracksAvailable': 'Pistes disponibles : {n}. La rotation utilise uniquement les pistes 3 à {n}.',
+      'project.soundTracksUnknown': 'Nombre de pistes inconnu ; la rotation utilise la piste fixe >=3 comme repli.',
+      'hardware.info.buttonCooldown': 'Anti-spam', 'hardware.info.suppressedPresses': 'Rejetés depuis le démarrage', 'hardware.info.lastSuppressedPress': 'Dernier appui rejeté'
+    },
+    swg: {
+      'project.soundTrackHint': 'Track 1 = Boot/Test, Track 2 = Anti-Spam. Normale Unterbrechungstön fanget bei Track 3 a.',
+      'project.soundTracksAvailable': 'Verfügbare Tracks: {n}. Wechselnd nimmt bloß Track 3 bis {n}.',
+      'project.soundTracksUnknown': 'Trackanzahl net bekannt; wechselnd nimmt dr feste Track ab 3 als Fallback.',
+      'hardware.info.buttonCooldown': 'Anti-Spam', 'hardware.info.suppressedPresses': 'Seit Boot verworfa', 'hardware.info.lastSuppressedPress': 'Letschter verworfener Druck'
+    },
+    'swg-alb': {
+      'project.soundTrackHint': 'Track 1 = Boot/Test, Track 2 = Anti-Spam. Normale Tön fanget bei Track 3 a.',
+      'project.soundTracksAvailable': 'Tracks do: {n}. Wechselnd nimmt Track 3 bis {n}.',
+      'project.soundTracksUnknown': 'Trackanzahl net bekannt; dr feste Track ab 3 isch dr Fallback.',
+      'hardware.info.buttonCooldown': 'Anti-Spam', 'hardware.info.suppressedPresses': 'Seit Boot verworfa', 'hardware.info.lastSuppressedPress': 'Letschter verworfener Druck'
+    },
+    'swg-ob': {
+      'project.soundTrackHint': 'Track 1 = Boot/Test, Track 2 = Anti-Spam. Normale Tön fanget bei Track 3 a.',
+      'project.soundTracksAvailable': 'Verfügbare Tracks: {n}. Wechselnd nimmt Track 3 bis {n}.',
+      'project.soundTracksUnknown': 'Trackanzahl it bekannt; dr feste Track ab 3 isch dr Fallback.',
+      'hardware.info.buttonCooldown': 'Anti-Spam', 'hardware.info.suppressedPresses': 'Seit Boot verworfa', 'hardware.info.lastSuppressedPress': 'Letschter verworfener Druck'
+    }
+  };
+  Object.entries(I18N_340).forEach(([code, labels]) => Object.assign(I18N[code], labels));
+
   const STORAGE_STATUS_LABELS = {
     de: { 'status.ready': 'Bereit', 'status.unavailable': 'Nicht verfügbar' },
     en: { 'status.ready': 'Ready', 'status.unavailable': 'Unavailable' },
@@ -1314,7 +1361,7 @@
     connection: { deviceLoading: false, deviceRequested: false, deviceLoaded: false },
     device: {}, wifi: {}, memory: {}, hardware: { checking: false, modules: [] }, ota: { supported: null, currentBytes: 0, maxBytes: 0, headroomBytes: 0, usedPercent: 0 },
     interruptions: { todayCount: 0, unassignedCount: 0, sequence: 0, persistedSequence: 0, pendingCount: 0, droppedCount: 0, storageState: 'unavailable', soundEnabled: true, last: { available: false } },
-    projectSettings: { soundEnabled: true, soundVolume: 100, soundMode: 'rotate', soundTrack: 2, soundTrackCount: 0, language: 'en', languageStored: false, displayEnabled: true, displayRotation180: false, displayFlashEnabled: true, displayMode: 'standard', displayBrightness: 65, displayDimAfterMinutes: 10, displayDimBrightness: 5 },
+    projectSettings: { soundEnabled: true, soundVolume: 100, soundMode: 'rotate', soundTrack: 3, soundTrackCount: 0, language: 'en', languageStored: false, displayEnabled: true, displayRotation180: false, displayFlashEnabled: true, displayMode: 'standard', displayBrightness: 65, displayDimAfterMinutes: 10, displayDimBrightness: 5 },
     analytics: { loaded: false, loading: false, dirty: false, error: '', storage: null, hourly: null, monthWeek: null, yearMonth: null, hourlyMode: 'week', metric: 'count', source: 'all' },
     time: { valid: false, source: 'relative', quality: 'relative', epochMs: 0, syncPerf: 0 },
     timeManagement: { activeSource: 'relative', quality: 'relative', valid: false, ntpServer: '', browserFallbackAllowed: false, ntp: {}, rtc: {}, browser: {}, system: {} },
@@ -2249,7 +2296,7 @@
     addSwitch(soundGrid, 'soundEnabled', 'interruptions.sound');
     addRange(soundGrid, 'soundVolume', 'project.soundVolume', 0, 100);
     addSelect(soundGrid, 'soundMode', 'project.soundMode', [['fixed','project.soundMode.fixed'],['rotate','project.soundMode.rotate']]);
-    addNumber(soundGrid, 'soundTrack', 'project.soundTrack', 2, 65535);
+    addNumber(soundGrid, 'soundTrack', 'project.soundTrack', 3, 65535);
     const soundHint = el('div', 'form-note project-setting-note'); soundGrid.append(soundHint);
     addHardwareAction(soundGrid, 'audio', 'test', 'action.audioTest', 'audio');
 

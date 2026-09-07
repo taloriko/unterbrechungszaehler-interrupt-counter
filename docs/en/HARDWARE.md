@@ -78,3 +78,9 @@ Full technical wiring: [`../../Unterbrechungszaehler/HARDWARE_WIRING.md`](../../
 ## OLED settings from 3.2.0
 
 The SH1106 can be persistently rotated by 180°. Fresh defaults are 65% normal brightness and 5% dim brightness. The boot screen remains visible for at least four seconds without blocking the remaining device services.
+
+### Track allocation from 3.4.0
+
+- `00001` – boot/test
+- `00002` – anti-spam for another physical press within 10 seconds
+- `00003` and above – normal interruption sounds; rotation uses only 3…N

@@ -52,3 +52,7 @@ Heatmaps können nach **Beides**, **Knopf / GPIO** oder **Web** gefiltert werden
 ## DY-SV17F-Diagnose 3.3.1
 
 UART-Wiedergabestatus und BUSY-Pegel werden getrennt und mit Messzeit dargestellt. `Prüfen` bleibt lautlos; `Ton testen` sammelt zusätzlich BUSY-Flanken und bestätigt ein vermutetes Ende per UART. BUSY bleibt reine Zusatzdiagnose und ist keine Voraussetzung für funktionierenden Sound.
+
+## Anti-Spam am physischen Knopf (3.4.0)
+
+Ein gültiger DI1/GPIO-Druck startet eine feste 10-Sekunden-Sperre. Weitere physische Drücke innerhalb dieser Zeit werden nicht gespeichert oder gezählt und beeinflussen weder CSV noch Heatmaps oder Ø-Abstände. Sie lösen ausschließlich das schnelle lokale Anti-Spam-Feedback aus: Track 2 plus etwa eine Sekunde OLED-TV-Flimmern. Web-Ereignisse sind von dieser Sperre unabhängig. Track 1 bleibt Boot/Test, Track 2 ist reserviert, normale Töne beginnen bei Track 3.

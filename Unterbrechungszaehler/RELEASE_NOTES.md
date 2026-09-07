@@ -1,3 +1,10 @@
+# Release 3.4.0
+
+- 10-s-Anti-Spam für DI1/GPIO ohne Einfluss auf gespeicherte Unterbrechungsdaten
+- Track 2 reserviert für Spam-Feedback; normale Rotation ab Track 3
+- sofortiger Track-2-Fast-Path und nicht blockierendes OLED-TV-Flimmern
+- boot-lokaler Diagnosezähler für verworfene physische Drücke
+
 # Release 3.3.2
 
 - manueller DY-SV17F-Audiotest beendet sich anhand gezielter UART-Statusabfragen sicher, auch wenn keine weitere BUSY-Flanke kommt

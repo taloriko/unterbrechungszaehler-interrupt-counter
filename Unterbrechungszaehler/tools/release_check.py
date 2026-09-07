@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.3.2."""
+"""Portable release checks for Unterbrechungszaehler 3.4.0."""
 from __future__ import annotations
 
 import gzip
@@ -60,7 +60,7 @@ def main() -> None:
     partitions = (ROOT / "partitions.csv").read_text(encoding="utf-8")
 
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.3.2"' in config, "project version 3.3.2")
+    check('SOFTWARE_VERSION[] = "3.4.0"' in config, "project version 3.4.0")
     check(
         'AVAILABLE_LANGUAGES_JSON[] = "[\\\"de\\\",\\\"en\\\",\\\"it\\\",\\\"fr\\\",\\\"swg\\\",\\\"swg-alb\\\",\\\"swg-ob\\\"]"' in config,
         "declared UI languages",
@@ -121,7 +121,7 @@ def main() -> None:
     )
     for language in ("de", "en", "it", "fr", "swg", "swg-alb", "swg-ob"):
         token = f"Object.assign(I18N{'.' + language if '-' not in language else '[' + repr(language) + ']'}, {{"
-        check(token in JS, f"3.3.2 UI additions present for {language}")
+        check(token in JS, f"3.4.0 UI additions present for {language}")
 
     positions = [JS.find(f"{{ id: '{name}'") for name in ("device", "wifi", "memory", "time", "hardware", "ota")]
     check(all(position >= 0 for position in positions) and positions == sorted(positions), "device card order")
@@ -130,7 +130,22 @@ def main() -> None:
     check("Bindings.notify('analytics.monthWeek')" in JS and "Bindings.notify('analytics.hourly')" in JS, "manual heatmap filters trigger targeted rerender")
     check("projectSettings: renderProjectSettings" in JS, "Home project settings card")
     check("SoundMode::Rotate" in (ROOT / "project_preferences.cpp").read_text(encoding="utf-8"), "rotating interruption sound mode")
-    check("Track 1 belongs exclusively to the boot sound" in (ROOT / "interruption_service.cpp").read_text(encoding="utf-8"), "boot track excluded from rotating interruption sound")
+    service_cpp = (ROOT / "interruption_service.cpp").read_text(encoding="utf-8")
+    check("Track 1 = boot/test, track 2 = anti-spam" in service_cpp, "tracks 1/2 reserved from normal rotation")
+    check("INTERRUPTION_SOUND_FIRST_NORMAL_TRACK = 3" in project and "INTERRUPTION_SPAM_SOUND_TRACK = 2" in project, "sound track reservation 1 boot, 2 anti-spam, 3+ normal")
+    check("PHYSICAL_BUTTON_COOLDOWN_MS = 10000" in project, "10-second physical-button cooldown")
+    check("PhysicalButtonGuard::accept" in service_cpp and "handleSuppressedPhysicalPress" in service_cpp, "physical button anti-spam guard before capture")
+    guard_pos = service_cpp.find("PhysicalButtonGuard::accept")
+    capture_pos = service_cpp.find("capture(InterruptionTypes::EventSource::PhysicalButton)", guard_pos)
+    check(guard_pos >= 0 and capture_pos > guard_pos and "return;" in service_cpp[guard_pos:capture_pos], "suppressed physical press exits before capture/store path")
+    check("playPriorityFeedbackTrack(ProjectConfig::INTERRUPTION_SPAM_SOUND_TRACK)" in service_cpp, "track 2 fast feedback on suppressed press")
+    check("notifySuppressedPhysicalPress" in service_cpp and "DisplayViews::update(currentSummary)" in service_cpp, "first spam display frame serviced immediately")
+    views_cpp = (ROOT / "display_views.cpp").read_text(encoding="utf-8")
+    check("DISPLAY_SPAM_FLICKER_MS = 950" in project and "renderSpamFlickerFrame" in views_cpp and "delay(" not in views_cpp.split("renderSpamFlickerFrame",1)[1].split("contrastFromPercent",1)[0], "nonblocking deterministic old-TV spam flicker")
+    prefs_cpp = (ROOT / "project_preferences.cpp").read_text(encoding="utf-8")
+    check("value < ProjectConfig::INTERRUPTION_SOUND_FIRST_NORMAL_TRACK" in prefs_cpp and "prefs.putUShort(\"sndtrack\", track)" in prefs_cpp, "legacy fixed track 2 migrates to normal track 3")
+    check("addNumber(soundGrid, 'soundTrack', 'project.soundTrack', 3, 65535)" in JS, "fixed-track UI starts at track 3")
+    check("hardware.info.suppressedPresses" in JS and "suppressedPhysicalPressCount" in (ROOT / "hardware_registry.cpp").read_text(encoding="utf-8"), "boot-local suppression diagnostics")
     check(not re.search(r"\.(?:innerHTML|outerHTML)\s*=|insertAdjacentHTML\s*\(|document\.write\s*\(", JS), "no unsafe bulk DOM HTML writes")
     external = re.search(r"<(?:script|img|link)\b[^>]*(?:src|href)=[\"\']https?://", HTML, re.IGNORECASE)
     check(external is None, "no external HTML dependencies")
@@ -165,6 +180,10 @@ def main() -> None:
     check("databaseDeletePassword" in JS and "eraseDatabase" in JS, "password-confirmed database erase UI")
     check("status.ready" in JS and "status.unavailable" in JS, "translated storage health states")
 
+    guard_binary = ROOT / "tools" / ".test_physical_button_guard"
+    subprocess.run(["g++", "-std=c++17", "-I", str(ROOT), str(ROOT / "tools" / "test_physical_button_guard.cpp"), "-o", str(guard_binary)], check=True)
+    subprocess.run([str(guard_binary)], check=True)
+    guard_binary.unlink(missing_ok=True)
     subprocess.run([sys.executable, str(ROOT / "tools" / "test_interruption_storage.py")], check=True)
     subprocess.run([sys.executable, "-m", "py_compile", str(ROOT / "tools" / "build_web.py"), str(ROOT / "tools" / "test_interruption_storage.py"), str(ROOT / "tools" / "release_check.py")], check=True)
     if subprocess.run(["node", "--check", str(ROOT / "ui-src" / "app.js")], check=False).returncode != 0:

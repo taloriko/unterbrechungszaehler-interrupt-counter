@@ -17,6 +17,10 @@ bool renderRequested = true;
 bool flashRequested = false;
 bool flashActive = false;
 uint32_t flashUntilMs = 0;
+bool spamFlickerActive = false;
+uint32_t spamFlickerStartedAtMs = 0;
+uint32_t spamFlickerNextFrameMs = 0;
+uint8_t spamFlickerFrame = 0;
 uint32_t lastIdleEvaluationMs = 0;
 uint32_t lastActivityMs = 0;
 uint32_t lastCount = UINT32_MAX;
@@ -37,14 +41,15 @@ struct Labels {
   const char *now;
   const char *focus;
   const char *average;
+  const char *tooFast;
 };
 
 const Labels &labels() {
-  static const Labels de{"HEUTE", "LETZTE", "JETZT", "FOKUS", "SCHNITT"};
-  static const Labels en{"TODAY", "LAST", "NOW", "FOCUS", "AVG"};
-  static const Labels fr{"JOUR", "DERNIER", "MAINT", "FOCUS", "MOY"};
-  static const Labels it{"OGGI", "ULTIMA", "ORA", "FOCUS", "MEDIA"};
-  static const Labels swg{"HEIT", "LETSCHTE", "JETZT", "FOKUS", "SCHNITT"};
+  static const Labels de{"HEUTE", "LETZTE", "JETZT", "FOKUS", "SCHNITT", "ZU SCHNELL!"};
+  static const Labels en{"TODAY", "LAST", "NOW", "FOCUS", "AVG", "TOO FAST!"};
+  static const Labels fr{"JOUR", "DERNIER", "MAINT", "FOCUS", "MOY", "TROP VITE!"};
+  static const Labels it{"OGGI", "ULTIMA", "ORA", "FOCUS", "MEDIA", "TROPPO PRESTO!"};
+  static const Labels swg{"HEIT", "LETSCHTE", "JETZT", "FOKUS", "SCHNITT", "NET SO HEKTISCH!"};
   const char *language = ProjectPreferences::language();
   if (strcmp(language, "en") == 0) return en;
   if (strcmp(language, "fr") == 0) return fr;
@@ -240,6 +245,29 @@ bool renderHome(const InterruptionTypes::Summary &summary, const char *age, bool
   }
 }
 
+bool renderSpamFlickerFrame(uint8_t frame) {
+  const uint8_t phase = static_cast<uint8_t>(frame % 8U);
+  DisplaySh1106::frameClear();
+
+  // Deterministic scan-line/static frames: old-TV character without RNG,
+  // allocations or a large bitmap table.
+  for (uint8_t i = 0; i < 6U; ++i) {
+    const int16_t y = static_cast<int16_t>((phase * 7U + i * 11U) % 64U);
+    const int16_t inset = static_cast<int16_t>((phase + i * 3U) % 15U);
+    DisplaySh1106::drawHLine(inset, 127 - inset, y);
+  }
+  if (phase == 1U || phase == 5U) {
+    DisplaySh1106::drawRect(3, 18, 122, 20);
+    for (int16_t x = 8; x < 124; x += 13) DisplaySh1106::drawVLine(x, 20, 35);
+  }
+  if ((phase & 1U) == 0U) DisplaySh1106::drawCenteredText(27, labels().tooFast);
+
+  // Controller inversion adds a short vertical-sync-like flash without
+  // rebuilding the framebuffer. Always restored when the effect ends.
+  DisplaySh1106::setInverted(phase == 2U || phase == 6U);
+  return DisplaySh1106::present();
+}
+
 uint8_t contrastFromPercent(uint8_t percent) {
   return static_cast<uint8_t>((static_cast<uint16_t>(percent) * 255U + 50U) / 100U);
 }
@@ -280,6 +308,26 @@ void notifyInterruption(bool flashEnabled) {
     return;
   }
   flashRequested = flashEnabled;
+}
+
+void notifySuppressedPhysicalPress() {
+  const uint32_t nowMs = millis();
+  lastActivityMs = nowMs;
+  dimmed = false;
+  lastContrast = -1;
+  flashRequested = false;
+  if (flashActive) {
+    DisplaySh1106::setInverted(false);
+    flashActive = false;
+  }
+  if (!ProjectPreferences::displayEnabled() || DisplaySh1106::bootScreenActive() || DisplaySh1106::manualTestActive()) {
+    spamFlickerActive = false;
+    return;
+  }
+  spamFlickerActive = true;
+  spamFlickerStartedAtMs = nowMs;
+  spamFlickerNextFrameMs = nowMs;
+  spamFlickerFrame = 0;
 }
 
 void requestHomeRefresh() { renderRequested = true; }
@@ -327,6 +375,7 @@ void update(const InterruptionTypes::Summary &summary) {
     if (flashActive) DisplaySh1106::setInverted(false);
     flashActive = false;
     flashRequested = false;
+    spamFlickerActive = false;
     if (displayPowerOn && DisplaySh1106::setPower(false)) displayPowerOn = false;
     return;
   }
@@ -339,6 +388,20 @@ void update(const InterruptionTypes::Summary &summary) {
   }
 
   updateContrast(nowMs);
+
+  if (spamFlickerActive) {
+    if (static_cast<uint32_t>(nowMs - spamFlickerStartedAtMs) >= ProjectConfig::DISPLAY_SPAM_FLICKER_MS) {
+      DisplaySh1106::setInverted(false);
+      spamFlickerActive = false;
+      renderRequested = true;
+    } else {
+      if (due(nowMs, spamFlickerNextFrameMs)) {
+        renderSpamFlickerFrame(spamFlickerFrame++);
+        spamFlickerNextFrameMs = nowMs + ProjectConfig::DISPLAY_SPAM_FLICKER_FRAME_MS;
+      }
+      return;
+    }
+  }
 
   if (!renderRequested && !flashRequested && !flashActive &&
       static_cast<uint32_t>(nowMs - lastIdleEvaluationMs) < 1000U) return;

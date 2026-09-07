@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.4.0
+
+- 10-Sekunden-Anti-Spam ausschließlich für den physischen DI1/GPIO-Knopf; verworfene Drücke erreichen weder Raw-Ring noch Tagesaggregate, CSV, Heatmaps oder Ø-Abstände
+- verworfene Drücke verlängern die Sperrzeit nicht; Web-Ereignisse bleiben unabhängig
+- Track 2 ist fest als Anti-Spam-Ton reserviert, normale Unterbrechungstöne und Rotation beginnen bei Track 3
+- schneller Feedbackpfad: Anti-Spam-Tonkommando und erster OLED-Störframe laufen vor Logging/Persistenzarbeit
+- nicht blockierendes, deterministisches OLED-Flimmern im Stil eines alten Fernsehers mit kurzem sprachabhängigem Hinweis
+- GPIO-Diagnose zeigt 10-s-Sperre, seit Boot verworfene Drücke und den letzten verworfenen Druck
+
 ## 3.3.2
 
 - DY-SV17F-Audiotest beendet sich jetzt zuverlässig über den aktiv abgefragten UART-Wiedergabestatus statt auf eine weitere BUSY-Flanke angewiesen zu sein

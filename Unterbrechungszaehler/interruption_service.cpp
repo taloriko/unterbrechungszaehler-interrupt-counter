@@ -6,6 +6,7 @@
 #include "display_views.h"
 #include "gpio_module.h"
 #include "interruption_aggregates.h"
+#include "physical_button_guard.h"
 #include "interruption_store.h"
 #include "project_config.h"
 #include "project_preferences.h"
@@ -24,12 +25,14 @@ uint8_t queueTail = 0;
 uint8_t queueCount = 0;
 uint32_t nextStorageRetryMs = 0;
 uint8_t audioPending = 0;
-uint16_t lastRotatingTrack = 1;
+uint16_t lastRotatingTrack = 2;
 bool rotateFallbackLogged = false;
 bool displayFeedbackPending = false;
 bool aggregatesStarted = false;
 bool aggregatesReadyLast = false;
 uint32_t nextAggregateRetryMs = 0;
+PhysicalButtonGuard::State physicalButtonGuard;
+bool missingNormalTracksLogged = false;
 
 bool currentDayValid = false;
 uint16_t currentDayIndex = 0;
@@ -182,8 +185,34 @@ void refreshCurrentDay(bool force) {
   }
 }
 
+void handleSuppressedPhysicalPress(uint32_t nowMs) {
+  // Fast local feedback is deliberately first. Neither storage, analytics nor
+  // web work is allowed in front of the acknowledgement the user can hear/see.
+  if (ProjectPreferences::soundEnabled()) {
+    const uint16_t count = AudioDySv17f::musicCount();
+    if (count == 0U || count >= ProjectConfig::INTERRUPTION_SPAM_SOUND_TRACK) {
+      AudioDySv17f::playPriorityFeedbackTrack(ProjectConfig::INTERRUPTION_SPAM_SOUND_TRACK);
+    }
+  }
+  DisplayViews::notifySuppressedPhysicalPress();
+  DisplayViews::update(currentSummary);
+
+  const uint32_t elapsed = static_cast<uint32_t>(nowMs - physicalButtonGuard.lastAcceptedMs);
+  const uint32_t remaining = elapsed < ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS
+                                 ? ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS - elapsed
+                                 : 0U;
+  SerialLog::infof("BUTTON", "suppressed | reason=anti_spam | elapsed=%lums | remaining=%lums | count=%lu",
+                   static_cast<unsigned long>(elapsed), static_cast<unsigned long>(remaining),
+                   static_cast<unsigned long>(physicalButtonGuard.suppressedCount));
+}
+
 void onGpioChanged(const char *channelId, bool logicalState) {
   if (!logicalState || !channelId || strcmp(channelId, ProjectConfig::INTERRUPTION_INPUT_ID) != 0) return;
+  const uint32_t nowMs = millis();
+  if (!PhysicalButtonGuard::accept(physicalButtonGuard, nowMs, ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS)) {
+    handleSuppressedPhysicalPress(nowMs);
+    return;
+  }
   capture(InterruptionTypes::EventSource::PhysicalButton);
 }
 
@@ -205,30 +234,38 @@ void popQueue() {
 }
 
 uint16_t interruptionSoundTrack() {
+  const uint16_t firstNormal = ProjectConfig::INTERRUPTION_SOUND_FIRST_NORMAL_TRACK;
   if (ProjectPreferences::soundMode() != ProjectPreferences::SoundMode::Rotate) {
-    return ProjectPreferences::soundTrack();
+    return ProjectPreferences::soundTrack() >= firstNormal ? ProjectPreferences::soundTrack() : firstNormal;
   }
 
   const uint16_t count = AudioDySv17f::musicCount();
-  if (count >= 2) {
-    // Track 1 belongs exclusively to the boot sound. Rotate deterministically
-    // through 2..N so consecutive interruptions never repeat a track when at
-    // least two interruption tracks exist. No RNG state or heap is required.
-    lastRotatingTrack = (lastRotatingTrack < 2 || lastRotatingTrack >= count)
-                          ? 2
+  if (count >= firstNormal) {
+    // Track 1 = boot/test, track 2 = anti-spam. Normal interruption rotation
+    // starts at track 3 and remains deterministic/no-heap.
+    lastRotatingTrack = (lastRotatingTrack < firstNormal || lastRotatingTrack >= count)
+                          ? firstNormal
                           : static_cast<uint16_t>(lastRotatingTrack + 1U);
     rotateFallbackLogged = false;
+    missingNormalTracksLogged = false;
     return lastRotatingTrack;
   }
 
-  // The optional track-count query can be unavailable on some modules. Keep
-  // feedback functional with the configured fixed fallback rather than
-  // blocking/retrying in the interruption path.
+  if (count > 0U) {
+    if (!missingNormalTracksLogged) {
+      SerialLog::warning("INTERRUPT", "Only reserved audio tracks detected; normal interruption sound needs track 3 or higher");
+      missingNormalTracksLogged = true;
+    }
+    return 0U;
+  }
+
+  // Some modules do not answer the optional count query. Keep the configured
+  // >=3 fallback rather than blocking the physical feedback path.
   if (!rotateFallbackLogged) {
-    SerialLog::warning("INTERRUPT", "Rotating sound requested but track count is unavailable/<2; using configured fixed track");
+    SerialLog::warning("INTERRUPT", "Rotating sound requested but track count is unavailable; using configured track >=3 as fallback");
     rotateFallbackLogged = true;
   }
-  return ProjectPreferences::soundTrack();
+  return ProjectPreferences::soundTrack() >= firstNormal ? ProjectPreferences::soundTrack() : firstNormal;
 }
 
 void processFeedback() {
@@ -242,7 +279,8 @@ void processFeedback() {
   DisplayViews::update(currentSummary);
   if (audioPending > 0 && ProjectPreferences::soundEnabled()) {
     const uint16_t track = interruptionSoundTrack();
-    if (AudioDySv17f::playTrack(track)) --audioPending;
+    if (track == 0U) --audioPending;
+    else if (AudioDySv17f::playTrack(track)) --audioPending;
   } else if (!ProjectPreferences::soundEnabled()) {
     audioPending = 0;
   }
@@ -484,5 +522,9 @@ bool setSoundVolumePercent(uint8_t percent) {
 }
 
 bool soundEnabled() { return ProjectPreferences::soundEnabled(); }
+uint32_t physicalButtonCooldownMs() { return ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS; }
+uint32_t suppressedPhysicalPressCount() { return physicalButtonGuard.suppressedCount; }
+bool hasSuppressedPhysicalPress() { return physicalButtonGuard.hasSuppressed; }
+uint32_t lastSuppressedPhysicalPressMs() { return physicalButtonGuard.lastSuppressedMs; }
 
 }  // namespace InterruptionService

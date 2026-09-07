@@ -8,6 +8,7 @@
 #include "hardware_config.h"
 #include "hardware_types.h"
 #include "json_utils.h"
+#include "interruption_service.h"
 #include "rtc_ds3231.h"
 #include "serial_log.h"
 #include "status_registry.h"
@@ -325,6 +326,11 @@ void appendJson(String &out) {
     bool first = true;
     appendInfoString(out, first, "hardware.info.inputs", pinList(HardwareConfig::GpioDirection::Input));
     appendInfoString(out, first, "hardware.info.outputs", pinList(HardwareConfig::GpioDirection::Output));
+    appendInfoString(out, first, "hardware.info.buttonCooldown", String(InterruptionService::physicalButtonCooldownMs() / 1000U) + " s");
+    appendInfoUInt(out, first, "hardware.info.suppressedPresses", InterruptionService::suppressedPhysicalPressCount());
+    if (InterruptionService::hasSuppressedPhysicalPress()) {
+      appendInfoUInt(out, first, "hardware.info.lastSuppressedPress", InterruptionService::lastSuppressedPhysicalPressMs(), "checkTime");
+    }
     endModule(out);
   }
 

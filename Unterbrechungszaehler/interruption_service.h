@@ -17,5 +17,9 @@ const InterruptionTypes::Summary &summary();
 bool setSoundEnabled(bool enabled);
 bool setSoundVolumePercent(uint8_t percent);
 bool soundEnabled();
+uint32_t physicalButtonCooldownMs();
+uint32_t suppressedPhysicalPressCount();
+bool hasSuppressedPhysicalPress();
+uint32_t lastSuppressedPhysicalPressMs();
 
 }  // namespace InterruptionService

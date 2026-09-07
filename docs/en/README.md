@@ -174,7 +174,7 @@ A ready-to-copy starter pack is available in [`../sounds/`](../sounds/); the inc
 2. Open the module's internal flash drive on the computer.
 3. Copy the audio files **directly to the root directory**. Do **not** use folders.
 4. Use five-digit names with leading zeroes: `00001.mp3`, `00002.mp3`, `00003.mp3`, … or the corresponding `.wav` names. Do not keep two different files with the same track number.
-5. `00001` is **track 1 and reserved exclusively for the boot sound**. `00002` and above are interruption sounds. Fixed mode uses the configured track >= 2; rotate mode uses detected tracks **2…N**.
+5. `00001` is **track 1 and reserved exclusively for the boot sound**. `00002` and above are interruption sounds. Fixed mode uses the configured track >= 2; rotate mode uses detected tracks **3…N**.
 6. Safely eject the drive and disconnect Micro-USB before testing playback.
 
 Correct:
@@ -263,3 +263,7 @@ Heatmaps can be filtered by **Both**, **Button / GPIO**, or **Web**. A single-so
 ## DY-SV17F diagnostics 3.3.1
 
 UART playback status and the raw BUSY level are shown separately with measurement times. **Check** stays silent; **Test sound** additionally observes BUSY edges and confirms a suspected end through UART. BUSY remains optional diagnostics and is never required for normal playback.
+
+## Physical-button anti-spam (3.4.0)
+
+An accepted DI1/GPIO press starts a fixed 10-second window. Further physical presses inside that window are neither stored nor counted and do not affect CSV, heatmaps, or average intervals. They only trigger immediate local anti-spam feedback: track 2 plus roughly one second of non-blocking old-TV OLED flicker. Web events remain independent. Track 1 stays boot/test, track 2 is reserved, and normal interruption sounds start at track 3.

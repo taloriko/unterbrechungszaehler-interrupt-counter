@@ -98,7 +98,11 @@ void begin() {
   soundVolume = prefs.getUChar("sndvol", ProjectConfig::SOUND_VOLUME_DEFAULT_PERCENT);
   if (soundVolume > 100) soundVolume = ProjectConfig::SOUND_VOLUME_DEFAULT_PERCENT;
   track = prefs.getUShort("sndtrack", ProjectConfig::INTERRUPTION_SOUND_TRACK_DEFAULT);
-  if (track < 2) track = ProjectConfig::INTERRUPTION_SOUND_TRACK_DEFAULT;
+  if (track < ProjectConfig::INTERRUPTION_SOUND_FIRST_NORMAL_TRACK) {
+    track = ProjectConfig::INTERRUPTION_SOUND_TRACK_DEFAULT;
+    prefs.putUShort("sndtrack", track);
+    SerialLog::infof("PROJECT", "Reserved track migration | normal interruption track=%u", static_cast<unsigned int>(track));
+  }
   soundModeValue = sanitizedSoundMode(prefs.getUChar("sndmode", static_cast<uint8_t>(ProjectConfig::INTERRUPTION_SOUND_MODE_DEFAULT)));
 
   const String storedLanguage = prefs.getString("lang", "");
@@ -154,7 +158,7 @@ bool setSoundVolumePercent(uint8_t percent) {
 uint16_t soundTrack() { return track; }
 
 bool setSoundTrack(uint16_t value) {
-  if (value < 2) return false;  // Track 1 is reserved exclusively for boot.
+  if (value < ProjectConfig::INTERRUPTION_SOUND_FIRST_NORMAL_TRACK) return false;  // 1=boot/test, 2=anti-spam.
   if (track == value) return true;
   if (!persistUShort("sndtrack", value)) return false;
   track = value;

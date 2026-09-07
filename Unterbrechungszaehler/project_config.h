@@ -17,7 +17,10 @@ constexpr char TIMEZONE_POSIX[] = "CET-1CEST,M3.5.0,M10.5.0/3";
 
 // Feedback is independent from persistence: the event is captured first, then
 // display/audio/storage work is scheduled cooperatively.
-constexpr uint16_t INTERRUPTION_SOUND_TRACK_DEFAULT = 2;
+constexpr uint32_t PHYSICAL_BUTTON_COOLDOWN_MS = 10000;
+constexpr uint16_t INTERRUPTION_SPAM_SOUND_TRACK = 2;
+constexpr uint16_t INTERRUPTION_SOUND_FIRST_NORMAL_TRACK = 3;
+constexpr uint16_t INTERRUPTION_SOUND_TRACK_DEFAULT = INTERRUPTION_SOUND_FIRST_NORMAL_TRACK;
 constexpr ProjectPreferences::SoundMode INTERRUPTION_SOUND_MODE_DEFAULT = ProjectPreferences::SoundMode::Rotate;
 constexpr bool INTERRUPTION_SOUND_DEFAULT = true;
 constexpr uint8_t SOUND_VOLUME_DEFAULT_PERCENT = 100;
@@ -25,6 +28,11 @@ constexpr bool DISPLAY_ENABLED_DEFAULT = true;
 constexpr bool DISPLAY_ROTATION_180_DEFAULT = false;
 constexpr bool DISPLAY_FLASH_DEFAULT = true;
 constexpr uint32_t DISPLAY_FLASH_MS = 220;
+
+// Suppressed-button feedback is intentionally short and deterministic.
+// No delay()/random generator is used in the physical-button fast path.
+constexpr uint32_t DISPLAY_SPAM_FLICKER_MS = 950;
+constexpr uint32_t DISPLAY_SPAM_FLICKER_FRAME_MS = 85;
 
 // OLED project preferences are persisted in NVS. Brightness values are percent
 // and converted to the SH1106 0..255 contrast register only when needed.
