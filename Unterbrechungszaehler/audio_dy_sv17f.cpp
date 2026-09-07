@@ -674,12 +674,20 @@ bool playPriorityFeedbackTrack(uint16_t trackNumber) {
   // pending normal play-state verification is safe: its eventual UART answer
   // is ignored while no query is waiting. Diagnostic/probe traffic is never
   // preempted by this fast feedback path.
+  bool replacedNormalVerification = false;
   if (waitingFor == WaitKind::VerifyPlay) {
     waitingFor = WaitKind::None;
     verifyExpectation = VerifyExpectation::Any;
+    replacedNormalVerification = true;
   }
-  if (deferredAction == DeferredAction::VerifyPlay) deferredAction = DeferredAction::None;
+  if (deferredAction == DeferredAction::VerifyPlay) {
+    deferredAction = DeferredAction::None;
+    replacedNormalVerification = true;
+  }
   sendPlayCommand(trackNumber);
+  // scheduleVerify() marks health as Checking. A deliberately superseded normal
+  // verification must not leave that diagnostic state stuck forever.
+  if (replacedNormalVerification && isDetected) setHealth(StatusRegistry::State::Ok);
   return true;
 }
 

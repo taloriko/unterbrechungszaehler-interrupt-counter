@@ -235,11 +235,13 @@ void popQueue() {
 
 uint16_t interruptionSoundTrack() {
   const uint16_t firstNormal = ProjectConfig::INTERRUPTION_SOUND_FIRST_NORMAL_TRACK;
+  const uint16_t count = AudioDySv17f::musicCount();
   if (ProjectPreferences::soundMode() != ProjectPreferences::SoundMode::Rotate) {
+    if (count > 0U && count < firstNormal) return 0U;
     return ProjectPreferences::soundTrack() >= firstNormal ? ProjectPreferences::soundTrack() : firstNormal;
   }
 
-  const uint16_t count = AudioDySv17f::musicCount();
+
   if (count >= firstNormal) {
     // Track 1 = boot/test, track 2 = anti-spam. Normal interruption rotation
     // starts at track 3 and remains deterministic/no-heap.

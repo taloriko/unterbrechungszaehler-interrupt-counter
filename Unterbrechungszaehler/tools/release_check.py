@@ -139,6 +139,8 @@ def main() -> None:
     capture_pos = service_cpp.find("capture(InterruptionTypes::EventSource::PhysicalButton)", guard_pos)
     check(guard_pos >= 0 and capture_pos > guard_pos and "return;" in service_cpp[guard_pos:capture_pos], "suppressed physical press exits before capture/store path")
     check("playPriorityFeedbackTrack(ProjectConfig::INTERRUPTION_SPAM_SOUND_TRACK)" in service_cpp, "track 2 fast feedback on suppressed press")
+    check("replacedNormalVerification" in audio_cpp and "setHealth(StatusRegistry::State::Ok)" in audio_cpp, "priority spam track cannot leave normal verification stuck in Checking")
+    check("count > 0U && count < firstNormal" in service_cpp and "return 0U" in service_cpp, "known modules with only reserved tracks do not receive nonexistent normal track 3")
     check("notifySuppressedPhysicalPress" in service_cpp and "DisplayViews::update(currentSummary)" in service_cpp, "first spam display frame serviced immediately")
     views_cpp = (ROOT / "display_views.cpp").read_text(encoding="utf-8")
     check("DISPLAY_SPAM_FLICKER_MS = 950" in project and "renderSpamFlickerFrame" in views_cpp and "delay(" not in views_cpp.split("renderSpamFlickerFrame",1)[1].split("contrastFromPercent",1)[0], "nonblocking deterministic old-TV spam flicker")
