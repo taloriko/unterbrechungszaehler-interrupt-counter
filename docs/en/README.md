@@ -1,273 +1,81 @@
-# Interruption Counter 3.2.0
+# Interruption Counter 3.6.0
 
 > [!WARNING]
-> **AI notice:** This project was created with substantial support from AI, then tested in practice, revised and developed further. If you fundamentally dislike AI-generated code, you are of course still allowed to press the button. ;-)
+> **AI notice:** This project was created with substantial AI support, then tested, revised and developed further. If you fundamentally dislike AI-generated code, you are of course still allowed to press the button. ;-)
 
-> **Current version:** `3.1.0`
+Version 3.0.0 remains the hard baseline of the project. Version 3.6.0 adds a physical work-cycle model without changing the proven 9-byte interruption record or the existing analytics.
 
-[Deutsch](../../README.md) · [Schwäbisch](../swg/README.md) · [Project home](../../README.md)
+[Deutsch](../de/README.md) · [Schwäbisch](../swg/README.md) · [Project home](../../README.md)
 
----
+## New in 3.6.0: work cycle
 
-## What do I need this thing for?
+The existing **DI1/GPIO13** button now distinguishes the workday boundaries without another pin or another button:
 
-**You are sitting at your desk, focused on a task.**
+- **first short press:** START / begin work – not counted as an interruption
+- **later short presses:** the latest press remains a pending candidate
+- **next valid short press:** confirms the previous candidate as a real interruption
+- **long press for at least 2 seconds:** explicitly ends the work cycle
+- **no long press:** at the local day change, the pending final short press becomes END and is not counted
 
-- Then a colleague shows up.
-- Then the phone rings.
-- Then somebody needs “just one quick thing”.
-- Then the boss appears.
-- And at some point you start wondering what you were actually trying to do two hours ago.
+In practical terms: **first press = start, last press = end, everything in between = interruption.**
 
-That is exactly what the **Interruption Counter** is for.
+After an explicit long-press end, the OLED shows **DONE FOR TODAY plus today's interruption count for 10 seconds**. Automatic day-change closure stays silent.
 
-**Press the button → store the timestamp → analyse it later in the browser.**
+The web button remains independent and still creates an interruption immediately.
 
-So instead of it just feeling like:
+## Anti-spam
 
-> “I somehow got nothing done today.”
+The fixed 10-second protection window remains in place for short physical presses. The START press opens that window as well. Further short presses inside it are discarded, trigger the existing track-2/OLED anti-spam feedback, and never affect stored data or analytics. A rejected press does not extend the window.
 
-You can actually see **how often and when you were interrupted**.
+The long-press END action bypasses this short-press cooldown so the work cycle can always be closed deliberately.
 
-> [!WARNING]
-> Whether your boss is interested in the result afterwards is, of course, an entirely different scientific question. ;-)
+## Main features
 
-## Can this thing do anything else?
+- DI1/GPIO13 physical capture plus an independent web button
+- local START/END work cycle without additional hardware
+- local web UI without a cloud dependency
+- daily counter, last interruption and heatmaps
+- count or average completed interval analytics
+- Focus & quiet-time insights and work patterns
+- streamed CSV export
+- 100,000 confirmed interruptions in the unchanged 9-byte raw ring
+- 2,300 daily aggregate slots
+- DS3231 RTC
+- SH1106 OLED with multiple views, brightness/dimming and 180° rotation
+- DY-SV17F audio: track 1 boot/test, track 2 anti-spam, track 3+ normal interruption sounds
+- OTA update
+- UI in German, English, Italian, French, Swabian, Alb-Swabian and Upper Swabian
 
-Yes.
+## Data compatibility
 
-Technically, the Interruption Counter is not limited to a push button.
+START and END are deliberately **not** written to the interruption raw ring. The currently open final short press is stored compactly in NVS; START/END are also written to a tiny separate cycle journal. Only confirmed interruptions reach the existing raw ring and daily aggregates.
 
-Instead of the button, you can use practically any suitable **potential-free / dry contact**.
+This keeps existing 3.x data, heatmaps, CSV exports, focus analytics and source filters compatible. See the [storage format](../../Unterbrechungszaehler/STORAGE_FORMAT.md) for details.
 
-For example:
+## Hardware
 
-- a machine fault signal via relay contact
-- interruption of a light barrier
-- a door or window contact
-- a switching contact from a system
-- operating or fault messages
-- an external push button contact
-- or any other contact where you later want to know: **When exactly did that happen?**
+The pin assignment is unchanged. Version 3.6.0 requires no additional button.
 
-In short:
+- DI1: GPIO13 to GND
+- I2C SDA/SCL: GPIO21/22 for DS3231 + SH1106
+- DY-SV17F UART: RX GPIO18, TX GPIO19
+- DY-SV17F BUSY: GPIO39/VN with external pull-up
 
-**Contact switches → event is stored → data is visualised.**
+See [HARDWARE.md](HARDWARE.md).
 
-Be creative.
+## Software and flashing
 
-If somebody eventually uses the project to count how often the refrigerator is opened, though, I would like to hear about it.
-
----
-
-## Why did I build this?
-
-Over the years, quite a few things changed in our company.
-
-- We got more employees.
-- Then more tasks.
-- Then even more employees.
-- Then even more tasks.
-
-And when the economic situation gets more difficult, everybody probably knows the well-established management concept:
-
-- **Even more tasks.**
-
-At some point I felt as if I could no longer form a clear thought – let alone finish a task that might take 60 minutes in one focused session without being interrupted.
-
-The problem:
-
-In a larger company,
-
-> “I cannot work properly like this.”
-
-eventually stops being a sufficiently convincing argument on its own.
-
-So the idea was to give back something that large organisations particularly love:
-
-**Data, statistics, documentation and reports.**
-
-Or, put differently:
-
-I am simply turning the bureaucracy and documentation obsession back against the system. ;-)
-
-Since my working day already contains enough chaos, this was obviously not allowed to become yet another administrative task.
-
-The most important requirement from the very beginning was therefore:
-
-**One button press. Done.**
-
-No opening an app.
-No filling out a form.
-No choosing a category.
-No maintaining an Excel sheet.
-
-Just press the button and keep working.
-
-The device handles the rest.
-
----
-
-## What can the device do?
-
-**Neu in 3.2.0:**
-
-- OLED follows the selected UI language with compact umlaut/accent transliteration
-- five OLED modes, 180° rotation and at least a four-second boot screen
-- new display defaults: 65% normal / 5% dimmed
-- DY-SV17F volume 0–100%, default 100%, rotating sounds by default
-
-
-- **Capture events using a push button or potential-free contact**
-  Simple, fast and without turning every interruption into an administrative procedure.
-
-- **Local web interface without a cloud dependency**
-  Very important. Not everything needs to travel through three data centres just so somebody can count a button press. ;-)
-
-- **Daily view, history, details and switchable heatmaps**
-  Heatmaps can show either the **number of interruptions** or the **average completed interval until the next interruption on the same day**. The final press of a day is deliberately excluded because, without another press, that interval is still open.
-
-- **CSV export and long-term ring storage**
-  For the moment when “I keep getting interrupted” turns into “Show me the data”.
-
-- **DS3231 RTC**
-  So the device still knows what time it is without Wi-Fi. Revolutionary technology.
-
-- **Optional SH1106 OLED with 128 × 64 pixels**
-  Technically not essential, but it instantly looks at least 37% more professional. The display can be persistently enabled or disabled; the real boot screen remains visible for at least two seconds.
-
-- **Fallback Wi-Fi for local access**
-  If you do not want a cloud, you should still be able to reach the device somehow. The fallback AP is protected with the password `Unterbrechungszähler`.
-
-- **German, English, Italian, French, Swabian, Alb-Swabian and Upper Swabian in the user interface**
-  The README documentation intentionally remains available in German, English and Swabian only. Internationalisation has to start somewhere.
-
-- **MagSafe ring for a battery pack or mounting accessories**
-  Because Velcro works, but magnets simply look more like the future.
-
-## 3.0.0 is a hard cut
-
-The previous 1.x/2.x versions were development and test builds. **3.0.0 is the new baseline.** There is therefore no guaranteed hardware, data or OTA migration from 2.x. If you are coming from an older test setup, rebuild the wiring according to the current 3.0.0 documentation.
-
-## Current pin assignment
-
-| Function | ESP32 |
-|---|---:|
-| Interruption button / DI1 | GPIO13 to GND |
-| I2C SDA – RTC + OLED | GPIO21 |
-| I2C SCL – RTC + OLED | GPIO22 |
-| DY-SV17F TX → ESP32 RX | GPIO18 |
-| ESP32 TX → DY-SV17F RX | GPIO19 |
-| DY-SV17F CON3/BUSY | GPIO39 / VN |
-
-CON3/BUSY requires an external approx. **10 kΩ pull-up to the DY-SV17F V33 pin**. CON1 and CON2 are tied to GND for UART mode. Details: [Hardware / Wiring](HARDWARE.md).
-
-## DY-SV17F: copying audio files
-
-The **DY-SV17F** provides **32 Mbit / 4 MB of internal flash** and decodes **MP3** and **WAV**. Its integrated **5 W Class-D amplifier** can directly drive a **4 Ω, roughly 3–5 W speaker**. The module supports IO, Serial and One-Line Serial modes; this project uses **Serial/UART at 9600 baud, 8N1**.
-
-Documented sample rates are **8 / 11.025 / 12 / 16 / 22.05 / 24 / 32 / 44.1 / 48 kHz**, with a **24-bit DAC**, about **90 dB dynamic range** and **85 dB signal-to-noise ratio**.
-
-A ready-to-copy starter pack is available in [`../sounds/`](../sounds/); the included file mapping is listed in [`../sounds/DATEIZUORDNUNG.txt`](../sounds/DATEIZUORDNUNG.txt).
-
-1. Connect the DY-SV17F to the computer with a real **Micro-USB data cable**. A charge-only cable is not sufficient.
-2. Open the module's internal flash drive on the computer.
-3. Copy the audio files **directly to the root directory**. Do **not** use folders.
-4. Use five-digit names with leading zeroes: `00001.mp3`, `00002.mp3`, `00003.mp3`, … or the corresponding `.wav` names. Do not keep two different files with the same track number.
-5. `00001` is **track 1 and reserved exclusively for the boot sound**. `00002` and above are interruption sounds. Fixed mode uses the configured track >= 2; rotate mode uses detected tracks **3…N**.
-6. Safely eject the drive and disconnect Micro-USB before testing playback.
-
-Correct:
-
-```text
-/00001.mp3
-/00002.mp3
-/00003.mp3
-```
-
-Wrong:
-
-```text
-/sounds/00001.mp3
-/mp3/00002.mp3
-```
-
-> [!IMPORTANT]
-> **Normal audio playback does not work while the DY-SV17F is connected to the computer by Micro-USB / its flash is in USB storage use.** Eject the drive and disconnect USB before testing the sound output.
-
-## Quick start
-
-1. [Hardware and wiring](HARDWARE.md)
-2. [Software, build and flashing](SOFTWARE.md)
-3. Adjust the Wi-Fi placeholders in `Unterbrechungszaehler/config.h` locally.
-4. Open `Unterbrechungszaehler/Unterbrechungszaehler.ino` in the Arduino IDE.
-5. Select **ESP32 Dev Module**, compile and flash.
-6. Press the button. If nobody interrupts you, the setup may have worked a little too well.
+See [SOFTWARE.md](SOFTWARE.md).
 
 ## Technical documentation
 
 - [Sketch documentation](../../Unterbrechungszaehler/README.md)
-- [Hardware wiring](../../Unterbrechungszaehler/HARDWARE_WIRING.md)
 - [Architecture](../../Unterbrechungszaehler/PROJECT_ARCHITECTURE.md)
 - [Storage format](../../Unterbrechungszaehler/STORAGE_FORMAT.md)
 - [Time architecture](../../Unterbrechungszaehler/TIME_ARCHITECTURE.md)
 - [Test report](../../Unterbrechungszaehler/TEST_REPORT.md)
-- [Changelog](../../CHANGELOG.md)
-
-## Screenshots
-
-![Home with daily counter and feedback/display](../images/3.0.0/de/de-home-1.png)
-
-![Home with daily counter and feedback/display](../images/3.0.0/de/de-home-2.png)
-
-![Analytics with heatmap/display](../images/3.0.0/de/de-auswertung-1.png)
-
-![Analytics with heatmap/display](../images/3.0.0/de/de-auswertung-2.png)
-
-![Analytics with heatmap/display](../images/3.0.0/de/de-auswertung-3.png)
-
-![Analytics with heatmap/display](../images/3.0.0/de/de-auswertung-4.png)
-
-![Settings](../images/3.0.0/de/de-einstellungen-1.png)
-
-![Device](../images/3.0.0/de/de-geraet-1.png)
-
-![Device](../images/3.0.0/de/de-geraet-2.png)
-
-![Device](../images/3.0.0/de/de-geraet-3.png)
-
-![Device](../images/3.0.0/de/de-geraet-4.png)
-
-## Why Swabian?
-
-Because technical projects do not always have to be completely serious.
-
-Software can work **and** still have a little personality.
-
-I like Swabian and also wanted to hide a small Easter egg somewhere.
-
-So the user interface is available in Swabian – and now also in Alb-Swabian and Upper Swabian variants.
-
-Whether that accelerates the international adoption of the project or massively gets in the way remains to be seen.
+- [Release notes](../../Unterbrechungszaehler/RELEASE_NOTES.md)
 
 ## License
 
-MIT. You are explicitly allowed to use it, modify it, extend it and build something of your own from it. If it somehow turns into a multi-million-dollar product one day, I will still be happy to receive a postcard.
-
-GitHub: [taloriko](https://github.com/taloriko)
-
-## New in 3.3.0
-
-Heatmaps can be filtered by **Both**, **Button / GPIO**, or **Web**. A single-source filter is calculated from the retained raw-event ring and explicitly reports incomplete coverage. The complete event database can be erased after entering the exact project name `Unterbrechungszähler`; the device then restarts. Device → Memory also shows the concrete raw-data or aggregate-storage error when storage is unhealthy.
-
-## DY-SV17F diagnostics 3.3.1
-
-UART playback status and the raw BUSY level are shown separately with measurement times. **Check** stays silent; **Test sound** additionally observes BUSY edges and confirms a suspected end through UART. BUSY remains optional diagnostics and is never required for normal playback.
-
-## Physical-button anti-spam (3.4.0)
-
-An accepted DI1/GPIO press starts a fixed 10-second window. Further physical presses inside that window are neither stored nor counted and do not affect CSV, heatmaps, or average intervals. They only trigger immediate local anti-spam feedback: track 2 plus roughly one second of non-blocking old-TV OLED flicker. Web events remain independent. Track 1 stays boot/test, track 2 is reserved, and normal interruption sounds start at track 3.
-
-## Focus & quiet time
-
-The current quiet phase, daily/weekly longest phases and the 120-minute trend are calculated from existing valid raw events. Work patterns use up to 30 completed days and only fully observed time windows. Project settings are located under **Settings → Project settings**. The 9-byte raw format is unchanged.
+MIT. Use it, modify it, extend it and build something of your own. If it somehow becomes a multi-million-dollar product one day, I will still be happy to receive a postcard.
