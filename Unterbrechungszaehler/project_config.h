@@ -15,6 +15,15 @@ constexpr char INTERRUPTION_INPUT_ID[] = "di1";
 constexpr char TIMEZONE_NAME[] = "Europe/Berlin";
 constexpr char TIMEZONE_POSIX[] = "CET-1CEST,M3.5.0,M10.5.0/3";
 
+// Work-cycle policy. The first short press starts the local work cycle. While a
+// cycle is active, a short press becomes the pending last press: the previous
+// pending press is committed as an interruption only when another short press
+// follows. Holding the button ends the cycle explicitly; otherwise the pending
+// last press is finalized as cycle_end when the local calendar day changes.
+constexpr uint32_t WORK_CYCLE_LONG_PRESS_MS = 2000;
+constexpr uint32_t WORK_CYCLE_GOODBYE_DISPLAY_MS = 10000;
+constexpr char WORK_CYCLE_PREF_NAMESPACE[] = "interruptcyc";
+
 // Feedback is independent from persistence: the event is captured first, then
 // display/audio/storage work is scheduled cooperatively.
 constexpr uint32_t PHYSICAL_BUTTON_COOLDOWN_MS = 10000;
@@ -43,7 +52,9 @@ constexpr uint16_t DISPLAY_DIM_AFTER_DEFAULT_MINUTES = 10;
 constexpr uint16_t DISPLAY_DIM_AFTER_MAX_MINUTES = 1440;
 constexpr uint8_t DISPLAY_DIM_BRIGHTNESS_DEFAULT_PERCENT = 5;
 
-// Raw binary ring: 100,000 * 9 bytes = 900,000 bytes.
+// Raw binary ring: 100,000 * 9 bytes = 900,000 bytes. Version 3.6 keeps this
+// record size unchanged. The two formerly unused 3-bit event-source codes are
+// reserved for physical cycle_start and cycle_end records.
 constexpr uint32_t RAW_EVENT_CAPACITY = 100000;
 constexpr uint8_t RAW_RECORD_SIZE = 9;
 
