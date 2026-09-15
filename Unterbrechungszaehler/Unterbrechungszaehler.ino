@@ -7,6 +7,7 @@
 #include "display_sh1106.h"
 #include "project_preferences.h"
 #include "interruption_service.h"
+#include "work_cycle.h"
 #include "ota_module.h"
 #include "serial_log.h"
 #include "time_service.h"
@@ -40,27 +41,30 @@ void setup() {
   const bool networkReadyImmediately = WifiModule::begin();
   TimeService::begin();
 
-  // Project layer starts only after base hardware/time services exist. It may
-  // use the provisional RTC source immediately while NTP continues cooperatively.
+  // The interruption service remains the single owner of interruption storage
+  // and analytics. WorkCycle sits in front of the physical DI and classifies
+  // start / pending last press / explicit or automatic end.
   InterruptionService::begin();
+  WorkCycle::begin();
 
   beginWebServer();
   OtaModule::logStorageInfo();
 
   if (networkReadyImmediately) {
-    SerialLog::success("SYSTEM", "Startup services running | network interface ready | interruption capture active");
+    SerialLog::success("SYSTEM", "Startup services running | network interface ready | work-cycle capture active");
   } else {
-    SerialLog::info("SYSTEM", "Startup services running | network negotiation continues | interruption capture active offline");
+    SerialLog::info("SYSTEM", "Startup services running | network negotiation continues | work-cycle capture active offline");
   }
 
   WifiModule::logStatusNow();
 }
 
 void loop() {
-  // Physical DI capture runs first. The project service then provides immediate
-  // feedback and queues persistence before less urgent network/UI work.
+  // GPIO still runs first. Interruption persistence follows, then the work-cycle
+  // overlay may intentionally own the OLED for the 10-second goodbye screen.
   HardwareRegistry::update();
   InterruptionService::update();
+  WorkCycle::update();
   WifiModule::update();
   handleWebServer();
   TimeService::update();
