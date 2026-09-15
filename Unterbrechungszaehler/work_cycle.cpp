@@ -115,7 +115,7 @@ void showSuppressed(uint32_t nowMs) {
                    static_cast<unsigned long>(remaining));
 }
 
-void startCycle(uint32_t epochSeconds, const ProjectTime::LocalDateTime &local) {
+void startCycle(uint32_t nowMs, uint32_t epochSeconds, const ProjectTime::LocalDateTime &local) {
   state.magic = STATE_MAGIC;
   state.active = 1;
   state.pending = 0;
@@ -123,6 +123,7 @@ void startCycle(uint32_t epochSeconds, const ProjectTime::LocalDateTime &local) 
   state.startEpochSeconds = epochSeconds;
   state.pendingEpochSeconds = 0;
   shortPressGuard = PhysicalButtonGuard::State{};
+  PhysicalButtonGuard::accept(shortPressGuard, nowMs, ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS);
   saveState();
   appendJournal(epochSeconds, local.dayIndex, JOURNAL_START, 0);
   SerialLog::successf("CYCLE", "Work cycle started | day=%u | epoch=%lu",
@@ -217,13 +218,13 @@ void finalizeManualEnd(uint32_t epochSeconds) {
 
 void handleShortPress(uint32_t nowMs, uint32_t epochSeconds, const ProjectTime::LocalDateTime &local) {
   if (!state.active) {
-    startCycle(epochSeconds, local);
+    startCycle(nowMs, epochSeconds, local);
     return;
   }
 
   if (local.dayIndex != state.dayIndex) {
     finalizeAutomaticEnd();
-    startCycle(epochSeconds, local);
+    startCycle(nowMs, epochSeconds, local);
     return;
   }
 
@@ -321,5 +322,9 @@ void update() {
     nextGoodbyeRenderMs = nowMs + 250U;
   }
 }
+
+uint32_t suppressedPhysicalPressCount() { return shortPressGuard.suppressedCount; }
+bool hasSuppressedPhysicalPress() { return shortPressGuard.hasSuppressed; }
+uint32_t lastSuppressedPhysicalPressMs() { return shortPressGuard.lastSuppressedMs; }
 
 }  // namespace WorkCycle
