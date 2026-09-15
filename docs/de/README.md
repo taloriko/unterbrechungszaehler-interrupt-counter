@@ -1,33 +1,55 @@
-# Unterbrechungszähler 3.2.0
+# Unterbrechungszähler 3.6.0
 
-Version 3.0.0 ist der neue Ausgangspunkt des Projekts. Frühere 1.x/2.x-Stände waren Entwicklungs- und Testversionen und werden nicht als Migrationsziel behandelt.
+Version 3.0.0 bleibt der harte Ausgangspunkt des Projekts. 3.6.0 erweitert die physische Erfassung um einen Arbeitszyklus, ohne das bestehende 9-Byte-Raw-Format oder die bisherigen Unterbrechungs-Auswertungen zu verändern.
+
+## Neu in 3.6.0: Arbeitszyklus
+
+Der bestehende Taster auf **DI1/GPIO13** bekommt eine zweite Aufgabe, ohne dass zusätzliche Hardware nötig ist:
+
+- **erster kurzer Druck:** Arbeitsbeginn / START – zählt nicht als Unterbrechung
+- **weitere kurze Drücke:** der jeweils letzte Druck bleibt zunächst als Kandidat offen
+- **nächster gültiger kurzer Druck:** bestätigt den vorherigen Kandidaten als echte Unterbrechung
+- **langer Druck ab 2 Sekunden:** beendet den Arbeitszyklus ausdrücklich
+- **kein langer Druck:** beim lokalen Tageswechsel wird der letzte Kandidat automatisch als ENDE gewertet und nicht gezählt
+
+Das bedeutet praktisch: **erster Druck = Start, letzter Druck = Ende, alles dazwischen = Unterbrechung.**
+
+Beim manuellen langen Enddruck zeigt das OLED anschließend für **10 Sekunden „FEIERABEND“ plus die heutige Unterbrechungszahl**. Beim automatischen Tagesabschluss bleibt das Display ruhig.
+
+Der Webbutton bleibt unabhängig und erzeugt weiterhin sofort eine Unterbrechung.
+
+## Anti-Spam
+
+Die feste 10-Sekunden-Sperre für kurze physische Tastendrücke bleibt erhalten. Auch der Startdruck eröffnet diese Sperre. Weitere kurze Drücke innerhalb der Sperrzeit werden verworfen, lösen das bekannte Track-2-/OLED-Anti-Spam-Feedback aus und verändern keine Statistik. Ein verworfener Druck verlängert die Sperre nicht.
+
+Der lange Feierabend-Druck ist von der Sperre ausgenommen, damit der Zyklus jederzeit ausdrücklich beendet werden kann.
 
 ## Funktionen
 
-**Neu in 3.2.0:**
-
-- OLED folgt der gewählten UI-Sprache, inklusive kompakter Umlaut-/Akzent-Transliteration
-- fünf OLED-Modi, 180°-Drehung und mindestens 4 Sekunden Bootscreen
-- neue Display-Defaults 65 % normal / 5 % gedimmt
-- DY-SV17F-Lautstärke 0–100 %, Standard 100 %, Tonmodus standardmäßig wechselnd
-
-
-- Unterbrechung per Taster auf GPIO13 / DI1 oder Webbutton
-- lokale Weboberfläche
-- Tageszähler, letzte Unterbrechung und Heatmaps: Anzahl oder Ø abgeschlossener Abstand
+- Unterbrechungserfassung per DI1/GPIO13 und unabhängigem Webbutton
+- lokaler Arbeitszyklus mit START/ENDE ohne zusätzliche Pins
+- lokale Weboberfläche ohne Cloud
+- Tageszähler, letzte Unterbrechung und Heatmaps
+- Anzahl oder Ø abgeschlossener Abstand
+- Fokus & Ruhe sowie Arbeitsmuster
 - CSV-Export
-- 100.000 Rohereignisse im binären Ringspeicher
+- 100.000 bestätigte Roh-Unterbrechungen im 9-Byte-Ringspeicher
 - 2.300 Tagesaggregate
 - DS3231 RTC
-- SH1106 OLED mit persistentem Ein/Aus-Schalter und mindestens 2 s Bootbild
-- DY-SV17F Soundmodul; Startpaket und USB-Kopieranleitung siehe [HARDWARE.md](HARDWARE.md)
+- SH1106 OLED mit mehreren Ansichten, Helligkeit, Dimmer und 180°-Drehung
+- DY-SV17F Soundmodul; Track 1 Boot/Test, Track 2 Anti-Spam, Track 3+ Unterbrechungen
 - OTA-Update
-- persistente Sound-/Displayeinstellungen
 - UI in Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch und Oberschwäbisch
 
-Die ausführliche README-Dokumentation wird bewusst nur in Deutsch, Englisch und Schwäbisch gepflegt.
+## Datenkompatibilität
+
+START und ENDE werden bewusst **nicht** in den Unterbrechungs-Ring geschrieben. Der aktuell offene letzte Kurzdruck wird kompakt in NVS gehalten; START/ENDE landen zusätzlich in einem kleinen separaten Zyklusjournal. Nur bestätigte Unterbrechungen erreichen Raw-Ring und Tagesaggregate.
+
+Damit bleiben bestehende 3.x-Daten, Heatmaps, CSV, Fokus-Auswertungen und Herkunftsfilter kompatibel. Details: [Speicherformat](../../Unterbrechungszaehler/STORAGE_FORMAT.md).
 
 ## Hardware
+
+Die Pinbelegung bleibt unverändert. Für 3.6.0 ist kein zusätzlicher Taster nötig.
 
 Siehe [HARDWARE.md](HARDWARE.md).
 
@@ -42,21 +64,6 @@ Siehe [SOFTWARE.md](SOFTWARE.md).
 - [Speicherformat](../../Unterbrechungszaehler/STORAGE_FORMAT.md)
 - [Zeitarchitektur](../../Unterbrechungszaehler/TIME_ARCHITECTURE.md)
 - [Testbericht](../../Unterbrechungszaehler/TEST_REPORT.md)
+- [Release Notes](../../Unterbrechungszaehler/RELEASE_NOTES.md)
 
 [English](../en/README.md) · [Schwäbisch](../swg/README.md) · [Projektstartseite](../../README.md)
-
-## Neu in 3.3.0
-
-Heatmaps können nach **Beides**, **Knopf / GPIO** oder **Web** gefiltert werden. Einzelne Herkunftsfilter arbeiten aus dem noch vorhandenen Roh-Ringspeicher und zeigen eine unvollständige Abdeckung offen an. Die komplette Datenbank kann nach Eingabe des Projektnamens `Unterbrechungszähler` gelöscht werden; danach startet das Gerät neu. Gerät → Speicher zeigt bei Fehlern die konkrete Ursache für Rohdaten oder Tagesstatistik.
-
-## DY-SV17F-Diagnose 3.3.1
-
-UART-Wiedergabestatus und BUSY-Pegel werden getrennt und mit Messzeit dargestellt. `Prüfen` bleibt lautlos; `Ton testen` sammelt zusätzlich BUSY-Flanken und bestätigt ein vermutetes Ende per UART. BUSY bleibt reine Zusatzdiagnose und ist keine Voraussetzung für funktionierenden Sound.
-
-## Anti-Spam am physischen Knopf (3.4.0)
-
-Ein gültiger DI1/GPIO-Druck startet eine feste 10-Sekunden-Sperre. Weitere physische Drücke innerhalb dieser Zeit werden nicht gespeichert oder gezählt und beeinflussen weder CSV noch Heatmaps oder Ø-Abstände. Sie lösen ausschließlich das schnelle lokale Anti-Spam-Feedback aus: Track 2 plus etwa eine Sekunde OLED-TV-Flimmern. Web-Ereignisse sind von dieser Sperre unabhängig. Track 1 bleibt Boot/Test, Track 2 ist reserviert, normale Töne beginnen bei Track 3.
-
-## Fokus & Ruhe
-
-Die aktuelle Ruhephase, Tages-/Wochenbestwerte und der 120-Minuten-Trend werden aus den bestehenden gültigen Rohereignissen berechnet. Arbeitsmuster verwenden bis zu 30 abgeschlossene Tage und nur vollständig beobachtete Zeitfenster. Die Projekteinstellungen befinden sich unter **Einstellungen → Projekteinstellungen**. Das 9-Byte-Raw-Format bleibt unverändert.
