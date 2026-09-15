@@ -1,3 +1,20 @@
+# Release 3.6.0
+
+- neuer physischer **Arbeitszyklus** auf dem bestehenden DI1/GPIO13, ohne zusätzlichen GPIO oder zweiten Taster
+- erster kurzer Druck startet den Arbeitstag und zählt nicht als Unterbrechung
+- der jeweils letzte kurze Druck bleibt persistent als Kandidat; erst ein weiterer gültiger Druck bestätigt den vorherigen als echte Unterbrechung
+- dadurch kann der letzte Druck beim lokalen Tageswechsel automatisch als Arbeitsende behandelt werden, ohne Tageszähler, Heatmaps, CSV oder Ø-Abstände nachträglich korrigieren zu müssen
+- langer Druck ab **2 Sekunden** beendet den Zyklus ausdrücklich; ein davor liegender Kandidat wird dabei noch als Unterbrechung bestätigt
+- nach manuellem Ende zeigt das SH1106 **10 Sekunden „FEIERABEND“ plus heutige Unterbrechungszahl**; der automatische Tagesabschluss bleibt still
+- bestehende 10-Sekunden-Anti-Spam-Regel bleibt für kurze physische Drücke erhalten; auch der Startdruck eröffnet die Sperre, ein langer Enddruck wird nicht blockiert
+- aktiver Zyklus und letzter Kandidat werden kompakt in NVS gesichert und überstehen einen Neustart
+- START/ENDE werden separat und sparsam in `/cycles.log` protokolliert; das bewährte 9-Byte-Raw-Format bleibt bytekompatibel und enthält weiterhin ausschließlich bestätigte Unterbrechungen
+- Webbutton und bestehende Web-/Analysefunktionen bleiben unabhängig vom lokalen physischen Zyklus
+
+## Kompatibilität
+
+Alle bisherigen Unterbrechungs-Auswertungen arbeiten unverändert weiter, weil nur bestätigte Unterbrechungen den bestehenden Raw-Ring und die Tagesaggregate erreichen. Es ist keine Migration vorhandener 3.x-Rohdaten notwendig.
+
 # Release 3.5.0
 
 - Fokus-&-Ruhe-Karte auf Home mit aktueller/längster Tages-/Wochenphase und erklärtem 120-Minuten-Trend
