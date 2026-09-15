@@ -60,10 +60,14 @@ void setup() {
 }
 
 void loop() {
-  // GPIO still runs first. Interruption persistence follows, then the work-cycle
-  // overlay may intentionally own the OLED for the 10-second goodbye screen.
+  // GPIO still runs first. During the explicit 10-second goodbye overlay the
+  // work-cycle manager exclusively owns the local display/input path, matching
+  // the existing anti-spam lock semantics. Normal interruption UI servicing is
+  // resumed immediately after the overlay ends.
   HardwareRegistry::update();
-  InterruptionService::update();
+  if (!WorkCycle::exclusiveGoodbyeActive()) {
+    InterruptionService::update();
+  }
   WorkCycle::update();
   WifiModule::update();
   handleWebServer();
