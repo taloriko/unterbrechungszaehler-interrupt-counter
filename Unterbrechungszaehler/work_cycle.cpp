@@ -172,6 +172,7 @@ void renderGoodbye() {
 
 void beginGoodbye() {
   goodbyeActive = true;
+  buttonDown = false;
   const uint32_t nowMs = millis();
   goodbyeUntilMs = nowMs + ProjectConfig::WORK_CYCLE_GOODBYE_DISPLAY_MS;
   nextGoodbyeRenderMs = nowMs;
@@ -251,6 +252,12 @@ void handleShortPress(uint32_t nowMs, uint32_t epochSeconds, const ProjectTime::
 
 void onGpioChanged(const char *channelId, bool logicalState) {
   if (!channelId || strcmp(channelId, ProjectConfig::WORK_CYCLE_INPUT_ID) != 0) return;
+
+  // The goodbye screen is an exclusive 10-second terminal state. Ignore all
+  // physical edges until it has finished so a held/repeated press cannot start
+  // another cycle or replace the overlay with normal feedback.
+  if (goodbyeActive) return;
+
   const uint32_t nowMs = millis();
 
   if (logicalState) {
@@ -323,6 +330,7 @@ void update() {
   }
 }
 
+bool exclusiveGoodbyeActive() { return goodbyeActive; }
 uint32_t suppressedPhysicalPressCount() { return shortPressGuard.suppressedCount; }
 bool hasSuppressedPhysicalPress() { return shortPressGuard.hasSuppressed; }
 uint32_t lastSuppressedPhysicalPressMs() { return shortPressGuard.lastSuppressedMs; }
