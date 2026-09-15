@@ -49,7 +49,6 @@ void bumpRevision() {
   if (currentSummary.revision == 0) ++currentSummary.revision;
 }
 
-
 uint32_t pendingUnassignedCount() {
   uint32_t count = 0;
   for (uint8_t i = 0, idx = queueHead; i < queueCount; ++i,
@@ -122,9 +121,6 @@ void rebuildTodayIntervalsFromRetainedRaw() {
         if (ProjectTime::fromEpochSeconds(raw.timeValueSeconds, local)) {
           if (local.dayIndex == currentDayIndex) {
             sawToday = true;
-            // deltaSeconds belongs to the current event and closes the interval
-            // that started at its retained predecessor. If the ring has wrapped,
-            // the oldest record's predecessor is gone and its delta is excluded.
             if (sequence > first && raw.deltaSeconds > 0U && raw.deltaSeconds < InterruptionTypes::DELTA_UNKNOWN) {
               currentSummary.todayIntervalSumSeconds += raw.deltaSeconds;
               ++currentSummary.todayIntervalSamples;
@@ -138,8 +134,6 @@ void rebuildTodayIntervalsFromRetainedRaw() {
     }
   }
 
-  // Pending records are not yet in the raw ring but already represent real
-  // completed intervals and should be visible on the local display immediately.
   for (uint8_t i = 0, idx = queueHead; i < queueCount; ++i,
        idx = static_cast<uint8_t>((idx + 1U) % ProjectConfig::PENDING_EVENT_CAPACITY)) {
     const auto &event = queue[idx];
@@ -174,8 +168,6 @@ void refreshCurrentDay(bool force) {
     currentDayValid = true;
     currentDayIndex = local.dayIndex;
     currentSummary.todayCount = InterruptionAggregates::ready() ? InterruptionAggregates::countForDay(currentDayIndex) : 0;
-    // Pending events captured for today are already counted in RAM; after a
-    // source/date change recompute only persisted data and then add pending today.
     for (uint8_t i = 0, idx = queueHead; i < queueCount; ++i, idx = static_cast<uint8_t>((idx + 1U) % ProjectConfig::PENDING_EVENT_CAPACITY)) {
       if (queue[idx].localCalendarValid && queue[idx].localDayIndex == currentDayIndex) ++currentSummary.todayCount;
     }
@@ -191,9 +183,6 @@ void handleSuppressedPhysicalPress(uint32_t nowMs) {
   const uint32_t remaining = elapsed < ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS
                                  ? ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS - elapsed
                                  : 0U;
-
-  // Fast local feedback is deliberately first. Neither storage, analytics nor
-  // web work is allowed in front of the acknowledgement the user can hear/see.
   if (ProjectPreferences::soundEnabled()) {
     const uint16_t count = AudioDySv17f::musicCount();
     if (count == 0U || count >= ProjectConfig::INTERRUPTION_SPAM_SOUND_TRACK) {
@@ -235,6 +224,77 @@ void popQueue() {
   bumpRevision();
 }
 
+void populateCalendarAndDelta(InterruptionTypes::CapturedEvent &event) {
+  if (!event.absoluteValid) return;
+  ProjectTime::LocalDateTime local;
+  if (!ProjectTime::fromEpochSeconds(event.timeValueSeconds, local)) return;
+  event.localCalendarValid = true;
+  event.localDayIndex = local.dayIndex;
+  event.localHour = local.hour;
+  if (anchorValid && anchorDayIndex == local.dayIndex) {
+    if (event.timeValueSeconds >= anchorEpochSeconds) {
+      const uint32_t delta = event.timeValueSeconds - anchorEpochSeconds;
+      event.deltaSeconds = delta < InterruptionTypes::DELTA_MAX ? delta : InterruptionTypes::DELTA_MAX;
+    } else {
+      event.deltaSeconds = InterruptionTypes::DELTA_UNKNOWN;
+    }
+  } else {
+    event.deltaSeconds = InterruptionTypes::DELTA_FIRST_OF_DAY;
+  }
+}
+
+bool acceptCapturedEvent(InterruptionTypes::CapturedEvent &event) {
+  const bool queuedForPersistence = enqueue(event);
+  if (!queuedForPersistence) {
+    if (currentSummary.droppedCount < UINT32_MAX) ++currentSummary.droppedCount;
+    currentSummary.storageState = InterruptionTypes::StorageState::Error;
+    StatusRegistry::setState("data", StatusRegistry::State::Error);
+    SerialLog::errorf(
+        "INTERRUPT",
+        "Pending queue full; interruption captured in RAM/UI but NOT durably queued | lost-this-boot=%lu",
+        static_cast<unsigned long>(currentSummary.droppedCount));
+  }
+
+  if (event.localCalendarValid) {
+    anchorValid = true;
+    anchorDayIndex = event.localDayIndex;
+    anchorEpochSeconds = event.timeValueSeconds;
+  }
+
+  ++currentSummary.liveSequence;
+  bumpRevision();
+  currentSummary.lastAvailable = true;
+  currentSummary.lastAbsoluteValid = event.absoluteValid;
+  currentSummary.lastTimeValueSeconds = event.timeValueSeconds;
+  currentSummary.lastMonotonicMs = event.monotonicMs;
+  currentSummary.lastTimeSource = event.timeSource;
+  currentSummary.lastEventSource = event.eventSource;
+  currentSummary.lastDeltaSeconds = event.deltaSeconds;
+  if (event.localCalendarValid) {
+    currentSummary.lastLocalDayIndex = event.localDayIndex;
+    if (!currentDayValid || event.localDayIndex != currentDayIndex) {
+      currentDayValid = true;
+      currentDayIndex = event.localDayIndex;
+      currentSummary.todayCount = 0;
+      currentSummary.todayIntervalSumSeconds = 0;
+      currentSummary.todayIntervalSamples = 0;
+    }
+    ++currentSummary.todayCount;
+    if (event.deltaSeconds > 0U && event.deltaSeconds < InterruptionTypes::DELTA_UNKNOWN) {
+      currentSummary.todayIntervalSumSeconds += event.deltaSeconds;
+      ++currentSummary.todayIntervalSamples;
+    }
+  } else {
+    ++currentSummary.unassignedCount;
+  }
+
+  displayFeedbackPending = true;
+  if (ProjectPreferences::soundEnabled() && audioPending < ProjectConfig::PENDING_EVENT_CAPACITY) ++audioPending;
+  currentSummary.soundEnabled = ProjectPreferences::soundEnabled();
+  if (event.eventSource == InterruptionTypes::EventSource::PhysicalButton) serviceUrgent();
+  return true;
+}
+
 uint16_t interruptionSoundTrack() {
   const uint16_t firstNormal = ProjectConfig::INTERRUPTION_SOUND_FIRST_NORMAL_TRACK;
   const uint16_t count = AudioDySv17f::musicCount();
@@ -243,10 +303,7 @@ uint16_t interruptionSoundTrack() {
     return ProjectPreferences::soundTrack() >= firstNormal ? ProjectPreferences::soundTrack() : firstNormal;
   }
 
-
   if (count >= firstNormal) {
-    // Track 1 = boot/test, track 2 = anti-spam. Normal interruption rotation
-    // starts at track 3 and remains deterministic/no-heap.
     lastRotatingTrack = (lastRotatingTrack < firstNormal || lastRotatingTrack >= count)
                           ? firstNormal
                           : static_cast<uint16_t>(lastRotatingTrack + 1U);
@@ -263,8 +320,6 @@ uint16_t interruptionSoundTrack() {
     return 0U;
   }
 
-  // Some modules do not answer the optional count query. Keep the configured
-  // >=3 fallback rather than blocking the physical feedback path.
   if (!rotateFallbackLogged) {
     SerialLog::warning("INTERRUPT", "Rotating sound requested but track count is unavailable; using configured track >=3 as fallback");
     rotateFallbackLogged = true;
@@ -277,9 +332,6 @@ void processFeedback() {
     displayFeedbackPending = false;
     DisplayViews::notifyInterruption(ProjectPreferences::displayFlashEnabled());
   }
-  // Render the OLED before entering the audio command path. The DY-SV17F
-  // driver may emit diagnostic serial output after sending its UART frame; that
-  // must not postpone the user's visual acknowledgement.
   DisplayViews::update(currentSummary);
   if (audioPending > 0 && ProjectPreferences::soundEnabled()) {
     const uint16_t track = interruptionSoundTrack();
@@ -365,7 +417,7 @@ void begin() {
   if (!GpioModule::registerInputChangedCallback(onGpioChanged)) {
     SerialLog::error("INTERRUPT", "Could not register DI callback");
   } else {
-    SerialLog::successf("INTERRUPT", "Project input ready | channel=%s | physical button -> one interruption",
+    SerialLog::successf("INTERRUPT", "Legacy direct input disabled | channel=%s | work-cycle manager owns DI1",
                         ProjectConfig::INTERRUPTION_INPUT_ID);
   }
   if (currentSummary.revision == 0) bumpRevision();
@@ -392,9 +444,6 @@ void update() {
     const auto &aggregateInfo = InterruptionAggregates::info();
     const bool aggregatesReadyNow = InterruptionAggregates::ready();
     if (aggregatesReadyNow && !aggregatesReadyLast) {
-      // A rebuild/catch-up has just become authoritative again. Re-sync the
-      // small RAM summary from the repaired aggregate store without touching
-      // or scanning the raw ring. Pending events remain represented in RAM.
       currentSummary.unassignedCount = aggregateInfo.unassignedCount + pendingUnassignedCount();
       bumpRevision();
       refreshCurrentDay(true);
@@ -410,8 +459,6 @@ void update() {
   }
   refreshCurrentDay(false);
 
-  // Feedback always runs before flash persistence. A physical press is already
-  // captured in RAM when this method begins.
   serviceUrgent();
   processPersistence();
   refreshStorageState();
@@ -431,86 +478,22 @@ bool capture(InterruptionTypes::EventSource source) {
   event.absoluteValid = snapshot.valid;
   event.timeValueSeconds = snapshot.valid ? static_cast<uint32_t>(snapshot.epochMs / 1000LL)
                                           : static_cast<uint32_t>(snapshot.monotonicMs / 1000ULL);
+  populateCalendarAndDelta(event);
+  return acceptCapturedEvent(event);
+}
 
-  if (snapshot.valid) {
-    ProjectTime::LocalDateTime local;
-    if (ProjectTime::fromEpochSeconds(event.timeValueSeconds, local)) {
-      event.localCalendarValid = true;
-      event.localDayIndex = local.dayIndex;
-      event.localHour = local.hour;
-      if (anchorValid && anchorDayIndex == local.dayIndex) {
-        if (event.timeValueSeconds >= anchorEpochSeconds) {
-          const uint32_t delta = event.timeValueSeconds - anchorEpochSeconds;
-          event.deltaSeconds = delta < InterruptionTypes::DELTA_MAX ? delta : InterruptionTypes::DELTA_MAX;
-        } else {
-          // A time correction moved the wall clock backwards. There is a prior
-          // event on this day, but a positive interval cannot be derived safely.
-          event.deltaSeconds = InterruptionTypes::DELTA_UNKNOWN;
-        }
-      } else {
-        event.deltaSeconds = InterruptionTypes::DELTA_FIRST_OF_DAY;
-      }
-    }
-  }
-
-  const bool queuedForPersistence = enqueue(event);
-  if (!queuedForPersistence) {
-    if (currentSummary.droppedCount < UINT32_MAX) ++currentSummary.droppedCount;
-    currentSummary.storageState = InterruptionTypes::StorageState::Error;
-    StatusRegistry::setState("data", StatusRegistry::State::Error);
-    SerialLog::errorf(
-        "INTERRUPT",
-        "Pending queue full; interruption captured in RAM/UI but NOT durably queued | lost-this-boot=%lu",
-        static_cast<unsigned long>(currentSummary.droppedCount));
-  }
-
-  // The interruption happened even if persistence capacity is temporarily
-  // exhausted. Keep the user-visible count, feedback and interval anchor true
-  // to reality; droppedCount makes the durability gap explicit.
-  if (event.localCalendarValid) {
-    anchorValid = true;
-    anchorDayIndex = event.localDayIndex;
-    anchorEpochSeconds = event.timeValueSeconds;
-  }
-
-  ++currentSummary.liveSequence;
-  bumpRevision();
-  currentSummary.lastAvailable = true;
-  currentSummary.lastAbsoluteValid = event.absoluteValid;
-  currentSummary.lastTimeValueSeconds = event.timeValueSeconds;
-  currentSummary.lastMonotonicMs = event.monotonicMs;
-  currentSummary.lastTimeSource = event.timeSource;
-  currentSummary.lastEventSource = source;
-  currentSummary.lastDeltaSeconds = event.deltaSeconds;
-  if (event.localCalendarValid) {
-    currentSummary.lastLocalDayIndex = event.localDayIndex;
-    if (!currentDayValid || event.localDayIndex != currentDayIndex) {
-      currentDayValid = true;
-      currentDayIndex = event.localDayIndex;
-      currentSummary.todayCount = 0;
-      currentSummary.todayIntervalSumSeconds = 0;
-      currentSummary.todayIntervalSamples = 0;
-    }
-    ++currentSummary.todayCount;
-    if (event.deltaSeconds > 0U && event.deltaSeconds < InterruptionTypes::DELTA_UNKNOWN) {
-      currentSummary.todayIntervalSumSeconds += event.deltaSeconds;
-      ++currentSummary.todayIntervalSamples;
-    }
-  } else {
-    ++currentSummary.unassignedCount;
-  }
-
-  displayFeedbackPending = true;
-  if (ProjectPreferences::soundEnabled() && audioPending < ProjectConfig::PENDING_EVENT_CAPACITY) ++audioPending;
-  currentSummary.soundEnabled = ProjectPreferences::soundEnabled();
-
-  // A physical button must feel immediate even before the main loop advances to
-  // the project service. We are already outside ISR context here, so the normal
-  // nonblocking display/audio command path can safely run now. Web-triggered
-  // events deliberately return their HTTP response first and are serviced a
-  // couple of milliseconds later by update().
-  if (source == InterruptionTypes::EventSource::PhysicalButton) serviceUrgent();
-  return true;
+bool captureAtEpoch(uint32_t epochSeconds, InterruptionTypes::EventSource source) {
+  if (epochSeconds == 0U) return false;
+  const TimeTypes::Snapshot snapshot = TimeService::eventTimestamp();
+  InterruptionTypes::CapturedEvent event;
+  event.monotonicMs = snapshot.monotonicMs;
+  event.timeSource = snapshot.source;
+  event.eventSource = source;
+  event.absoluteValid = true;
+  event.timeValueSeconds = epochSeconds;
+  populateCalendarAndDelta(event);
+  if (!event.localCalendarValid) return false;
+  return acceptCapturedEvent(event);
 }
 
 bool captureWeb() { return capture(InterruptionTypes::EventSource::WebButton); }
