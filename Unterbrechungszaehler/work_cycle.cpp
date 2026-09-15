@@ -171,6 +171,9 @@ void renderGoodbye() {
 }
 
 void beginGoodbye() {
+  // Same ownership principle as the anti-spam OLED effect, but stricter: for
+  // the full goodbye window no other physical input may change project state
+  // and the normal interruption display service is gated by the main loop.
   goodbyeActive = true;
   buttonDown = false;
   const uint32_t nowMs = millis();
