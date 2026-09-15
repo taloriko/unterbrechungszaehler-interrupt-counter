@@ -6,9 +6,11 @@
 
 namespace ProjectConfig {
 
-// The physical interruption button reuses the generic GPIO layer. DI1 is
-// GPIO13, INPUT_PULLUP, active-low in hardware_config.h.
-constexpr char INTERRUPTION_INPUT_ID[] = "di1";
+// DI1 / GPIO13 remains the single physical button. The interruption service no
+// longer consumes the GPIO edge directly; WorkCycle owns press/release timing
+// and forwards only finalized interruption events.
+constexpr char INTERRUPTION_INPUT_ID[] = "cycle-managed";
+constexpr char WORK_CYCLE_INPUT_ID[] = "di1";
 
 // Device-local calendar rules for logging and statistics. Absolute timestamps
 // remain UTC; this POSIX TZ is used only to derive local date/hour/week/month.
@@ -52,9 +54,9 @@ constexpr uint16_t DISPLAY_DIM_AFTER_DEFAULT_MINUTES = 10;
 constexpr uint16_t DISPLAY_DIM_AFTER_MAX_MINUTES = 1440;
 constexpr uint8_t DISPLAY_DIM_BRIGHTNESS_DEFAULT_PERCENT = 5;
 
-// Raw binary ring: 100,000 * 9 bytes = 900,000 bytes. Version 3.6 keeps this
-// record size unchanged. The two formerly unused 3-bit event-source codes are
-// reserved for physical cycle_start and cycle_end records.
+// Raw binary ring: 100,000 * 9 bytes = 900,000 bytes. Work-cycle markers are
+// kept in a separate tiny cycle journal so the proven interruption format stays
+// byte-for-byte compatible with 3.5.x.
 constexpr uint32_t RAW_EVENT_CAPACITY = 100000;
 constexpr uint8_t RAW_RECORD_SIZE = 9;
 
@@ -73,6 +75,7 @@ constexpr char RAW_DATA_PATH[] = "/interrupt.raw";
 constexpr char RAW_META_PATH[] = "/interrupt.meta";
 constexpr char DAILY_DATA_PATH[] = "/daily.bin";
 constexpr char DAILY_META_PATH[] = "/daily.meta";
+constexpr char CYCLE_JOURNAL_PATH[] = "/cycles.log";
 
 // Preferences namespaces are kept project-specific so the frozen base and
 // unrelated future projects do not overwrite each other's persistent values.
