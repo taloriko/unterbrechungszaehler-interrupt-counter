@@ -1,12 +1,14 @@
-# Persistentes Datenformat – Unterbrechungszähler 3.6.0
+# Persistentes Datenformat – Unterbrechungszähler 3.6.1
 
-Die persistenten Projektdaten liegen in der eigenen LittleFS-Partition sowie – für den kleinen aktuellen Arbeitszykluszustand – in NVS. Der bestehende Raw-Ring bleibt die **Source of Truth für bestätigte Unterbrechungen**. Tagesaggregate sind ausschließlich abgeleitete Statistikdaten.
+Die persistenten Projektdaten liegen in der eigenen LittleFS-Partition sowie – für den kleinen aktuellen Arbeitszykluszustand – in NVS. Der bestehende Raw-Ring bleibt die **Source of Truth für echte Unterbrechungen**. Tagesaggregate sind ausschließlich abgeleitete Statistikdaten.
 
-## Grundregel ab 3.6.0
+## Grundregel ab 3.6.1
 
-Arbeitsbeginn und Arbeitsende sind **keine Unterbrechungen** und werden deshalb nicht in den bestehenden Unterbrechungs-Ring geschrieben. `WorkCycle` hält den jeweils letzten physischen Kurzdruck zunächst als Kandidaten zurück. Erst wenn ein weiterer gültiger Kurzdruck folgt, wird der vorherige Kandidat mit seinem ursprünglichen Zeitstempel über `InterruptionService::captureAtEpoch()` als echte Unterbrechung übernommen.
+Arbeitsbeginn und Arbeitsende sind **keine Unterbrechungen** und werden deshalb nicht in den bestehenden Unterbrechungs-Ring geschrieben. Während eines aktiven Zyklus wird dagegen jeder gültige kurze physische Unterbrechungsdruck sofort über `InterruptionService::captureAtEpoch()` in den bewährten Erfassungsweg gegeben.
 
-Dadurch bleiben Raw-Ring, Tagesaggregate, Heatmaps, Fokus-Auswertungen und CSV semantisch sauber: Sie enthalten weiterhin ausschließlich Unterbrechungen.
+Es gibt keinen zurückgehaltenen letzten Kandidaten mehr. Ein bereits erfasster kurzer Druck wird später nicht rückwirkend zu einem Zyklusende umklassifiziert. Wird der lange Enddruck vergessen, schließt nur der Zykluszustand beim lokalen Tageswechsel automatisch.
+
+Damit bleiben Raw-Ring, Tagesaggregate, Heatmaps, Fokus-Auswertungen und CSV semantisch stabil und unmittelbar aktuell.
 
 ## Raw Ring
 
@@ -14,7 +16,7 @@ Datei: `/interrupt.raw`
 
 Kapazität: **100.000 Records × 9 Byte = 900.000 Byte**.
 
-Das 3.5.x-Format bleibt in 3.6.0 bytekompatibel und wird nicht erweitert.
+Das 3.5.x-Format bleibt in 3.6.1 bytekompatibel und wird nicht erweitert.
 
 | Byte | Inhalt |
 |---:|---|
@@ -50,11 +52,9 @@ Gespeichert wird nur der kleine Zustand, der einen Neustart überleben muss:
 - Magic/Formatkennung
 - lokaler `dayIndex`
 - `active`
-- `pending`
 - UTC-Epoch des Zyklusstarts
-- UTC-Epoch des letzten noch nicht klassifizierten Kurzdrucks
 
-Der Zustand wird nur bei Start, neuem Kandidaten und Zyklusende geändert. Es gibt keinen periodischen Schreibvorgang.
+Der Zustand wird nur bei Start und Zyklusende geändert. Es gibt keinen periodischen Schreibvorgang und keinen persistenten Pending-Kandidaten mehr.
 
 ### Klassifikation
 
@@ -62,21 +62,20 @@ Der Zustand wird nur bei Start, neuem Kandidaten und Zyklusende geändert. Es gi
 1. kurzer Druck bei inaktiv
    -> START in Zyklusjournal
    -> kein Raw-Event
+   -> Anti-Spam-Fenster bleibt frei
 
-2. erster kurzer Druck bei aktiv
-   -> nur als pending in NVS
+2. kurzer Druck bei aktiv
+   -> 10-s-Anti-Spam prüfen
+   -> bei Annahme sofort Raw-Unterbrechung + normale Rückmeldung
 
-3. weiterer kurzer Druck
-   -> vorheriges pending wird Raw-Unterbrechung
-   -> neuer Druck wird pending
+3a. langer Druck >= 2 s
+   -> END in Zyklusjournal
+   -> kein Raw-Event
+   -> 10 s FEIERABEND-Anzeige
 
-4a. langer Druck >= 2 s
-   -> vorhandenes pending wird Unterbrechung
-   -> langer Druck = END
-
-4b. lokaler Tageswechsel ohne langen Druck
-   -> vorhandenes pending = END
-   -> kein Raw-Event für diesen letzten Druck
+3b. lokaler Tageswechsel ohne langen Druck
+   -> Zyklus wird automatisch beendet
+   -> bereits erfasste Unterbrechungen bleiben unverändert
 ```
 
 ## Zyklusjournal
@@ -102,7 +101,7 @@ Kapazität: **2.300 Slots × 64 Byte = 147.200 Byte** (> 6,2 Jahre).
 
 Ein Tagesrecord enthält lokalen `dayIndex`, Format-/Validflags, Tagesgesamtzahl, CRC16, letzte bereits eingerechnete Raw-Sequenz und 24 × `uint16` Stundenwerte.
 
-Nur bestätigte Unterbrechungen gelangen in diese Aggregate. START, END und der noch offene Kandidat eines Zyklus werden nie mitgezählt.
+Nur echte Unterbrechungen gelangen in diese Aggregate. START und END werden nie mitgezählt.
 
 ## Aggregate-Metadaten
 
@@ -123,11 +122,11 @@ Daily Meta                80 B
 Basisdaten         1.047.368 B
 ```
 
-`/cycles.log` kommt in 3.6.0 zusätzlich hinzu. Mit 8 Byte pro START/END sind das normalerweise nur 16 Byte pro Arbeitstag; selbst mehrere Jahre bleiben im Vergleich zur vorhandenen LittleFS-Reserve klein. Der aktuelle Zykluszustand liegt in NVS und benötigt keinen LittleFS-Slot.
+`/cycles.log` kommt zusätzlich hinzu. Mit 8 Byte pro START/END sind das normalerweise nur 16 Byte pro Arbeitstag; selbst mehrere Jahre bleiben im Vergleich zur vorhandenen LittleFS-Reserve klein. Der aktuelle Zykluszustand liegt in NVS und benötigt keinen LittleFS-Slot.
 
 ## CSV
 
-CSV bleibt ein abgeleitetes Exportformat. Es wird beim Download aus den bestätigten Raw-Unterbrechungen gestreamt. START/END erscheinen dort bewusst nicht und verändern daher keine bestehenden Import-/Auswertungsabläufe.
+CSV bleibt ein abgeleitetes Exportformat. Es wird beim Download aus den Raw-Unterbrechungen gestreamt. START/END erscheinen dort bewusst nicht und verändern daher keine bestehenden Import-/Auswertungsabläufe.
 
 ## Herkunftsfilter und Löschfunktion
 
