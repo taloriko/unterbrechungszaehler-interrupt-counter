@@ -15,12 +15,6 @@ enum class EventSource : uint8_t {
   Hardware = 5
 };
 
-enum class EventType : uint8_t {
-  Interruption = 0,
-  CycleStart = 1,
-  CycleEnd = 2
-};
-
 enum class StorageState : uint8_t {
   Unavailable,
   Ready,
@@ -40,7 +34,6 @@ struct CapturedEvent {
   uint8_t localHour = 0;
   TimeTypes::Source timeSource = TimeTypes::Source::Relative;
   EventSource eventSource = EventSource::Unknown;
-  EventType eventType = EventType::Interruption;
   bool absoluteValid = false;
   bool localCalendarValid = false;
 };
@@ -50,7 +43,6 @@ struct RawEvent {
   uint32_t deltaSeconds = DELTA_UNKNOWN;
   TimeTypes::Source timeSource = TimeTypes::Source::Relative;
   EventSource eventSource = EventSource::Unknown;
-  EventType eventType = EventType::Interruption;
   bool absoluteValid = false;
   uint8_t sequenceTag = 0;
 };
@@ -79,34 +71,7 @@ struct Summary {
   TimeTypes::Source lastTimeSource = TimeTypes::Source::Relative;
   EventSource lastEventSource = EventSource::Unknown;
   uint32_t lastDeltaSeconds = DELTA_UNKNOWN;
-
-  bool cycleActive = false;
-  bool cyclePendingLastPress = false;
-  uint16_t cycleDayIndex = 0;
-  uint32_t cycleStartEpochSeconds = 0;
-  uint32_t cyclePendingEpochSeconds = 0;
 };
-
-inline bool isInterruption(EventType type) {
-  return type == EventType::Interruption;
-}
-
-inline bool isInterruption(const CapturedEvent &event) {
-  return isInterruption(event.eventType);
-}
-
-inline bool isInterruption(const RawEvent &event) {
-  return isInterruption(event.eventType);
-}
-
-inline const char *eventTypeName(EventType type) {
-  switch (type) {
-    case EventType::CycleStart: return "cycle_start";
-    case EventType::CycleEnd: return "cycle_end";
-    case EventType::Interruption:
-    default: return "interruption";
-  }
-}
 
 inline const char *eventSourceName(EventSource source) {
   switch (source) {
