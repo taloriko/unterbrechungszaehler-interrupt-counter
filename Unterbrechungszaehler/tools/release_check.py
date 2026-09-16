@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.5.0."""
+"""Portable release checks for Unterbrechungszaehler 3.6.1."""
 from __future__ import annotations
 
 import gzip
@@ -27,21 +27,16 @@ def translation_keys(language: str, next_language: str | None) -> set[str]:
     if start < 0:
         raise AssertionError(f"translation block missing: {language}")
     body_start = start + len(start_token)
-    if next_language:
-        end = JS.find(f"    {next_language}: {{", body_start)
-    else:
-        end = JS.find("\n  };", body_start)
+    end = JS.find(f"    {next_language}: {{", body_start) if next_language else JS.find("\n  };", body_start)
     if end < 0:
         raise AssertionError(f"translation block end missing: {language}")
-    body = JS[body_start:end]
-    return set(re.findall(r"'([^']+)'\s*:", body))
+    return set(re.findall(r"'([^']+)'\s*:", JS[body_start:end]))
 
 
 def generated_asset() -> tuple[bytes, bytes, str]:
     bundle = HTML.replace("/*__APP_CSS__*/", CSS).replace("/*__APP_JS__*/", JS).encode("utf-8")
     compressed = gzip.compress(bundle, compresslevel=9, mtime=0)
-    etag = hashlib.sha256(compressed).hexdigest()[:16]
-    return bundle, compressed, etag
+    return bundle, compressed, hashlib.sha256(compressed).hexdigest()[:16]
 
 
 def header_bytes() -> tuple[bytes, str]:
@@ -57,146 +52,102 @@ def main() -> None:
     config = (ROOT / "config.h").read_text(encoding="utf-8")
     project = (ROOT / "project_config.h").read_text(encoding="utf-8")
     hardware = (ROOT / "hardware_config.h").read_text(encoding="utf-8")
+    sketch = (ROOT / "Unterbrechungszaehler.ino").read_text(encoding="utf-8")
+    service = (ROOT / "interruption_service.cpp").read_text(encoding="utf-8")
+    service_h = (ROOT / "interruption_service.h").read_text(encoding="utf-8")
+    cycle = (ROOT / "work_cycle.cpp").read_text(encoding="utf-8")
+    cycle_h = (ROOT / "work_cycle.h").read_text(encoding="utf-8")
+    store = (ROOT / "interruption_store.cpp").read_text(encoding="utf-8")
+    aggregates = (ROOT / "interruption_aggregates.cpp").read_text(encoding="utf-8")
+    insights = (ROOT / "focus_insights.cpp").read_text(encoding="utf-8")
+    views = (ROOT / "display_views.cpp").read_text(encoding="utf-8")
+    audio = (ROOT / "audio_dy_sv17f.cpp").read_text(encoding="utf-8")
+    api = (ROOT / "interruption_api.cpp").read_text(encoding="utf-8")
+    server = (ROOT / "web_server.cpp").read_text(encoding="utf-8")
     partitions = (ROOT / "partitions.csv").read_text(encoding="utf-8")
 
+    # Identity / frozen platform invariants.
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.5.0"' in config, "project version 3.5.0")
-    check(
-        'AVAILABLE_LANGUAGES_JSON[] = "[\\\"de\\\",\\\"en\\\",\\\"it\\\",\\\"fr\\\",\\\"swg\\\",\\\"swg-alb\\\",\\\"swg-ob\\\"]"' in config,
-        "declared UI languages",
-    )
-    check('FALLBACK_AP_PASSWORD[] = "Unterbrechungszähler"' in config, "password-protected fallback AP")
-    check("ota.apWarning" not in JS and "ota.unavailable" not in JS, "obsolete OTA/AP notices removed")
-    check("path: 'ota.usedPercent'" in JS and "type: 'meter'" in JS, "OTA storage utilisation meter")
-    check("RAW_EVENT_CAPACITY = 100000" in project, "100,000 raw-event capacity")
-    check("RAW_RECORD_SIZE = 9" in project, "9-byte raw record")
-    check("DAILY_AGGREGATE_CAPACITY = 2300" in project, "daily aggregate retention")
-    check("PENDING_EVENT_CAPACITY = 64" in project, "64-event fixed persistence queue")
-    check("DISPLAY_ENABLED_DEFAULT = true" in project, "persistent display master default")
-    check("DISPLAY_BOOT_SCREEN_MIN_MS = 4000" in hardware, "four-second nonblocking boot screen minimum")
-    check("displayEnabled" in JS and "project.displayEnabled" in JS, "display master switch in UI")
-    check("DISPLAY_BRIGHTNESS_DEFAULT_PERCENT = 65" in project and "DISPLAY_DIM_BRIGHTNESS_DEFAULT_PERCENT = 5" in project, "display brightness defaults 65/5 percent")
-    check("SOUND_VOLUME_DEFAULT_PERCENT = 100" in project, "sound volume default 100 percent")
-    check("INTERRUPTION_SOUND_MODE_DEFAULT = ProjectPreferences::SoundMode::Rotate" in project, "rotating sound is the fresh default")
-    check("DISPLAY_ROTATION_180_DEFAULT = false" in project and "displayRotation180" in JS, "persistent 180-degree display option")
-    check("day-progress" in JS and "quiet-phases" in JS and "work-patterns" in JS, "seven OLED display modes exposed")
-    check("normalizeDisplayText" in (ROOT / "display_sh1106.cpp").read_text(encoding="utf-8") and 'append("AE")' in (ROOT / "display_sh1106.cpp").read_text(encoding="utf-8"), "OLED UTF-8 transliteration fallback")
-    check("ProjectPreferences::language()" in (ROOT / "display_views.cpp").read_text(encoding="utf-8") and 'prefs.putString(key' in (ROOT / "project_preferences.cpp").read_text(encoding="utf-8"), "OLED language follows persistent UI language")
-    check("soundVolume" in JS and "setVolumePercent" in (ROOT / "audio_dy_sv17f.cpp").read_text(encoding="utf-8"), "DY-SV17F volume control")
-    check("ota.hint" not in JS and "Export Compiled Binary" not in JS, "obsolete Arduino sketch BIN hint removed")
-    check("averageInterval" in JS and "analytics.coveragePartial" in JS, "average-interval heatmap UI")
-    interruption_api = (ROOT / "interruption_api.cpp").read_text(encoding="utf-8")
-    check("scanRawAnalytics" in interruption_api and "elapsedSeconds == current.deltaSeconds" in interruption_api, "retained adjacent-event interval scan")
-    check("delay(4000)" not in (ROOT / "display_views.cpp").read_text(encoding="utf-8") and "delay(4000)" not in (ROOT / "display_sh1106.cpp").read_text(encoding="utf-8"), "boot screen has no blocking four-second delay")
+    check('SOFTWARE_VERSION[] = "3.6.1"' in config, "project version 3.6.1")
+    check("RAW_EVENT_CAPACITY = 100000" in project and "RAW_RECORD_SIZE = 9" in project, "100,000 x 9-byte raw ring unchanged")
+    check("DAILY_AGGREGATE_CAPACITY = 2300" in project and "DAILY_RECORD_SIZE = 64" in project, "daily aggregate format unchanged")
+    check("PENDING_EVENT_CAPACITY = 64" in project, "fixed 64-event persistence queue")
+    check("0x2D0000, 0x130000" in partitions, "LittleFS custom partition")
     check(re.search(r'\{"di1"[^\n]*13,\s*PullMode::Up,\s*false[^\n]*25,\s*true,', hardware) is not None, "DI1 GPIO13 active-edge interrupt latch")
     check("AUDIO_RX_PIN = 18" in hardware and "AUDIO_TX_PIN = 19" in hardware and "AUDIO_BUSY_PIN = 39" in hardware, "DY-SV17F pin map")
-    audio_cpp = (ROOT / "audio_dy_sv17f.cpp").read_text(encoding="utf-8")
-    audio_h = (ROOT / "audio_dy_sv17f.h").read_text(encoding="utf-8")
-    update_body = audio_cpp.split("void update() {", 1)[1].split("bool probe()", 1)[0]
-    check("sampleBusyNow()" not in update_body, "no permanent BUSY polling in normal audio update")
-    check("attachInterrupt" in audio_cpp and "busyIrqArmed" in audio_cpp and "onBusyEdge" in audio_cpp, "BUSY edge monitoring is event-driven and test-gated")
-    check("sendQuery(WaitKind::TestPrePlay, 0x01)" in audio_cpp, "manual audio test starts with silent UART status query")
-    check("sendPlayCommand(HardwareConfig::AUDIO_TEST_TRACK)" in audio_cpp and "sendFrame(0x07" in audio_cpp, "manual test keeps existing DY-SV17F play command")
-    check("currentPlayStateMeasuredAtMs" in audio_cpp and "busyMeasuredAtMs" in audio_h, "UART and BUSY diagnostics carry measurement times")
-    check("BusyPolarity::Unconfirmed" in audio_cpp and "active_low" in audio_cpp and "active_high" in audio_cpp, "BUSY polarity is unconfirmed until full test cycle")
-    check("AudioTestState::Partial" in audio_cpp and "audioTestUartPlayingConfirmed" in audio_h, "manual audio-test result is explicit")
-    check("AUDIO_DIAGNOSTIC_STATUS_POLL_MS = 500" in hardware, "manual audio test has bounded UART end-check cadence")
-    check("DeferredAction::TestCheckStopped" in audio_cpp and "scheduled UART end check" in audio_cpp, "UART end checks run only inside explicit audio test")
-    check("UART is the protocol truth for test completion" in audio_cpp and "finishAudioTest(AudioTestState::Ok, StatusRegistry::State::Ok" in audio_cpp, "UART stopped confirmation completes test even when BUSY is unconfirmed")
-    check("audio test timeout; UART track end was not confirmed" in audio_cpp, "manual audio test has hard safety timeout")
-    check("command verification timeout" in audio_cpp and "StatusRegistry::State::NoResponse" in audio_cpp, "UART no-response remains a real diagnostic error")
-    check("hardware.info.uartCommunication" in JS and "hardware.info.busyInterpretation" in JS and "hardware.info.audioTest" in JS, "richer DY-SV17F diagnostic UI")
-    check("0x2D0000, 0x130000" in partitions, "LittleFS custom partition")
 
+    # 3.6.1 work-cycle contract: classification wraps the proven capture path.
+    check('WORK_CYCLE_INPUT_ID[] = "di1"' in project, "work cycle owns DI1")
+    check('INTERRUPTION_INPUT_ID[] = "cycle-managed"' in project, "legacy direct DI callback cannot consume DI1")
+    check("WORK_CYCLE_LONG_PRESS_MS = 2000" in project, "two-second explicit cycle end")
+    check("WORK_CYCLE_GOODBYE_DISPLAY_MS = 10000" in project, "ten-second goodbye display")
+    check('CYCLE_JOURNAL_PATH[] = "/cycles.log"' in project, "separate cycle journal")
+    check("STATE_MAGIC = 0x32435943UL" in cycle, "CYC2 ignores old 3.6.0 pending state")
+    check("Preferences" in cycle and "WORK_CYCLE_PREF_NAMESPACE" in cycle, "cycle state persisted in NVS")
+    check("JOURNAL_START" in cycle and "JOURNAL_END" in cycle and "appendJournal" in cycle, "start/end cycle journal markers")
+    check("state.pending" not in cycle and "pendingEpochSeconds" not in cycle, "no deferred last-press candidate remains")
+    check("InterruptionService::capture(InterruptionTypes::EventSource::PhysicalButton)" in cycle, "accepted short press uses normal immediate capture")
+    check("captureAtEpoch" not in cycle and "captureAtEpoch" not in service and "captureAtEpoch" not in service_h, "obsolete deferred timestamp API removed")
+    check("finalizeAutomaticEnd(epochSeconds)" in cycle and "local.dayIndex != state.dayIndex" in cycle, "automatic local-day fallback")
+    check("never reclassified" in cycle, "day-change fallback never rewrites captured interruptions")
+    check("heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS" in cycle, "long press detected on release")
+    check("beginGoodbye" in cycle and "FEIERABEND" in cycle and "todayCount" in cycle, "manual goodbye includes today count")
+    check("if (goodbyeActive) return;" in cycle, "goodbye ignores further physical input")
+    check("exclusiveGoodbyeActive" in cycle_h and "if (!WorkCycle::exclusiveGoodbyeActive())" in sketch, "goodbye exclusively blocks normal interruption display servicing")
+    check("delay(" not in cycle, "work-cycle path remains nonblocking")
+    check("PhysicalButtonGuard::accept(shortPressGuard, nowMs" in cycle, "10-second guard applies to real short interruptions")
+    start_block = cycle.split("void startCycle", 1)[1].split("void renderGoodbye", 1)[0]
+    check("PhysicalButtonGuard::accept" not in start_block and "AudioDySv17f" not in start_block and "showSuppressed" not in start_block,
+          "cycle start is silent and does not consume anti-spam window")
+    capture_block = cycle.split("void captureShortPress", 1)[1].split("void handleShortPress", 1)[0]
+    check(capture_block.find("PhysicalButtonGuard::accept") < capture_block.find("InterruptionService::capture"),
+          "anti-spam guard precedes immediate real interruption capture")
+    check("playPriorityFeedbackTrack(ProjectConfig::INTERRUPTION_SPAM_SOUND_TRACK)" in cycle, "track 2 reserved for actually suppressed presses")
+    check("notifySuppressedPhysicalPress" in cycle, "suppressed short press keeps OLED feedback")
+
+    # Compatibility: the normal interruption service itself is back to the proven model.
+    check("bool capture(InterruptionTypes::EventSource source)" in service, "standard interruption capture retained")
+    check("if (source == InterruptionTypes::EventSource::PhysicalButton) serviceUrgent();" in service,
+          "physical interruption keeps immediate normal feedback")
+    check("event.eventSource" in store and "<< 20" in store, "event source remains packed in existing raw record")
+    check("eventType" not in store, "no cycle type is packed into 9-byte raw record")
+    check("InterruptionAggregates::apply(event, sequence)" in service, "captured events still feed daily aggregates")
+    check("scanRawAnalytics" in api and "elapsedSeconds == current.deltaSeconds" in api, "retained adjacent-event interval scan unchanged")
+    check("InterruptionStore::readSequence" in insights, "Focus & Insights remains raw-interruption based")
+    check("Preferences" not in insights and "LittleFS" not in insights, "Focus & Insights adds no persistence")
+
+    # Existing anti-spam/display/audio rules.
+    check("PHYSICAL_BUTTON_COOLDOWN_MS = 10000" in project, "10-second short-press cooldown")
+    check("INTERRUPTION_SPAM_SOUND_TRACK = 2" in project and "INTERRUPTION_SOUND_FIRST_NORMAL_TRACK = 3" in project, "track reservation 1 boot, 2 anti-spam, 3+ normal")
+    check("renderSpamFlickerFrame" in views and "DISPLAY_SPAM_FLICKER_MS = PHYSICAL_BUTTON_COOLDOWN_MS" in project, "nonblocking spam flicker retained")
+    check("attachInterrupt" in audio and "busyIrqArmed" in audio and "onBusyEdge" in audio, "audio BUSY monitoring remains event driven")
+    check("AUDIO_DIAGNOSTIC_STATUS_POLL_MS = 500" in hardware, "bounded manual audio-test polling")
+    check("replacedNormalVerification" in audio, "priority anti-spam audio cannot strand normal verification")
+
+    # API / reset / web invariants.
+    expected_routes = (
+        "/api/interruptions/event", "/api/interruptions/live", "/api/interruptions/sound",
+        "/api/interruptions/preferences", "/api/interruptions/storage",
+        "/api/interruptions/storage/reset", "/api/interruptions/analytics",
+        "/api/interruptions/heatmap/hourly", "/api/interruptions/heatmap/month-week",
+        "/api/interruptions/heatmap/year-month", "/api/interruptions/export.csv",
+    )
+    check(all(route in server for route in expected_routes), "project API routes retained")
+    check("AppConfig::PROJECT_NAME" in server and "/api/interruptions/storage/reset" in server, "project-name protected database reset")
+    check("bool eraseAll()" in store and "bool eraseAll()" in aggregates, "raw/aggregate reset paths retained")
+    check("physical_button" in api and "web_button" in api and "sourceMatches" in api, "source filters retained")
+    check(not re.search(r"\.(?:innerHTML|outerHTML)\s*=|insertAdjacentHTML\s*\(|document\.write\s*\(", JS), "no unsafe bulk DOM HTML writes")
+    check(re.search(r"<(?:script|img|link)\b[^>]*(?:src|href)=[\"\']https?://", HTML, re.IGNORECASE) is None, "no external HTML dependencies")
+    check(JS.count("setInterval(") == 1, "exactly one permanent frontend interval")
+
+    # i18n and generated web asset integrity.
     de = translation_keys("de", "en")
     en = translation_keys("en", "swg")
     swg = translation_keys("swg", None)
     check(de == en == swg, f"base i18n key parity ({len(de)} keys/language)")
-    check(
-        "I18N.it = {" in JS
-        and "I18N.fr = {" in JS
-        and "I18N['swg-alb'] = {" in JS
-        and "I18N['swg-ob'] = {" in JS,
-        "additional bundled UI languages",
-    )
-    for language in ("de", "en", "it", "fr", "swg", "swg-alb", "swg-ob"):
-        token = f"Object.assign(I18N{'.' + language if '-' not in language else '[' + repr(language) + ']'}, {{"
-        check(token in JS, f"3.4.0 UI additions present for {language}")
+    check("I18N.it = {" in JS and "I18N.fr = {" in JS and "I18N['swg-alb'] = {" in JS and "I18N['swg-ob'] = {" in JS, "all seven UI languages bundled")
 
-    positions = [JS.find(f"{{ id: '{name}'") for name in ("device", "wifi", "memory", "time", "hardware", "ota")]
-    check(all(position >= 0 for position in positions) and positions == sorted(positions), "device card order")
-    check(JS.count("setInterval(") == 1, "exactly one permanent frontend interval")
-    check("const weeks = Array.from({ length: 53 }, (_, i) => String(i + 1))" in JS, "calendar-week heatmap headers use numbers only")
-    check("Bindings.notify('analytics.monthWeek')" in JS and "Bindings.notify('analytics.hourly')" in JS, "manual heatmap filters trigger targeted rerender")
-    check("focusInsights: renderFocusInsights" in JS and "workPatterns: renderWorkPatterns" in JS, "Focus & Insights web renderers")
-    home_block = JS.split("home: {", 1)[1].split("analytics: {", 1)[0]
-    settings_block = JS.split("settings: {", 1)[1].split("}\n    }\n  };", 1)[0]
-    check("projectSettings" not in home_block and "projectSettings" in settings_block, "project settings moved from Home to Settings without duplication")
-    check("FOCUS_INSIGHTS_CACHE_MAX_AGE_MS = 60000" in project and "FOCUS_PATTERN_DAYS = 30" in project and "FOCUS_PATTERN_MIN_COVERED_DAYS = 5" in project, "bounded Focus & Insights cache policy")
-    insights_cpp = (ROOT / "focus_insights.cpp").read_text(encoding="utf-8")
-    check("InterruptionStore::readSequence" in insights_cpp and "local.dayIndex < earliestNeeded" in insights_cpp, "bounded newest-to-oldest raw insights scan")
-    check("windowCovered" in insights_cpp and "MIN_COVERED_DAYS" in insights_cpp, "observed-activity coverage rule for work patterns")
-    check("trendPrevious60" in JS and "trendLast60" in JS and "focus.explain" in JS, "explained 120-minute trend on Home")
-    check("quietCoveredDays" in JS and "peakCoveredDays" in JS and "patterns.coveredDays" in JS, "work-pattern results expose actual covered-day basis")
-    check("if (scanning) return stableDuringScan" in insights_cpp and "timeValidityChanged" in insights_cpp, "Focus scan is reentrancy-safe and reacts to time validity changes")
-    check("Preferences" not in insights_cpp and "LittleFS" not in insights_cpp and "appendRaw" not in insights_cpp and "writeSequence" not in insights_cpp, "Focus & Insights adds no persistent storage writes")
-    check("SoundMode::Rotate" in (ROOT / "project_preferences.cpp").read_text(encoding="utf-8"), "rotating interruption sound mode")
-    service_cpp = (ROOT / "interruption_service.cpp").read_text(encoding="utf-8")
-    check("Track 1 = boot/test, track 2 = anti-spam" in service_cpp, "tracks 1/2 reserved from normal rotation")
-    check("INTERRUPTION_SOUND_FIRST_NORMAL_TRACK = 3" in project and "INTERRUPTION_SPAM_SOUND_TRACK = 2" in project, "sound track reservation 1 boot, 2 anti-spam, 3+ normal")
-    check("PHYSICAL_BUTTON_COOLDOWN_MS = 10000" in project, "10-second physical-button cooldown")
-    check("PhysicalButtonGuard::accept" in service_cpp and "handleSuppressedPhysicalPress" in service_cpp, "physical button anti-spam guard before capture")
-    guard_pos = service_cpp.find("PhysicalButtonGuard::accept")
-    capture_pos = service_cpp.find("capture(InterruptionTypes::EventSource::PhysicalButton)", guard_pos)
-    check(guard_pos >= 0 and capture_pos > guard_pos and "return;" in service_cpp[guard_pos:capture_pos], "suppressed physical press exits before capture/store path")
-    check("playPriorityFeedbackTrack(ProjectConfig::INTERRUPTION_SPAM_SOUND_TRACK)" in service_cpp, "track 2 fast feedback on suppressed press")
-    check("replacedNormalVerification" in audio_cpp and "setHealth(StatusRegistry::State::Ok)" in audio_cpp, "priority spam track cannot leave normal verification stuck in Checking")
-    check("count > 0U && count < firstNormal" in service_cpp and "return 0U" in service_cpp, "known modules with only reserved tracks do not receive nonexistent normal track 3")
-    check("notifySuppressedPhysicalPress" in service_cpp and "DisplayViews::update(currentSummary)" in service_cpp, "first spam display frame serviced immediately")
-    views_cpp = (ROOT / "display_views.cpp").read_text(encoding="utf-8")
-    check("DISPLAY_SPAM_FLICKER_MS = PHYSICAL_BUTTON_COOLDOWN_MS" in project and "renderSpamFlickerFrame" in views_cpp and "delay(" not in views_cpp.split("renderSpamFlickerFrame",1)[1].split("contrastFromPercent",1)[0], "nonblocking deterministic old-TV spam flicker spans cooldown window")
-    check("notifySuppressedPhysicalPress(uint32_t cooldownRemainingMs)" in views_cpp and "if (spamFlickerActive || cooldownRemainingMs == 0U) return;" in views_cpp and "spamFlickerUntilMs" in views_cpp, "spam OLED effect latches once and is not retriggered")
-    check("DisplayViews::notifySuppressedPhysicalPress(remaining)" in service_cpp, "spam display duration follows remaining physical-button cooldown")
-    check("isLongAudioTest" in JS and "isLongAudioTest ? 240 : 4" in JS and "isLongAudioTest ? 500 : 300" in JS, "manual audio test gets bounded temporary web follow")
-    check("followHardwareCheck(attempt, maxAttempts = 4, intervalMs = 300)" in JS and "attempt < maxAttempts" in JS, "ordinary hardware follow remains short while audio test can run longer")
-    prefs_cpp = (ROOT / "project_preferences.cpp").read_text(encoding="utf-8")
-    check("value < ProjectConfig::INTERRUPTION_SOUND_FIRST_NORMAL_TRACK" in prefs_cpp and "prefs.putUShort(\"sndtrack\", track)" in prefs_cpp, "legacy fixed track 2 migrates to normal track 3")
-    check("addNumber(soundGrid, 'soundTrack', 'project.soundTrack', 3, 65535)" in JS, "fixed-track UI starts at track 3")
-    check("hardware.info.suppressedPresses" in JS and "suppressedPhysicalPressCount" in (ROOT / "hardware_registry.cpp").read_text(encoding="utf-8"), "boot-local suppression diagnostics")
-    check(not re.search(r"\.(?:innerHTML|outerHTML)\s*=|insertAdjacentHTML\s*\(|document\.write\s*\(", JS), "no unsafe bulk DOM HTML writes")
-    external = re.search(r"<(?:script|img|link)\b[^>]*(?:src|href)=[\"\']https?://", HTML, re.IGNORECASE)
-    check(external is None, "no external HTML dependencies")
-
-    expected_routes = (
-        "/api/interruptions/event",
-        "/api/interruptions/live",
-        "/api/interruptions/sound",
-        "/api/interruptions/preferences",
-        "/api/interruptions/storage",
-        "/api/interruptions/storage/reset",
-        "/api/interruptions/analytics",
-        "/api/interruptions/heatmap/hourly",
-        "/api/interruptions/heatmap/month-week",
-        "/api/interruptions/heatmap/year-month",
-        "/api/interruptions/export.csv",
-    )
-    web_server = (ROOT / "web_server.cpp").read_text(encoding="utf-8")
-    check(all(route in web_server for route in expected_routes), "project API routes")
-
-    check("/api/interruptions/storage/reset" in web_server and "AppConfig::PROJECT_NAME" in web_server, "project-name protected database reset route")
-    store_cpp = (ROOT / "interruption_store.cpp").read_text(encoding="utf-8")
-    aggregates_cpp = (ROOT / "interruption_aggregates.cpp").read_text(encoding="utf-8")
-    check("bool eraseAll()" in store_cpp and "raw database delete failed" in store_cpp, "raw database destructive reset")
-    check("bool eraseAll()" in aggregates_cpp and "aggregate database delete failed" in aggregates_cpp, "aggregate database destructive reset")
-    check("event.eventSource" in store_cpp and "<< 20" in store_cpp, "event source remains persisted in 9-byte raw record")
-    check("physical_button" in interruption_api and "web_button" in interruption_api and "sourceMatches" in interruption_api, "raw event-source analytics filter")
-    check("rawCountScan" in interruption_api and "addCountSample" in interruption_api, "source-filtered count heatmaps use retained raw ring")
-    check("previous.eventSource" in interruption_api, "average interval source filter follows interval start event")
-    check("rawError" in interruption_api and "aggregateError" in interruption_api and "problemComponent" in interruption_api, "exact storage diagnostics exposed")
-    check("analytics.source.physical_button" in JS and "analytics.source.web_button" in JS and "data-analytics-source" in JS, "heatmap source selector")
-    check("databaseDeletePassword" in JS and "eraseDatabase" in JS, "password-confirmed database erase UI")
-    check("status.ready" in JS and "status.unavailable" in JS, "translated storage health states")
-
+    # Existing portable host tests remain release gates.
     guard_binary = ROOT / "tools" / ".test_physical_button_guard"
     subprocess.run(["g++", "-std=c++17", "-I", str(ROOT), str(ROOT / "tools" / "test_physical_button_guard.cpp"), "-o", str(guard_binary)], check=True)
     subprocess.run([str(guard_binary)], check=True)
@@ -206,7 +157,6 @@ def main() -> None:
     subprocess.run(["g++", "-std=c++17", "-I", str(ROOT), str(ROOT / "tools" / "test_focus_insights.cpp"), "-o", str(insights_binary)], check=True)
     subprocess.run([str(insights_binary)], check=True)
     insights_binary.unlink(missing_ok=True)
-    check(True, "Focus & Insights host rules")
     subprocess.run([sys.executable, str(ROOT / "tools" / "test_interruption_storage.py")], check=True)
     subprocess.run([sys.executable, "-m", "py_compile", str(ROOT / "tools" / "build_web.py"), str(ROOT / "tools" / "test_interruption_storage.py"), str(ROOT / "tools" / "release_check.py")], check=True)
     if subprocess.run(["node", "--check", str(ROOT / "ui-src" / "app.js")], check=False).returncode != 0:

@@ -1,12 +1,22 @@
-# Persistentes Datenformat – Unterbrechungszähler 0.1.0
+# Persistentes Datenformat – Unterbrechungszähler 3.6.1
 
-Die persistenten Projektdaten liegen in einer eigenen LittleFS-Partition und sind von den beiden OTA-App-Partitionen getrennt. Rohereignisse sind die **Source of Truth**; Tagesaggregate sind ausschließlich abgeleitete Statistikdaten.
+Die persistenten Projektdaten liegen in der eigenen LittleFS-Partition sowie – für den kleinen aktuellen Arbeitszykluszustand – in NVS. Der bestehende Raw-Ring bleibt die **Source of Truth für echte Unterbrechungen**. Tagesaggregate sind ausschließlich abgeleitete Statistikdaten.
+
+## Grundregel ab 3.6.1
+
+Arbeitsbeginn und Arbeitsende sind **keine Unterbrechungen** und werden deshalb nicht in den bestehenden Unterbrechungs-Ring geschrieben. Während eines aktiven Zyklus wird dagegen jeder gültige kurze physische Unterbrechungsdruck sofort über den unveränderten `InterruptionService::capture()`-Pfad in den bewährten Erfassungsweg gegeben.
+
+Es gibt keinen zurückgehaltenen letzten Kandidaten mehr. Ein bereits erfasster kurzer Druck wird später nicht rückwirkend zu einem Zyklusende umklassifiziert. Wird der lange Enddruck vergessen, schließt nur der Zykluszustand beim lokalen Tageswechsel automatisch.
+
+Damit bleiben Raw-Ring, Tagesaggregate, Heatmaps, Fokus-Auswertungen und CSV semantisch stabil und unmittelbar aktuell.
 
 ## Raw Ring
 
 Datei: `/interrupt.raw`
 
 Kapazität: **100.000 Records × 9 Byte = 900.000 Byte**.
+
+Das 3.5.x-Format bleibt in 3.6.1 bytekompatibel und wird nicht erweitert.
 
 | Byte | Inhalt |
 |---:|---|
@@ -19,52 +29,69 @@ Delta-Sonderwerte:
 
 - `0..131069`: Abstand in Sekunden
 - `131070`: unbekannt
-- `131071`: erstes Event des lokalen Tages
+- `131071`: erstes bestätigtes Unterbrechungsereignis des lokalen Tages
 
-Die vollständige Sequenz wird über die Ringmetadaten und Ringposition rekonstruiert. Das Low-Byte im Record dient zusätzlich der Konsistenz-/Recoveryprüfung.
+Die vollständige Sequenz wird über Ringmetadaten und Ringposition rekonstruiert. Das Low-Byte im Record dient zusätzlich der Konsistenz-/Recoveryprüfung.
 
 ## Raw-Metadaten – Format v2
 
 Datei: `/interrupt.meta`
 
-Zwei alternierende **44-Byte-Slots** speichern jeweils:
+Zwei alternierende **44-Byte-Slots** speichern jeweils Magic/Version, Recordgröße, Kapazität, `writeIndex`, `count`, `totalSequence`, den letzten gültigen Kalenderanker, Commitcounter und CRC32.
 
-- Magic / Metadatenversion
-- Recordgröße und Kapazität
-- `writeIndex`
-- `count`
-- `totalSequence`
-- letzten kalendarisch gültigen Eventanker (`epoch` + lokaler `dayIndex`)
-- Commitcounter
-- CRC32
+Append bleibt transaktional: Erst Raw-Record schreiben und flushen, danach Metadaten committen. Bei einem Metadatenfehler wird der RAM-Stand zurückgerollt; bei vollem Ring wird zusätzlich der verdrängte 9-Byte-Record restauriert. Orphan-Recovery und kooperative Recovery bleiben unverändert.
 
-Der persistierte Kalenderanker ist wichtig für den Abstand zum vorherigen Ereignis: Nach einem Neustart kann der nächste Event desselben lokalen Tages seinen Abstand in O(1) bestimmen, auch wenn die zuletzt gespeicherten Raw-Events nur relative Zeit hatten.
+## Arbeitszyklus-Zustand in NVS
 
-### Transaktionaler Append
+Namespace: `interruptcyc`
 
-1. Zielslot und nächste Sequenz werden aus den **dauerhaft bestätigten** Metadaten abgeleitet.
-2. Der 9-Byte-Raw-Record wird geschrieben und geflusht.
-3. Erst danach wird der nächste alternierende Metadatenslot committed.
-4. Scheitert Schritt 3, werden die RAM-Metadaten vollständig auf den vorherigen Stand zurückgerollt.
-5. Ist der 100.000er Ring bereits voll, wurden mit dem Zielslot gleichzeitig die ältesten 9 Byte verdrängt. Diese 9 Byte werden deshalb vor dem Überschreiben gesichert und bei einem Metadatenfehler ebenfalls zurückgeschrieben.
-6. Ein Retry benutzt damit denselben Slot und dieselbe Sequenz – es entsteht kein zweites logisches Ereignis und der zurückgerollte Metastand verweist nicht auf einen bereits überschriebenen ältesten Record.
+Key: `state`
 
-Ein bereits geschriebener, aber noch nicht committed Record ist ein Orphan. `recoverOrphan()` kann genau diesen nächsten Record anhand des Sequenz-Tags übernehmen.
+Gespeichert wird nur der kleine Zustand, der einen Neustart überleben muss:
 
-### Recovery
+- Magic/Formatkennung
+- lokaler `dayIndex`
+- `active`
+- UTC-Epoch des Zyklusstarts
 
-Der normale Boot scannt den 100.000er Ring **nicht**.
+Der Zustand wird nur bei Start und Zyklusende geändert. Es gibt keinen periodischen Schreibvorgang und keinen persistenten Pending-Kandidaten mehr.
 
-Nur wenn beide Metadatenslots unbrauchbar sind, startet ein kooperativer Recoverylauf:
+### Klassifikation
 
-- Hauptscan in Batches von 128 Records
-- anschließend ebenfalls kooperative Rückwärtssuche nach dem jüngsten kalendarisch gültigen Eventanker
-- keine zweite große blockierende Vollschleife
-- Web-/Hardwareloop kann zwischen den Batches weiterlaufen
+```text
+1. kurzer Druck bei inaktiv
+   -> START in Zyklusjournal
+   -> kein Raw-Event
+   -> Anti-Spam-Fenster bleibt frei
 
-Beim Verlust beider Raw-Metadaten kann aus den 8-Bit-Sequenztags die physische Reihenfolge, aber nicht jede frühere High-Byte-Epoche der lebenslangen Sequenz rekonstruiert werden. Ist ein gültiger Daily-Aggregate-Checkpoint vorhanden, dient dessen `lastProcessedSequence` als unabhängige dauerhafte Untergrenze: Die rekonstruierte Raw-Sequenz wird auf den ersten passenden 8-Bit-Tag **ab bzw. oberhalb dieses Checkpoints** angehoben. Dadurch werden neue Raw-Events nach Recovery nicht fälschlich als bereits aggregiert behandelt.
+2. kurzer Druck bei aktiv
+   -> 10-s-Anti-Spam prüfen
+   -> bei Annahme sofort normaler InterruptionService::capture()-Pfad
 
-Ist der Raw-Ring in einem außergewöhnlichen Recoveryfall vollständig leer, der Daily-Store aber noch gültig, wird dessen Checkpoint trotzdem als logische Raw-Sequenzbasis übernommen (`count` bleibt 0). Der nächste neue Raw-Event erhält dadurch `checkpoint + 1` statt wieder bei Sequenz 1 zu beginnen. Die langfristigen Tagesaggregate können so erhalten bleiben, ohne dass neue Ereignisse wegen alter Sequenznummern übersprungen werden.
+3a. langer Druck >= 2 s
+   -> END in Zyklusjournal
+   -> kein Raw-Event
+   -> 10 s FEIERABEND-Anzeige
+
+3b. lokaler Tageswechsel ohne langen Druck
+   -> Zyklus wird automatisch beendet
+   -> bereits erfasste Unterbrechungen bleiben unverändert
+```
+
+## Zyklusjournal
+
+Datei: `/cycles.log`
+
+START und END werden zusätzlich als kleine **8-Byte-Records** protokolliert. Sie sind Ergänzungsdaten und verändern weder den Raw-Ring noch die Tagesaggregate.
+
+| Byte | Inhalt |
+|---:|---|
+| 0–3 | UTC-Epoch Sekunden |
+| 4–5 | lokaler `dayIndex` |
+| 6 | Typ: `1 = START`, `2 = END` |
+| 7 | Grund: `0 = Start`, `1 = manuelles Ende`, `2 = automatischer Tageswechsel` |
+
+Das Journal ist absichtlich klein und append-only. Der für die laufende Logik notwendige Zustand liegt unabhängig davon in NVS, damit ein fehlgeschlagener Journalzugriff keinen laufenden Zyklus zerstört.
 
 ## Daily Aggregate Ring
 
@@ -72,45 +99,15 @@ Datei: `/daily.bin`
 
 Kapazität: **2.300 Slots × 64 Byte = 147.200 Byte** (> 6,2 Jahre).
 
-Ein Tagesrecord enthält:
+Ein Tagesrecord enthält lokalen `dayIndex`, Format-/Validflags, Tagesgesamtzahl, CRC16, letzte bereits eingerechnete Raw-Sequenz und 24 × `uint16` Stundenwerte.
 
-- lokalen `dayIndex` seit 2020-01-01 in `Europe/Berlin`
-- Format-/Validflags
-- Tagesgesamtzahl (`uint16`)
-- CRC16
-- letzte bereits eingerechnete Raw-Sequenz
-- 24 × `uint16` Stundenwerte
-
-Die Heatmaps verwenden ausschließlich diese Tagesrecords. Normale Statistikabfragen müssen deshalb nicht durch 100.000 Rohereignisse laufen.
+Nur echte Unterbrechungen gelangen in diese Aggregate. START und END werden nie mitgezählt.
 
 ## Aggregate-Metadaten
 
 Datei: `/daily.meta`
 
-Zwei alternierende **40-Byte-Slots** mit CRC32 speichern:
-
-- `writeIndex`
-- `count`
-- letzte verarbeitete Raw-Sequenz
-- Zahl nicht kalendarisch zuordenbarer Events
-- Commitcounter
-
-`lastSequence` im Tagesrecord und `lastProcessedSequence` in den Metadaten machen Wiederholungen idempotent.
-
-### Transaktionssicherheit bei vollem Tagesring
-
-Wenn alle 2.300 Tagesslots belegt sind, muss für einen neuen Tag der älteste Slot überschrieben werden. Vor diesem Schreibvorgang wird der verdrängte Tagesrecord im kleinen RAM-Arbeitsobjekt gesichert. Scheitert danach der Metadatencommit, wird der verdrängte Record zurückgeschrieben und der Metastand zurückgerollt. Ein Retry kann damit denselben Ringübergang sauber erneut ausführen.
-
-Kann ein solcher Rollback selbst nicht sicher abgeschlossen werden, wird **nicht** weiter geraten: Die Aggregate werden als reparaturbedürftig markiert und kooperativ aus dem Raw-Ring neu aufgebaut. Die Rohdaten bleiben dabei unangetastet.
-
-## Aggregate-Rebuild
-
-Daily Aggregates sind abgeleitet. Bei beschädigten/inkonsistenten Aggregatmetadaten:
-
-- Raw-Ring bleibt unverändert
-- Rebuild erfolgt kooperativ, maximal wenige Raw-Events je `update()`-Durchlauf
-- danach wird der kleine Home-Summaryzustand aus dem reparierten Tagesrecord synchronisiert
-- nicht kalendarisch zuordenbare Events werden separat gezählt
+Zwei alternierende **40-Byte-Slots** mit CRC32 speichern `writeIndex`, `count`, letzte verarbeitete Raw-Sequenz, Zahl nicht zuordenbarer Unterbrechungen und Commitcounter. Rebuilds bleiben vollständig aus dem Raw-Ring möglich.
 
 ## Speicherbudget
 
@@ -119,21 +116,20 @@ Custom LittleFS: **1.245.184 Byte**
 ```text
 Raw maximal        900.000 B
 Daily maximal      147.200 B
-Raw Meta                 88 B   (2 × 44)
-Daily Meta                80 B   (2 × 40)
+Raw Meta                 88 B
+Daily Meta                80 B
 --------------------------------
-Nutzdaten          1.047.368 B
-Reserve ca.          197.816 B
+Basisdaten         1.047.368 B
 ```
 
-Die ca. 198 kB Reserve müssen zusätzlich LittleFS-Verwaltungs-/Blockoverhead aufnehmen. Deshalb ist die Datenpartition nicht enger dimensioniert.
+`/cycles.log` kommt zusätzlich hinzu. Mit 8 Byte pro START/END sind das normalerweise nur 16 Byte pro Arbeitstag; selbst mehrere Jahre bleiben im Vergleich zur vorhandenen LittleFS-Reserve klein. Der aktuelle Zykluszustand liegt in NVS und benötigt keinen LittleFS-Slot.
 
 ## CSV
 
-CSV ist **kein** Primärformat. Beim Download werden die Raw-Records chronologisch – ältester noch vorhandener bis neuester – dekodiert und in kleinen HTTP-Chunks ausgegeben. Es entsteht weder eine zweite permanente CSV-Datei noch ein 100.000-Zeilen-String im RAM.
+CSV bleibt ein abgeleitetes Exportformat. Es wird beim Download aus den Raw-Unterbrechungen gestreamt. START/END erscheinen dort bewusst nicht und verändern daher keine bestehenden Import-/Auswertungsabläufe.
 
-## 3.3.0 Herkunftsfilter und Löschfunktion
+## Herkunftsfilter und Löschfunktion
 
-Der bereits im 9-Byte-RawEvent gespeicherte `eventSource` wird nun direkt für Heatmap-Filter verwendet. **Beides** kann weiterhin die kompakten Langzeit-Tagesaggregate nutzen. Ein einzelner Herkunftsfilter (z. B. GPIO oder Web) wird aus dem retained Raw-Ring berechnet; dadurch wird das bestehende Tagesformat nicht vergrößert. Ist der angefragte Zeitraum älter als die Rohdatenabdeckung, meldet die API `coverage.complete=false` statt fehlende Daten als Null zu erfinden.
+Der im 9-Byte-RawEvent gespeicherte `eventSource` bleibt unverändert für Heatmap-Filter verfügbar. **Beides** kann weiterhin die kompakten Langzeit-Tagesaggregate nutzen; einzelne Herkunftsfilter werden aus dem retained Raw-Ring berechnet und melden unvollständige Abdeckung ehrlich.
 
-Die manuelle Datenbank-Löschung entfernt zuerst die abgeleiteten Tagesaggregate und danach Rohdaten samt Metadaten. Anschließend startet der ESP32 neu und erzeugt leere, konsistente Datenstrukturen. Die Aktion wird serverseitig nur akzeptiert, wenn die Bestätigung exakt dem Projektnamen entspricht.
+Die bestehende manuelle Datenbank-Löschung für Raw- und Tagesdaten bleibt unverändert. Zyklusdaten sind von dieser Unterbrechungsdatenbank logisch getrennt; ein Release-/Wartungsschritt darf sie nur dann zusätzlich löschen, wenn dies ausdrücklich dokumentiert und bestätigt wird.
