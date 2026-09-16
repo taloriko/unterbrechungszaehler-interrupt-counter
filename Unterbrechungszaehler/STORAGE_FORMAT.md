@@ -4,7 +4,7 @@ Die persistenten Projektdaten liegen in der eigenen LittleFS-Partition sowie –
 
 ## Grundregel ab 3.6.1
 
-Arbeitsbeginn und Arbeitsende sind **keine Unterbrechungen** und werden deshalb nicht in den bestehenden Unterbrechungs-Ring geschrieben. Während eines aktiven Zyklus wird dagegen jeder gültige kurze physische Unterbrechungsdruck sofort über `InterruptionService::captureAtEpoch()` in den bewährten Erfassungsweg gegeben.
+Arbeitsbeginn und Arbeitsende sind **keine Unterbrechungen** und werden deshalb nicht in den bestehenden Unterbrechungs-Ring geschrieben. Während eines aktiven Zyklus wird dagegen jeder gültige kurze physische Unterbrechungsdruck sofort über den unveränderten `InterruptionService::capture()`-Pfad in den bewährten Erfassungsweg gegeben.
 
 Es gibt keinen zurückgehaltenen letzten Kandidaten mehr. Ein bereits erfasster kurzer Druck wird später nicht rückwirkend zu einem Zyklusende umklassifiziert. Wird der lange Enddruck vergessen, schließt nur der Zykluszustand beim lokalen Tageswechsel automatisch.
 
@@ -66,7 +66,7 @@ Der Zustand wird nur bei Start und Zyklusende geändert. Es gibt keinen periodis
 
 2. kurzer Druck bei aktiv
    -> 10-s-Anti-Spam prüfen
-   -> bei Annahme sofort Raw-Unterbrechung + normale Rückmeldung
+   -> bei Annahme sofort normaler InterruptionService::capture()-Pfad
 
 3a. langer Druck >= 2 s
    -> END in Zyklusjournal
