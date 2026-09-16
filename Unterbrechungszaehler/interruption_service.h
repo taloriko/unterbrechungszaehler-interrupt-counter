@@ -11,11 +11,6 @@ void update();
 void serviceUrgent();
 
 bool capture(InterruptionTypes::EventSource source);
-// Used by the work-cycle manager when a previously pending short press becomes
-// a confirmed interruption. The supplied timestamp is absolute UTC seconds;
-// all existing counters, aggregates, feedback and persistence use the normal
-// interruption path.
-bool captureAtEpoch(uint32_t epochSeconds, InterruptionTypes::EventSource source);
 bool captureWeb();
 
 const InterruptionTypes::Summary &summary();
