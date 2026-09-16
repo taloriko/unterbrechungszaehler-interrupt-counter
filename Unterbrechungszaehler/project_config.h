@@ -8,7 +8,7 @@ namespace ProjectConfig {
 
 // DI1 / GPIO13 remains the single physical button. The interruption service no
 // longer consumes the GPIO edge directly; WorkCycle owns press/release timing
-// and forwards only finalized interruption events.
+// and forwards only real interruption events into the proven service path.
 constexpr char INTERRUPTION_INPUT_ID[] = "cycle-managed";
 constexpr char WORK_CYCLE_INPUT_ID[] = "di1";
 
@@ -17,11 +17,11 @@ constexpr char WORK_CYCLE_INPUT_ID[] = "di1";
 constexpr char TIMEZONE_NAME[] = "Europe/Berlin";
 constexpr char TIMEZONE_POSIX[] = "CET-1CEST,M3.5.0,M10.5.0/3";
 
-// Work-cycle policy. The first short press starts the local work cycle. While a
-// cycle is active, a short press becomes the pending last press: the previous
-// pending press is committed as an interruption only when another short press
-// follows. Holding the button ends the cycle explicitly; otherwise the pending
-// last press is finalized as cycle_end when the local calendar day changes.
+// Work-cycle policy. The first short press starts the local work cycle and does
+// not consume the anti-spam window. During an active cycle every accepted short
+// press is captured immediately as an interruption. Holding the button ends the
+// cycle explicitly; if that is forgotten, the cycle closes at the next local
+// calendar-day transition without reclassifying a real interruption afterward.
 constexpr uint32_t WORK_CYCLE_LONG_PRESS_MS = 2000;
 constexpr uint32_t WORK_CYCLE_GOODBYE_DISPLAY_MS = 10000;
 constexpr char WORK_CYCLE_PREF_NAMESPACE[] = "interruptcyc";
@@ -54,9 +54,9 @@ constexpr uint16_t DISPLAY_DIM_AFTER_DEFAULT_MINUTES = 10;
 constexpr uint16_t DISPLAY_DIM_AFTER_MAX_MINUTES = 1440;
 constexpr uint8_t DISPLAY_DIM_BRIGHTNESS_DEFAULT_PERCENT = 5;
 
-// Raw binary ring: 100,000 * 9 bytes = 900,000 bytes. Work-cycle markers are
-// kept in a separate tiny cycle journal so the proven interruption format stays
-// byte-for-byte compatible with 3.5.x.
+// Raw binary ring: 100,000 * 9 bytes = 900,000 bytes. START/ENDE stay in the
+// separate tiny cycle journal, so normal interruption storage remains byte-for-
+// byte compatible with 3.5.x.
 constexpr uint32_t RAW_EVENT_CAPACITY = 100000;
 constexpr uint8_t RAW_RECORD_SIZE = 9;
 
