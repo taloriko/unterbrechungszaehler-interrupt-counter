@@ -54,6 +54,7 @@ def main() -> None:
     hardware = (ROOT / "hardware_config.h").read_text(encoding="utf-8")
     sketch = (ROOT / "Unterbrechungszaehler.ino").read_text(encoding="utf-8")
     service = (ROOT / "interruption_service.cpp").read_text(encoding="utf-8")
+    service_h = (ROOT / "interruption_service.h").read_text(encoding="utf-8")
     cycle = (ROOT / "work_cycle.cpp").read_text(encoding="utf-8")
     cycle_h = (ROOT / "work_cycle.h").read_text(encoding="utf-8")
     store = (ROOT / "interruption_store.cpp").read_text(encoding="utf-8")
@@ -75,18 +76,20 @@ def main() -> None:
     check(re.search(r'\{"di1"[^\n]*13,\s*PullMode::Up,\s*false[^\n]*25,\s*true,', hardware) is not None, "DI1 GPIO13 active-edge interrupt latch")
     check("AUDIO_RX_PIN = 18" in hardware and "AUDIO_TX_PIN = 19" in hardware and "AUDIO_BUSY_PIN = 39" in hardware, "DY-SV17F pin map")
 
-    # 3.6.1 work-cycle contract: start/end wrap the proven immediate interruption path.
+    # 3.6.1 work-cycle contract: classification wraps the proven capture path.
     check('WORK_CYCLE_INPUT_ID[] = "di1"' in project, "work cycle owns DI1")
-    check('INTERRUPTION_INPUT_ID[] = "cycle-managed"' in project, "legacy direct DI capture isolated")
+    check('INTERRUPTION_INPUT_ID[] = "cycle-managed"' in project, "legacy direct DI callback cannot consume DI1")
     check("WORK_CYCLE_LONG_PRESS_MS = 2000" in project, "two-second explicit cycle end")
     check("WORK_CYCLE_GOODBYE_DISPLAY_MS = 10000" in project, "ten-second goodbye display")
     check('CYCLE_JOURNAL_PATH[] = "/cycles.log"' in project, "separate cycle journal")
+    check("STATE_MAGIC = 0x32435943UL" in cycle, "CYC2 ignores old 3.6.0 pending state")
     check("Preferences" in cycle and "WORK_CYCLE_PREF_NAMESPACE" in cycle, "cycle state persisted in NVS")
     check("JOURNAL_START" in cycle and "JOURNAL_END" in cycle and "appendJournal" in cycle, "start/end cycle journal markers")
     check("state.pending" not in cycle and "pendingEpochSeconds" not in cycle, "no deferred last-press candidate remains")
-    check("captureAtEpoch(epochSeconds, InterruptionTypes::EventSource::PhysicalButton)" in cycle, "accepted short press is captured immediately")
+    check("InterruptionService::capture(InterruptionTypes::EventSource::PhysicalButton)" in cycle, "accepted short press uses normal immediate capture")
+    check("captureAtEpoch" not in cycle and "captureAtEpoch" not in service and "captureAtEpoch" not in service_h, "obsolete deferred timestamp API removed")
     check("finalizeAutomaticEnd(epochSeconds)" in cycle and "local.dayIndex != state.dayIndex" in cycle, "automatic local-day fallback")
-    check("does not reinterpret a real interruption" in cycle, "day-change fallback never rewrites a captured interruption")
+    check("never reclassified" in cycle, "day-change fallback never rewrites captured interruptions")
     check("heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS" in cycle, "long press detected on release")
     check("beginGoodbye" in cycle and "FEIERABEND" in cycle and "todayCount" in cycle, "manual goodbye includes today count")
     check("if (goodbyeActive) return;" in cycle, "goodbye ignores further physical input")
@@ -94,13 +97,18 @@ def main() -> None:
     check("delay(" not in cycle, "work-cycle path remains nonblocking")
     check("PhysicalButtonGuard::accept(shortPressGuard, nowMs" in cycle, "10-second guard applies to real short interruptions")
     start_block = cycle.split("void startCycle", 1)[1].split("void renderGoodbye", 1)[0]
-    check("PhysicalButtonGuard::accept" not in start_block, "cycle start does not consume anti-spam window")
+    check("PhysicalButtonGuard::accept" not in start_block and "AudioDySv17f" not in start_block and "showSuppressed" not in start_block,
+          "cycle start is silent and does not consume anti-spam window")
+    capture_block = cycle.split("void captureShortPress", 1)[1].split("void handleShortPress", 1)[0]
+    check(capture_block.find("PhysicalButtonGuard::accept") < capture_block.find("InterruptionService::capture"),
+          "anti-spam guard precedes immediate real interruption capture")
     check("playPriorityFeedbackTrack(ProjectConfig::INTERRUPTION_SPAM_SOUND_TRACK)" in cycle, "track 2 reserved for actually suppressed presses")
     check("notifySuppressedPhysicalPress" in cycle, "suppressed short press keeps OLED feedback")
-    check("suppressedPhysicalPressCount" in cycle_h and "lastSuppressedPhysicalPressMs" in cycle_h, "work-cycle suppression diagnostics exposed")
 
-    # Compatibility: only real interruptions enter the unchanged storage/analytics path.
-    check("captureAtEpoch" in service and "acceptCapturedEvent" in service, "timestamped physical interruption uses normal service path")
+    # Compatibility: the normal interruption service itself is back to the proven model.
+    check("bool capture(InterruptionTypes::EventSource source)" in service, "standard interruption capture retained")
+    check("if (source == InterruptionTypes::EventSource::PhysicalButton) serviceUrgent();" in service,
+          "physical interruption keeps immediate normal feedback")
     check("event.eventSource" in store and "<< 20" in store, "event source remains packed in existing raw record")
     check("eventType" not in store, "no cycle type is packed into 9-byte raw record")
     check("InterruptionAggregates::apply(event, sequence)" in service, "captured events still feed daily aggregates")
@@ -128,7 +136,7 @@ def main() -> None:
     check("AppConfig::PROJECT_NAME" in server and "/api/interruptions/storage/reset" in server, "project-name protected database reset")
     check("bool eraseAll()" in store and "bool eraseAll()" in aggregates, "raw/aggregate reset paths retained")
     check("physical_button" in api and "web_button" in api and "sourceMatches" in api, "source filters retained")
-    check(not re.search(r"\.(?:innerHTML|outerHTML)\s*=|insertAdjacentHTML\s*\(|document\.write\s*\(", JS), "no unsafe bulk DOM writes")
+    check(not re.search(r"\.(?:innerHTML|outerHTML)\s*=|insertAdjacentHTML\s*\(|document\.write\s*\(", JS), "no unsafe bulk DOM HTML writes")
     check(re.search(r"<(?:script|img|link)\b[^>]*(?:src|href)=[\"\']https?://", HTML, re.IGNORECASE) is None, "no external HTML dependencies")
     check(JS.count("setInterval(") == 1, "exactly one permanent frontend interval")
 
