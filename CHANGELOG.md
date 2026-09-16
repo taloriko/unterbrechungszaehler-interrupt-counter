@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.6.1
+
+- physischen Arbeitszyklus auf DI1/GPIO13 nach Praxistest neu integriert; der verzögerte Pending-Kandidaten-Ansatz des 3.6.0-Teststands wurde entfernt
+- erster kurzer Druck startet den Zyklus weiterhin ohne Unterbrechung, erzeugt jetzt aber weder Anti-Spam-Ton noch eine 10-Sekunden-Sperre
+- jeder gültige kurze Druck im aktiven Zyklus wird sofort über den bewährten Unterbrechungspfad gespeichert, gezählt, angezeigt und mit einem normalen Track ab 3 bestätigt
+- Track 2 und OLED-TV-Störung werden ausschließlich bei tatsächlich zu schnellen weiteren Kurzdrucken innerhalb der bestehenden 10-Sekunden-Sperre ausgelöst
+- langer Druck ab 2 Sekunden beendet den Zyklus unabhängig von der Kurzdruck-Sperre; START und ENDE bleiben außerhalb des Unterbrechungs-Rings
+- vergessener Feierabend wird beim lokalen Tageswechsel durch Schließen des Zyklus abgefangen; bereits erfasste Unterbrechungen werden nicht rückwirkend zu einem Ende umklassifiziert
+- manuelles Ende zeigt 10 Sekunden `FEIERABEND` plus Tageszahl; währenddessen werden physische Eingaben ignoriert und die normale OLED-Ansicht darf die Abschlussanzeige nicht überschreiben
+- neuer kompakter CYC2-Zykluszustand verwirft den alten 3.6.0-Pending-Zustand bewusst, damit ein OTA mit sauberer Zyklussemantik startet
+- RawEvent bleibt 9 Byte, Tagesaggregate bleiben 64 Byte; vorhandene 3.x-Unterbrechungsdaten benötigen keine Migration
+
 ## 3.5.0
 
 - neue Home-Karte **Fokus & Ruhe** mit aktueller Ruhephase, längster Ruhephase heute, längster Ruhephase der laufenden Woche und erklärtem 120-Minuten-Trend
@@ -118,59 +130,3 @@ Version 3.0.0 ist der neue stabile Ausgangspunkt des Unterbrechungszählers. Fr�
 - DY-SV17F CON3/BUSY auf GPIO39/VN mit externem ca. 10-kΩ-Pull-up an V33
 - CON1 und CON2 des DY-SV17F für UART-Modus auf GND
 - eigene 4-MiB-Partitionstabelle mit zwei OTA-App-Slots und LittleFS
-
-### Weboberfläche
-
-- Home mit Tageszähler, letzter Unterbrechung und großem Erfassungsbutton
-- Feedback-/Displaykarte mit persistenten Geräteeinstellungen
-- Auswertung mit Wochentag/Stunde, Monat/Kalenderwoche und 5-Jahres-Monatsansicht
-- responsive Heatmaps ohne externe Chartbibliothek
-- Live-Aktualisierung nur bei sichtbarem Home/Auswertung
-- UI in Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch und Oberschwäbisch
-- README-Dokumentation in Deutsch, Englisch und Schwäbisch
-
-### Sound
-
-- DY-SV17F-Hardwareerkennung und BUSY-Rückmeldung
-- Track 1 ausschließlich als Boot-Ton
-- Unterbrechungston als fester Track ab 2 oder rotierend über erkannte Tracks 2…N
-- Sound kann unabhängig von der Ereignisspeicherung deaktiviert werden
-
-### Speicherung / Daten
-
-- 100.000 Raw-Slots à 9 Byte mit CRC
-- 2.300 Tagesrecords à 64 Byte
-- transaktionale Metadaten mit Recoverypfaden
-- feste 64er Pending-Queue ohne Heap-Allokation pro Ereignis
-- CSV wird erst beim Download erzeugt und in kleinen Chunks gestreamt
-- lokale Kalenderauswertung für Europe/Berlin; absolute Zeit bleibt UTC
-
-### Zeit / Betrieb
-
-- NTP als bevorzugte Zeitquelle
-- DS3231 als Offline-/Startfallback
-- Browserzeit als zusätzlicher Fallback
-- Ereignisse ohne gültige absolute Zeit bleiben ausdrücklich relativ statt eine falsche Kalenderzeit zu erhalten
-
-### Breaking Changes
-
-- keine zugesicherte Hardwarekompatibilität zu 2.x
-- keine zugesicherte Daten-/NVS-/LittleFS-Migration aus 2.x
-- kein zugesichertes direktes OTA-Upgrade von 2.x
-- 3.0.0 nach der aktuellen Hardwaredokumentation neu verdrahten und als neuen Ausgangspunkt behandeln
-
-### Build / Release
-
-- portable Releasechecks prüfen Storage, i18n, JavaScript und Webbundle
-- GitHub Actions kompiliert mit festgelegtem Arduino-ESP32-Core
-- Release wird nur nach erfolgreichem Build auf `main` erzeugt
-- OTA-BIN wird automatisch an den GitHub-Release angehängt
-
-### Noch auf realer Hardware zu bestätigen
-
-- physischer Taster und Debounce
-- reale LittleFS-Persistenz und Recovery
-- OTA auf dem Zielboard
-- DS3231 und SH1106
-- DY-SV17F Boot-/Unterbrechungstöne und BUSY-Signal
-- Offlinebetrieb und Langzeittest
