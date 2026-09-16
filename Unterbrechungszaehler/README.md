@@ -1,35 +1,39 @@
-# Unterbrechungszähler 3.6.0 – technische Übersicht
+# Unterbrechungszähler 3.6.1 – technische Übersicht
 
-Dies ist der Sketchordner der Version **3.6.0** für ein klassisches ESP32 Dev Module / ESP32-WROOM-32.
+Dies ist der Sketchordner der Version **3.6.1** für ein klassisches ESP32 Dev Module / ESP32-WROOM-32.
 
 ## Ereigniserfassung
 
-Der physische DI1/GPIO13 wird ab 3.6.0 zuerst durch `WorkCycle` klassifiziert. Dadurch sind Arbeitsbeginn und Arbeitsende keine Unterbrechungen:
+Der physische DI1/GPIO13 wird ab 3.6.x zuerst durch `WorkCycle` klassifiziert. In 3.6.1 ist der Einbau bewusst wieder einfach und direkt gehalten:
 
-1. der erste kurze Tastendruck eines lokalen Tages startet den Arbeitszyklus,
-2. während des aktiven Zyklus bleibt der jeweils letzte kurze Druck zunächst nur als persistenter Kandidat erhalten,
-3. erst ein weiterer gültiger kurzer Druck bestätigt den vorherigen Kandidaten als echte Unterbrechung,
-4. ein langer Druck ab 2 Sekunden beendet den Zyklus ausdrücklich,
-5. ohne langen Druck wird beim lokalen Tageswechsel der letzte Kandidat automatisch als Zyklusende verwendet und nicht als Unterbrechung gezählt.
+1. der erste kurze Tastendruck bei inaktivem Zyklus startet den Arbeitstag und zählt nicht als Unterbrechung,
+2. während des aktiven Zyklus wird jeder gültige kurze Druck **sofort** als Unterbrechung über den bestehenden `InterruptionService` erfasst,
+3. ein langer Druck ab 2 Sekunden beendet den Zyklus ausdrücklich und zählt nicht als Unterbrechung,
+4. wenn der lange Enddruck vergessen wird, schließt der Zyklus beim lokalen Tageswechsel automatisch,
+5. ein bereits als Unterbrechung erfasster kurzer Druck wird später nicht mehr rückwirkend umklassifiziert.
 
-Beim manuellen Ende wird ein eventuell vorheriger Kandidat noch als Unterbrechung bestätigt, weil der spätere lange Druck eindeutig das tatsächliche Ende markiert. Danach zeigt das OLED für 10 Sekunden **FEIERABEND** und die heutige Unterbrechungszahl.
+Damit bleiben Tastergefühl, normaler Unterbrechungston, Tageszähler und Speicherung synchron. Es gibt keinen verzögerten Kandidaten mehr.
+
+Nach einem manuellen Ende zeigt das OLED für 10 Sekunden **FEIERABEND** und die heutige Unterbrechungszahl. Während dieser Anzeige werden weitere physische Eingaben ignoriert und die normale Unterbrechungsanzeige nicht dazwischen gezeichnet.
 
 Der Webbutton bleibt bewusst unabhängig vom lokalen Arbeitszyklus und erzeugt weiterhin direkt eine Unterbrechung.
 
 ## Anti-Spam
 
-Für kurze physische Tastendrücke bleibt die feste 10-Sekunden-Sperre erhalten. Der Startdruck eröffnet die Sperre ebenfalls. Weitere kurze Drücke innerhalb dieser Zeit werden verworfen und erreichen weder Rohdaten noch Statistiken. Ein verworfener Druck verlängert die Sperre nicht.
+Für echte kurze physische Unterbrechungsdrücke bleibt die feste 10-Sekunden-Sperre erhalten. **Der Startdruck verbraucht diese Sperre nicht.** Dadurch ist auch eine echte Unterbrechung kurz nach Arbeitsbeginn zulässig.
 
-Der lange 2-Sekunden-Druck zum expliziten Arbeitsende ist davon ausgenommen, damit Feierabend jederzeit zuverlässig ausgelöst werden kann.
+Erst ein akzeptierter Unterbrechungsdruck startet die 10-Sekunden-Sperre. Weitere kurze Drücke innerhalb dieser Zeit werden verworfen und erreichen weder Rohdaten noch Statistiken. Ein verworfener Druck verlängert die Sperre nicht und erhält wie bisher Track 2 plus OLED-Anti-Spam-Feedback.
+
+Der lange 2-Sekunden-Druck zum expliziten Arbeitsende ist von der Sperre ausgenommen, damit Feierabend jederzeit zuverlässig ausgelöst werden kann.
 
 ## Speicherung
 
-- 100.000 bestätigte Raw-Unterbrechungen, weiterhin exakt 9 Byte je Record
+- 100.000 Raw-Unterbrechungen, weiterhin exakt 9 Byte je Record
 - 2.300 Tagesaggregate, 64 Byte je Record
-- feste 64er Pending-Queue
+- feste 64er Pending-Queue des bestehenden Persistenzpfads
 - CRC-geschützte Raw-Records und transaktionale Metadaten
-- aktueller Zykluszustand und letzter Kandidat kompakt in NVS
-- separate kleine Zyklusmarken in `/cycles.log`; sie verändern das bestehende Raw-Format nicht
+- nur der kleine aktive Zykluszustand wird zusätzlich in NVS gehalten
+- START/ENDE werden separat als kleine Marken in `/cycles.log` protokolliert
 - CSV wird beim Download gestreamt und enthält weiterhin ausschließlich echte Unterbrechungen
 
 Damit bleiben bestehende 3.x-Rohdaten und sämtliche bisherigen Unterbrechungs-Auswertungen kompatibel. START und ENDE verfälschen keine Heatmap, keinen Tageszähler und keinen Durchschnitt.
@@ -44,7 +48,7 @@ Details: [`STORAGE_FORMAT.md`](STORAGE_FORMAT.md)
 - Fokus & Ruhe
 - Arbeitsmuster
 
-Alle bisherigen Auswertungen arbeiten weiterhin mit bestätigten Unterbrechungen. Der jeweils letzte physische Kurzdruck eines nicht manuell beendeten Tages gelangt deshalb gar nicht erst in den Unterbrechungs-Ring.
+Alle Auswertungen arbeiten weiterhin mit den vorhandenen echten Unterbrechungen. Da 3.6.1 jeden gültigen kurzen Unterbrechungsdruck sofort übernimmt, gibt es während des Arbeitstags keinen verzögerten Zählerstand mehr.
 
 Die Metrik **Ø Abstand** wird auf Anforderung aus den vorhandenen Rohereignissen berechnet. Ein gültiger Abstand wird der Start-Unterbrechung zugeordnet; über Mitternacht wird nie ein Intervall gebildet.
 
@@ -55,13 +59,15 @@ Die Metrik **Ø Abstand** wird auf Anforderung aus den vorhandenen Rohereignisse
 - DY-SV17F: RX GPIO18, TX GPIO19, BUSY GPIO39
 - BUSY benötigt externen ca. 10-kΩ-Pull-up an DY-SV17F V33
 
-Für die neue Zykluslogik ist **keine zusätzliche Hardware und kein weiterer GPIO** nötig. Kurzer und langer Druck werden am bestehenden DI1 unterschieden.
+Für die Zykluslogik ist **keine zusätzliche Hardware und kein weiterer GPIO** nötig. Kurzer und langer Druck werden am bestehenden DI1 unterschieden.
 
 Details: [`HARDWARE_WIRING.md`](HARDWARE_WIRING.md)
 
 ## Sound / Display
 
 Track 1 ist Boot/Test, Track 2 Anti-Spam, Track 3 und höher sind normale Unterbrechungstöne. Sound, Display-Master, Displayflash, Anzeigeart, Helligkeit und Dimmer werden persistent gespeichert.
+
+Der Startdruck erzeugt keinen Unterbrechungs- oder Anti-Spam-Ton. Ein gültiger kurzer Unterbrechungsdruck verwendet sofort den normalen Soundpfad ab Track 3. Nur ein tatsächlich verworfener kurzer Druck darf Track 2 auslösen.
 
 Beim expliziten Arbeitsende übernimmt `WorkCycle` das SH1106 für 10 Sekunden mit der Abschlussanzeige **FEIERABEND** plus heutiger Unterbrechungszahl und gibt es danach an die normale Displayansicht zurück. Der automatische Tagesabschluss erzeugt bewusst keine zusätzliche Displayaktivität.
 
