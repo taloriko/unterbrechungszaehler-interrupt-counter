@@ -19,7 +19,7 @@
 namespace WorkCycle {
 namespace {
 
-constexpr uint32_t STATE_MAGIC = 0x31435943UL;  // "CYC1"
+constexpr uint32_t STATE_MAGIC = 0x32435943UL;  // "CYC2"
 constexpr uint8_t JOURNAL_START = 1;
 constexpr uint8_t JOURNAL_END = 2;
 constexpr uint8_t END_REASON_MANUAL = 1;
@@ -29,9 +29,8 @@ struct PersistentState {
   uint32_t magic = STATE_MAGIC;
   uint16_t dayIndex = 0;
   uint8_t active = 0;
-  uint8_t pending = 0;
+  uint8_t reserved = 0;
   uint32_t startEpochSeconds = 0;
-  uint32_t pendingEpochSeconds = 0;
 };
 
 PersistentState state;
@@ -82,6 +81,7 @@ void appendJournal(uint32_t epochSeconds, uint16_t dayIndex, uint8_t type, uint8
     SerialLog::warning("CYCLE", "Cycle journal unavailable; live state remains persisted in NVS");
     return;
   }
+
   uint8_t record[8];
   record[0] = static_cast<uint8_t>(epochSeconds);
   record[1] = static_cast<uint8_t>(epochSeconds >> 8);
@@ -91,6 +91,7 @@ void appendJournal(uint32_t epochSeconds, uint16_t dayIndex, uint8_t type, uint8
   record[5] = static_cast<uint8_t>(dayIndex >> 8);
   record[6] = type;
   record[7] = reason;
+
   if (file.write(record, sizeof(record)) != sizeof(record)) {
     SerialLog::warning("CYCLE", "Cycle journal write failed");
   }
@@ -103,29 +104,32 @@ void showSuppressed(uint32_t nowMs) {
   const uint32_t remaining = elapsed < ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS
                                  ? ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS - elapsed
                                  : 0U;
+
   if (ProjectPreferences::soundEnabled()) {
     const uint16_t count = AudioDySv17f::musicCount();
     if (count == 0U || count >= ProjectConfig::INTERRUPTION_SPAM_SOUND_TRACK) {
       AudioDySv17f::playPriorityFeedbackTrack(ProjectConfig::INTERRUPTION_SPAM_SOUND_TRACK);
     }
   }
+
   DisplayViews::notifySuppressedPhysicalPress(remaining);
   DisplayViews::update(InterruptionService::summary());
   SerialLog::infof("CYCLE", "short press suppressed | remaining=%lums",
                    static_cast<unsigned long>(remaining));
 }
 
-void startCycle(uint32_t nowMs, uint32_t epochSeconds, const ProjectTime::LocalDateTime &local) {
+void startCycle(uint32_t epochSeconds, const ProjectTime::LocalDateTime &local) {
   state.magic = STATE_MAGIC;
   state.active = 1;
-  state.pending = 0;
   state.dayIndex = local.dayIndex;
   state.startEpochSeconds = epochSeconds;
-  state.pendingEpochSeconds = 0;
+
+  // Start is not an interruption and must not consume the anti-spam window.
+  // The first real interruption after work start is therefore always accepted.
   shortPressGuard = PhysicalButtonGuard::State{};
-  PhysicalButtonGuard::accept(shortPressGuard, nowMs, ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS);
   saveState();
   appendJournal(epochSeconds, local.dayIndex, JOURNAL_START, 0);
+
   SerialLog::successf("CYCLE", "Work cycle started | day=%u | epoch=%lu",
                       static_cast<unsigned int>(local.dayIndex),
                       static_cast<unsigned long>(epochSeconds));
@@ -171,9 +175,6 @@ void renderGoodbye() {
 }
 
 void beginGoodbye() {
-  // Same ownership principle as the anti-spam OLED effect, but stricter: for
-  // the full goodbye window no other physical input may change project state
-  // and the normal interruption display service is gated by the main loop.
   goodbyeActive = true;
   buttonDown = false;
   const uint32_t nowMs = millis();
@@ -188,29 +189,22 @@ void clearCycleState() {
   shortPressGuard = PhysicalButtonGuard::State{};
 }
 
-void finalizeAutomaticEnd() {
+void finalizeAutomaticEnd(uint32_t epochSeconds) {
   if (!state.active) return;
-  const uint32_t endEpoch = state.pending && state.pendingEpochSeconds != 0U
-                                ? state.pendingEpochSeconds
-                                : state.startEpochSeconds;
-  appendJournal(endEpoch, state.dayIndex, JOURNAL_END, END_REASON_DAY_CHANGE);
-  SerialLog::infof("CYCLE", "Work cycle auto-ended at day change | day=%u | epoch=%lu",
+
+  // 3.6.1 deliberately does not reinterpret a real interruption after the
+  // fact. If the explicit long-press end was forgotten, the cycle simply
+  // closes at the detected local day change. This keeps every short press
+  // immediate, durable and statistically stable.
+  appendJournal(epochSeconds, state.dayIndex, JOURNAL_END, END_REASON_DAY_CHANGE);
+  SerialLog::infof("CYCLE", "Work cycle auto-ended at local day change | day=%u | epoch=%lu",
                    static_cast<unsigned int>(state.dayIndex),
-                   static_cast<unsigned long>(endEpoch));
+                   static_cast<unsigned long>(epochSeconds));
   clearCycleState();
 }
 
 void finalizeManualEnd(uint32_t epochSeconds) {
   if (!state.active) return;
-
-  // With an explicit long press, a preceding short press was not the final
-  // event after all. Promote it to a real interruption before closing.
-  if (state.pending && state.pendingEpochSeconds != 0U) {
-    if (!InterruptionService::captureAtEpoch(state.pendingEpochSeconds,
-                                              InterruptionTypes::EventSource::PhysicalButton)) {
-      SerialLog::warning("CYCLE", "Pending interruption could not be finalized before manual cycle end");
-    }
-  }
 
   appendJournal(epochSeconds, state.dayIndex, JOURNAL_END, END_REASON_MANUAL);
   SerialLog::successf("CYCLE", "Work cycle ended manually | day=%u | interruptions=%lu",
@@ -220,49 +214,45 @@ void finalizeManualEnd(uint32_t epochSeconds) {
   beginGoodbye();
 }
 
-void handleShortPress(uint32_t nowMs, uint32_t epochSeconds, const ProjectTime::LocalDateTime &local) {
-  if (!state.active) {
-    startCycle(nowMs, epochSeconds, local);
-    return;
-  }
-
-  if (local.dayIndex != state.dayIndex) {
-    finalizeAutomaticEnd();
-    startCycle(nowMs, epochSeconds, local);
-    return;
-  }
-
+void captureShortPress(uint32_t nowMs, uint32_t epochSeconds) {
   if (!PhysicalButtonGuard::accept(shortPressGuard, nowMs, ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS)) {
     showSuppressed(nowMs);
     return;
   }
 
-  if (state.pending && state.pendingEpochSeconds != 0U) {
-    if (!InterruptionService::captureAtEpoch(state.pendingEpochSeconds,
-                                              InterruptionTypes::EventSource::PhysicalButton)) {
-      SerialLog::warning("CYCLE", "Pending interruption finalization failed; candidate retained");
-      return;
-    }
+  if (!InterruptionService::captureAtEpoch(epochSeconds, InterruptionTypes::EventSource::PhysicalButton)) {
+    SerialLog::warning("CYCLE", "Physical interruption capture failed");
+    return;
   }
 
-  state.pending = 1;
-  state.pendingEpochSeconds = epochSeconds;
-  saveState();
-  SerialLog::infof("CYCLE", "Last press candidate updated | day=%u | epoch=%lu",
-                   static_cast<unsigned int>(state.dayIndex),
+  SerialLog::infof("CYCLE", "Physical interruption accepted immediately | epoch=%lu",
                    static_cast<unsigned long>(epochSeconds));
+}
+
+void handleShortPress(uint32_t nowMs, uint32_t epochSeconds, const ProjectTime::LocalDateTime &local) {
+  if (!state.active) {
+    startCycle(epochSeconds, local);
+    return;
+  }
+
+  if (local.dayIndex != state.dayIndex) {
+    finalizeAutomaticEnd(epochSeconds);
+    startCycle(epochSeconds, local);
+    return;
+  }
+
+  captureShortPress(nowMs, epochSeconds);
 }
 
 void onGpioChanged(const char *channelId, bool logicalState) {
   if (!channelId || strcmp(channelId, ProjectConfig::WORK_CYCLE_INPUT_ID) != 0) return;
 
-  // The goodbye screen is an exclusive 10-second terminal state. Ignore all
-  // physical edges until it has finished so a held/repeated press cannot start
-  // another cycle or replace the overlay with normal feedback.
+  // During the ten-second goodbye screen the local interaction path is closed.
+  // Edges are intentionally ignored; the next complete press after the window
+  // starts a fresh cycle normally.
   if (goodbyeActive) return;
 
   const uint32_t nowMs = millis();
-
   if (logicalState) {
     buttonDown = true;
     buttonDownMs = nowMs;
@@ -276,9 +266,17 @@ void onGpioChanged(const char *channelId, bool logicalState) {
   uint32_t epochSeconds = 0;
   ProjectTime::LocalDateTime local;
   if (!currentLocal(epochSeconds, local)) {
-    // Without a valid local calendar the device cannot safely distinguish day
-    // boundaries. Fall back to the proven legacy interruption path instead of
-    // inventing cycle semantics.
+    // Without a valid local calendar cycle boundaries cannot be classified.
+    // Preserve the proven legacy behavior and still apply the normal 10-second
+    // short-press guard so time loss never creates an input storm.
+    if (heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS && state.active) {
+      SerialLog::warning("CYCLE", "Local time unavailable; cannot close work cycle safely");
+      return;
+    }
+    if (!PhysicalButtonGuard::accept(shortPressGuard, nowMs, ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS)) {
+      showSuppressed(nowMs);
+      return;
+    }
     SerialLog::warning("CYCLE", "Local time unavailable; button recorded as legacy interruption");
     InterruptionService::capture(InterruptionTypes::EventSource::PhysicalButton);
     return;
@@ -304,7 +302,7 @@ void begin() {
   uint32_t epochSeconds = 0;
   ProjectTime::LocalDateTime local;
   if (state.active && currentLocal(epochSeconds, local) && local.dayIndex != state.dayIndex) {
-    finalizeAutomaticEnd();
+    finalizeAutomaticEnd(epochSeconds);
   }
 
   SerialLog::successf("CYCLE", "Work-cycle manager ready | channel=%s | long-press=%lums | active=%s",
@@ -317,7 +315,7 @@ void update() {
   uint32_t epochSeconds = 0;
   ProjectTime::LocalDateTime local;
   if (state.active && currentLocal(epochSeconds, local) && local.dayIndex != state.dayIndex) {
-    finalizeAutomaticEnd();
+    finalizeAutomaticEnd(epochSeconds);
   }
 
   if (!goodbyeActive) return;
@@ -327,6 +325,7 @@ void update() {
     DisplayViews::requestHomeRefresh();
     return;
   }
+
   if (due(nowMs, nextGoodbyeRenderMs)) {
     renderGoodbye();
     nextGoodbyeRenderMs = nowMs + 250U;
