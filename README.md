@@ -3,7 +3,7 @@
 > [!WARNING]
 > **KI-Hinweis:** Dieses Projekt wurde maßgeblich mit Unterstützung von KI erstellt, anschließend aber praktisch getestet, überarbeitet und weiterentwickelt. Wer KI-generierten Code grundsätzlich nicht mag, darf natürlich trotzdem den Taster drücken. ;-)
 
-> **Aktueller Stand:** `3.6.0`
+> **Aktueller Stand:** `3.6.1`
 
 [Deutsch](docs/de/README.md) · [English](docs/en/README.md) · [Schwäbisch](docs/swg/README.md)
 
@@ -15,36 +15,30 @@ Du sitzt konzentriert an einer Aufgabe. Dann kommt ein Kollege. Dann klingelt da
 
 Genau dafür gibt es den **Unterbrechungszähler**.
 
-Bisher war die Grundidee einfach:
+Die Grundidee bleibt simpel:
 
 **Taster drücken → Unterbrechung speichern → später im Browser auswerten.**
 
-Ab Version 3.6.0 kommt eine wichtige Konkretisierung dazu: **Arbeitsbeginn und Arbeitsende sind keine Unterbrechungen.** Das Gerät erkennt deshalb einen lokalen Arbeitszyklus, ohne dass ein zweiter Taster oder zusätzlicher GPIO nötig wird.
+Seit 3.6.x kommt eine wichtige Konkretisierung dazu: **Arbeitsbeginn und Arbeitsende sind keine Unterbrechungen.** Das Gerät erkennt deshalb einen lokalen Arbeitszyklus, ohne zweiten Taster und ohne zusätzlichen GPIO.
 
 > [!WARNING]
 > Ob die Daten deinen Chef anschließend interessieren, ist natürlich weiterhin eine völlig andere wissenschaftliche Fragestellung. ;-)
 
-## Neu in 3.6.0: Arbeitszyklus
+## Neu in 3.6.1: Arbeitszyklus neu integriert
 
-Der vorhandene Taster auf **DI1/GPIO13** funktioniert jetzt so:
+Der vorhandene Taster auf **DI1/GPIO13** funktioniert jetzt bewusst direkt und ohne rückwirkende Klassifikation:
 
 1. **Erster kurzer Druck:** START des Arbeitszyklus – wird nicht als Unterbrechung gezählt.
-2. **Weitere kurze Drücke:** Der jeweils letzte Druck bleibt zunächst als Kandidat offen.
-3. **Nächster gültiger kurzer Druck:** Der vorherige Kandidat wird endgültig als Unterbrechung gespeichert.
-4. **Langer Druck ab 2 Sekunden:** Der Arbeitszyklus wird ausdrücklich beendet.
-5. **Kein langer Druck:** Beim lokalen Tageswechsel wird der letzte offene Druck automatisch zum ENDE und nicht als Unterbrechung gezählt.
+2. **Weitere kurze Drücke:** werden bei gültigem Abstand sofort als Unterbrechung gespeichert und erhalten sofort das normale Feedback.
+3. **Langer Druck ab 2 Sekunden:** beendet den Arbeitszyklus ausdrücklich und zählt nicht als Unterbrechung.
+4. **Kein langer Druck:** beim lokalen Tageswechsel wird der Zyklus automatisch geschlossen.
+5. Ein bereits erfasster kurzer Druck wird später **nicht mehr** zum Arbeitsende umgedeutet.
 
-Kurz gesagt:
-
-> **Erster Druck = Start. Letzter Druck = Ende. Alles dazwischen = Unterbrechung.**
-
-Der wichtige Trick dabei: Der letzte kurze Druck wird nicht erst als Unterbrechung gespeichert und später wieder herausgerechnet. Er bleibt so lange ein kleiner persistenter Kandidat, bis klar ist, ob danach noch ein Druck kommt. Dadurch bleiben Tageszähler, Heatmaps, CSV, Fokus-Auswertungen und Durchschnittswerte von Anfang an sauber.
+Der in 3.6.0 ausprobierte Pending-/„letzter Druck wird später entschieden“-Ansatz wurde damit verworfen. Genau diese Verzögerung machte Zähler und Sound im Alltag unnötig schwer nachvollziehbar.
 
 ### Feierabend
 
-Ein langer Druck von mindestens **2 Sekunden** beendet den Arbeitszyklus sofort. Ein davor noch offener kurzer Druck wird dabei als Unterbrechung bestätigt, weil der spätere lange Druck eindeutig das tatsächliche Ende markiert.
-
-Danach zeigt das SH1106 für **10 Sekunden**:
+Ein langer Druck von mindestens **2 Sekunden** beendet den Arbeitszyklus sofort. Danach zeigt das SH1106 für **10 Sekunden**:
 
 ```text
 FEIERABEND
@@ -53,30 +47,32 @@ FEIERABEND
 HEUTE UNTERBR.
 ```
 
-Beim automatischen Tagesabschluss wird diese Anzeige bewusst nicht aktiviert.
+Während dieser Anzeige werden weitere physische Eingaben ignoriert und die normale Sekunden-/Home-Anzeige darf nicht dazwischen zeichnen. Beim automatischen Tagesabschluss bleibt das Display unverändert.
 
 ## Anti-Spam bleibt erhalten
 
-Kurze physische Tastendrücke haben weiterhin die feste **10-Sekunden-Sperre** aus 3.4.x:
+Kurze physische Unterbrechungsdrücke haben weiterhin die feste **10-Sekunden-Sperre** aus 3.4.x:
 
-- auch der START-Druck eröffnet die Sperre,
+- der **START-Druck eröffnet die Sperre nicht**,
+- erst eine echte angenommene Unterbrechung startet die 10 Sekunden,
 - weitere kurze Drücke innerhalb der Zeit werden nicht gespeichert oder gezählt,
 - ein verworfener Druck verlängert die Sperre nicht,
-- Track 2 und die OLED-TV-Störung bleiben das lokale Anti-Spam-Feedback,
+- Track 2 und die OLED-TV-Störung bleiben ausschließlich das Anti-Spam-Feedback,
+- normale Unterbrechungen verwenden weiterhin Track 3 und höher,
 - Web-Ereignisse bleiben unabhängig.
 
-Der lange Feierabend-Druck ist davon ausgenommen. Sonst könnte man ausgerechnet dann nicht zuverlässig Schluss machen, wenn man gehen möchte.
+Der lange Feierabend-Druck ist von der Sperre ausgenommen.
 
 ## Datenkompatibilität
 
-Die bestehende Unterbrechungsdatenbank bleibt in 3.6.0 bewusst unverändert:
+Die bestehende Unterbrechungsdatenbank bleibt in 3.6.1 bewusst unverändert:
 
 - **100.000 Raw-Records × 9 Byte**
 - **2.300 Tagesaggregate × 64 Byte**
 - bestehende EventSource-Bits und CRC bleiben erhalten
 - bestehende 3.x-Rohdaten benötigen keine Migration
 
-START und ENDE werden **nicht** in den Unterbrechungs-Ring geschrieben. Der laufende Zyklus und der letzte offene Kandidat werden kompakt in NVS gehalten; zusätzlich gibt es das kleine separate `/cycles.log` für START-/END-Marken.
+START und ENDE werden **nicht** in den Unterbrechungs-Ring geschrieben. Der laufende Zyklus wird kompakt in NVS gehalten; zusätzlich gibt es das kleine separate `/cycles.log` für START-/END-Marken.
 
 Damit bleiben alle bisherigen Unterbrechungs-Auswertungen kompatibel und zählen weiterhin ausschließlich echte Unterbrechungen.
 
@@ -131,9 +127,9 @@ Die Dateien kommen direkt ins Root-Verzeichnis des DY-SV17F. Ein Startpaket lieg
 3. WLAN-Platzhalter in `Unterbrechungszaehler/config.h` lokal anpassen.
 4. `Unterbrechungszaehler/Unterbrechungszaehler.ino` in der Arduino IDE öffnen.
 5. **ESP32 Dev Module** auswählen, kompilieren und flashen.
-6. Morgens einmal kurz drücken: Der Arbeitszyklus startet.
-7. Unterbrechungen wie gewohnt kurz drücken.
-8. Zum Feierabend optional mindestens 2 Sekunden gedrückt halten. Wenn du es vergisst, übernimmt der Tageswechsel den letzten Druck automatisch als Ende.
+6. Morgens einmal kurz drücken: Der Arbeitszyklus startet – ohne Unterbrechungston und ohne Anti-Spam-Sperre.
+7. Unterbrechungen wie gewohnt kurz drücken; sie werden sofort erfasst.
+8. Zum Feierabend mindestens 2 Sekunden gedrückt halten. Falls das vergessen wird, schließt der Zyklus beim Tageswechsel automatisch.
 
 ## Technische Dokumentation
 
@@ -148,7 +144,7 @@ Die Dateien kommen direkt ins Root-Verzeichnis des DY-SV17F. Ein Startpaket lieg
 
 ## Screenshots
 
-Die vorhandenen Screenshots bleiben unter `docs/images/3.0.0/` erhalten. Sie zeigen die bestehende Weboberfläche; 3.6.0 verändert primär die physische Tastenlogik und die neue Feierabend-OLED-Anzeige.
+Die vorhandenen Screenshots bleiben unter `docs/images/3.0.0/` erhalten. Sie zeigen die bestehende Weboberfläche; 3.6.1 verändert primär die physische Tastenlogik und die Feierabend-OLED-Anzeige.
 
 ## Warum Schwäbisch?
 
