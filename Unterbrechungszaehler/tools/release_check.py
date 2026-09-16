@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.6.0."""
+"""Portable release checks for Unterbrechungszaehler 3.6.1."""
 from __future__ import annotations
 
 import gzip
@@ -67,7 +67,7 @@ def main() -> None:
 
     # Identity / frozen platform invariants.
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.6.0"' in config, "project version 3.6.0")
+    check('SOFTWARE_VERSION[] = "3.6.1"' in config, "project version 3.6.1")
     check("RAW_EVENT_CAPACITY = 100000" in project and "RAW_RECORD_SIZE = 9" in project, "100,000 x 9-byte raw ring unchanged")
     check("DAILY_AGGREGATE_CAPACITY = 2300" in project and "DAILY_RECORD_SIZE = 64" in project, "daily aggregate format unchanged")
     check("PENDING_EVENT_CAPACITY = 64" in project, "fixed 64-event persistence queue")
@@ -75,7 +75,7 @@ def main() -> None:
     check(re.search(r'\{"di1"[^\n]*13,\s*PullMode::Up,\s*false[^\n]*25,\s*true,', hardware) is not None, "DI1 GPIO13 active-edge interrupt latch")
     check("AUDIO_RX_PIN = 18" in hardware and "AUDIO_TX_PIN = 19" in hardware and "AUDIO_BUSY_PIN = 39" in hardware, "DY-SV17F pin map")
 
-    # 3.6 work-cycle contract.
+    # 3.6.1 work-cycle contract: start/end wrap the proven immediate interruption path.
     check('WORK_CYCLE_INPUT_ID[] = "di1"' in project, "work cycle owns DI1")
     check('INTERRUPTION_INPUT_ID[] = "cycle-managed"' in project, "legacy direct DI capture isolated")
     check("WORK_CYCLE_LONG_PRESS_MS = 2000" in project, "two-second explicit cycle end")
@@ -83,25 +83,27 @@ def main() -> None:
     check('CYCLE_JOURNAL_PATH[] = "/cycles.log"' in project, "separate cycle journal")
     check("Preferences" in cycle and "WORK_CYCLE_PREF_NAMESPACE" in cycle, "cycle state persisted in NVS")
     check("JOURNAL_START" in cycle and "JOURNAL_END" in cycle and "appendJournal" in cycle, "start/end cycle journal markers")
-    check("state.pending" in cycle and "pendingEpochSeconds" in cycle, "last short press retained as pending candidate")
-    check("captureAtEpoch(state.pendingEpochSeconds" in cycle, "pending candidate promoted with original timestamp")
-    check("finalizeAutomaticEnd" in cycle and "local.dayIndex != state.dayIndex" in cycle, "automatic local-day fallback")
+    check("state.pending" not in cycle and "pendingEpochSeconds" not in cycle, "no deferred last-press candidate remains")
+    check("captureAtEpoch(epochSeconds, InterruptionTypes::EventSource::PhysicalButton)" in cycle, "accepted short press is captured immediately")
+    check("finalizeAutomaticEnd(epochSeconds)" in cycle and "local.dayIndex != state.dayIndex" in cycle, "automatic local-day fallback")
+    check("does not reinterpret a real interruption" in cycle, "day-change fallback never rewrites a captured interruption")
     check("heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS" in cycle, "long press detected on release")
     check("beginGoodbye" in cycle and "FEIERABEND" in cycle and "todayCount" in cycle, "manual goodbye includes today count")
     check("if (goodbyeActive) return;" in cycle, "goodbye ignores further physical input")
     check("exclusiveGoodbyeActive" in cycle_h and "if (!WorkCycle::exclusiveGoodbyeActive())" in sketch, "goodbye exclusively blocks normal interruption display servicing")
     check("delay(" not in cycle, "work-cycle path remains nonblocking")
-    check("PhysicalButtonGuard::accept(shortPressGuard" in cycle, "short-press anti-spam remains before candidate update")
-    check("PhysicalButtonGuard::accept(shortPressGuard, nowMs" in cycle, "cycle start opens anti-spam cooldown")
-    check("playPriorityFeedbackTrack(ProjectConfig::INTERRUPTION_SPAM_SOUND_TRACK)" in cycle, "track 2 preserved for suppressed short presses")
+    check("PhysicalButtonGuard::accept(shortPressGuard, nowMs" in cycle, "10-second guard applies to real short interruptions")
+    start_block = cycle.split("void startCycle", 1)[1].split("void renderGoodbye", 1)[0]
+    check("PhysicalButtonGuard::accept" not in start_block, "cycle start does not consume anti-spam window")
+    check("playPriorityFeedbackTrack(ProjectConfig::INTERRUPTION_SPAM_SOUND_TRACK)" in cycle, "track 2 reserved for actually suppressed presses")
     check("notifySuppressedPhysicalPress" in cycle, "suppressed short press keeps OLED feedback")
     check("suppressedPhysicalPressCount" in cycle_h and "lastSuppressedPhysicalPressMs" in cycle_h, "work-cycle suppression diagnostics exposed")
 
-    # Compatibility: cycle markers must not alter interruption storage/analytics.
-    check("captureAtEpoch" in service and "acceptCapturedEvent" in service, "deferred interruption uses normal service path")
+    # Compatibility: only real interruptions enter the unchanged storage/analytics path.
+    check("captureAtEpoch" in service and "acceptCapturedEvent" in service, "timestamped physical interruption uses normal service path")
     check("event.eventSource" in store and "<< 20" in store, "event source remains packed in existing raw record")
-    check("eventType" not in store, "cycle event type not packed into 9-byte raw record")
-    check("InterruptionAggregates::apply(event, sequence)" in service, "confirmed events still feed daily aggregates")
+    check("eventType" not in store, "no cycle type is packed into 9-byte raw record")
+    check("InterruptionAggregates::apply(event, sequence)" in service, "captured events still feed daily aggregates")
     check("scanRawAnalytics" in api and "elapsedSeconds == current.deltaSeconds" in api, "retained adjacent-event interval scan unchanged")
     check("InterruptionStore::readSequence" in insights, "Focus & Insights remains raw-interruption based")
     check("Preferences" not in insights and "LittleFS" not in insights, "Focus & Insights adds no persistence")
