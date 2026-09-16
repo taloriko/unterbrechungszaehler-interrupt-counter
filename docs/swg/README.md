@@ -1,29 +1,30 @@
-# Unterbrechungszähler 3.6.0 – Schwäbisch
+# Unterbrechungszähler 3.6.1 – Schwäbisch
 
 > [!WARNING]
 > **KI-Hinweis:** Des Projekt isch mit ordentlich KI-Unterstützung entstanden, danach aber in echt getestet, verbessert ond weitergebaut worda. Wenn du KI-generierten Code grundsätzlich net leiden kasch, darfst trotzdem dr Knopf drucka. ;-)
 
 [Deutsch](../de/README.md) · [English](../en/README.md) · [Projektstartseite](../../README.md)
 
-## Neu in 3.6.0: dr Arbeitszyklus
+## Neu in 3.6.1: dr Arbeitszyklus neu eingebaut
 
-Dr gleiche Knopf auf **DI1/GPIO13** weiß jetzt au, wann dr Arbeitstag anfängt ond aufhört – ganz ohne an zweite Knopf oder no an GPIO.
+Dr gleiche Knopf auf **DI1/GPIO13** weiß weiterhin, wann dr Arbeitstag anfängt ond aufhört – aber d Logik isch jetzt wieder bewusst direkt ond nachvollziehbar.
 
-- **erschter kurzer Druck:** START – zählt net als Unterbrechung
-- **weitere kurze Drück:** dr jeweils letschte bleibt erscht mol als Kandidat offa
-- **dr nächschte gültige kurze Druck:** macht aus em vorherige Kandidat a echte Unterbrechung
-- **lang drucka, mindestens 2 Sekunda:** Feierabend ausdrücklich beenda
-- **lang drucka vergessa:** beim lokale Tageswechsel wird dr letschte Kandidat automatisch s ENDE ond zählt net als Unterbrechung
+- **erschter kurzer Druck:** START – zählt net als Unterbrechung ond macht au no koi Anti-Spam-Sperre auf
+- **weitere gültige kurze Drück:** werdet sofort als echte Unterbrechung gspeichert ond krieget sofort s normale Feedback
+- **lang drucka, mindestens 2 Sekunda:** Feierabend ausdrücklich beenda – zählt net als Unterbrechung
+- **lang drucka vergessa:** beim lokale Tageswechsel wird bloß dr Zyklus automatisch zugmacht; echte Unterbrechunga werdet nachher net umgdeutet
 
-Also ganz einfach: **erschter Druck = Start, letschter Druck = Ende, alles dazwischa = Unterbrechung.**
+Dr Pending-Kandidaten-Ansatz aus 3.6.0 isch wieder raus. Koi Knopfdruck wartet mehr drauf, dass erscht no dr nächschte Druck komma muss, bevor er zählt.
 
-Wenn dr Feierabend mit em lange Druck gmacht wird, zeigt s OLED danach **10 Sekunda „FEIERABEND“ plus d heutige Anzahl Unterbrechunga**. Beim automatische Tagesabschluss bleibt s Display ruhig.
+Wenn dr Feierabend mit em lange Druck gmacht wird, zeigt s OLED danach **10 Sekunda „FEIERABEND“ plus d heutige Anzahl Unterbrechunga**. In dere Zeit werdet weitere echte Knopfdrück ignoriert ond d normale Home-/Sekunda-Anzeige darf net dazwischenfunka. Beim automatische Tagesabschluss bleibt s Display ruhig.
 
 Dr Webknopf bleibt unabhängig ond macht weiterhin direkt a Unterbrechung.
 
 ## Anti-Spam
 
-D 10-Sekunda-Sperre für kurze echte Knopfdrück bleibt. Au dr Startdruck macht die Sperre auf. Was innerhalb dere Zeit nomol kurz druckt wird, wird net gspeichert ond net gezählt; Track 2 ond s OLED gebet bloß s bekannte Anti-Spam-Feedback. A verworfener Druck verlängert d Sperre net.
+D 10-Sekunda-Sperre bleibt für echte kurze **Unterbrechungsdrück**. Dr START-Druck macht die Sperre ausdrücklich net auf. Erscht a angenommene Unterbrechung startet die 10 Sekunda.
+
+Was innerhalb dere Zeit nomol kurz druckt wird, wird net gspeichert ond net gezählt; Track 2 ond s OLED gebet bloß s bekannte Anti-Spam-Feedback. A verworfener Druck verlängert d Sperre net.
 
 Dr lange Feierabend-Druck wird davon net blockiert. Sonst wär des ja ausgerechnet beim Heimgoa lästig.
 
@@ -36,7 +37,7 @@ Dr lange Feierabend-Druck wird davon net blockiert. Sonst wär des ja ausgerechn
 - Anzahl oder Ø abgeschlossener Abstand
 - Fokus & Ruh sowie Arbeitsmuster
 - CSV-Export
-- 100.000 bestätigte Unterbrechunga im unveränderte 9-Byte-Ringspeicher
+- 100.000 Unterbrechunga im unveränderte 9-Byte-Ringspeicher
 - 2.300 Tagesaggregate
 - DS3231 RTC
 - SH1106 OLED mit mehrere Ansichten, Helligkeit, Dimmer ond 180°-Drehung
@@ -44,15 +45,15 @@ Dr lange Feierabend-Druck wird davon net blockiert. Sonst wär des ja ausgerechn
 - OTA-Update
 - Oberfläche auf Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch ond Oberschwäbisch
 
-## Daten bleiben kompatibel
+## Daten bleibet kompatibel
 
-START ond ENDE kommet absichtlich **net** in dr Unterbrechungs-Ringspeicher. Dr offene letschte Kurzdruck wird klein im NVS gmerkt; START/ENDE kommet zusätzlich in a separates kleines Zyklusjournal. Bloß bestätigte Unterbrechunga landet im bisherigen Raw-Ring ond in de Tagesaggregate.
+START ond ENDE kommet absichtlich **net** in dr Unterbrechungs-Ringspeicher. Dr aktive Zyklus wird klein im NVS gmerkt; START/ENDE kommet zusätzlich in a separates kleines Zyklusjournal. Jede gültige kurze Unterbrechung landet dagegen sofort im bisherige Raw-Ring-/Aggregate-Weg.
 
 Drum bleibet d vorhandene 3.x-Daten, Heatmaps, CSV, Fokus-Auswertunga ond Herkunftsfilter kompatibel. Details: [Speicherformat](../../Unterbrechungszaehler/STORAGE_FORMAT.md).
 
 ## Hardware
 
-D Pinbelegung bleibt gleich. Für 3.6.0 braucht s koi zusätzliche Hardware.
+D Pinbelegung bleibt gleich. Für 3.6.1 braucht s koi zusätzliche Hardware.
 
 | Funktion | ESP32 |
 |---|---:|
