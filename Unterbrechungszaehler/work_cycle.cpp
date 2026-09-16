@@ -124,8 +124,8 @@ void startCycle(uint32_t epochSeconds, const ProjectTime::LocalDateTime &local) 
   state.dayIndex = local.dayIndex;
   state.startEpochSeconds = epochSeconds;
 
-  // Start is not an interruption and must not consume the anti-spam window.
-  // The first real interruption after work start is therefore always accepted.
+  // START is only a cycle boundary. It must not enter interruption feedback and
+  // must not consume the 10-second anti-spam window used by real interruptions.
   shortPressGuard = PhysicalButtonGuard::State{};
   saveState();
   appendJournal(epochSeconds, local.dayIndex, JOURNAL_START, 0);
@@ -192,10 +192,8 @@ void clearCycleState() {
 void finalizeAutomaticEnd(uint32_t epochSeconds) {
   if (!state.active) return;
 
-  // 3.6.1 deliberately does not reinterpret a real interruption after the
-  // fact. If the explicit long-press end was forgotten, the cycle simply
-  // closes at the detected local day change. This keeps every short press
-  // immediate, durable and statistically stable.
+  // A forgotten explicit END closes only the cycle. Real interruptions have
+  // already gone through the normal capture path and are never reclassified.
   appendJournal(epochSeconds, state.dayIndex, JOURNAL_END, END_REASON_DAY_CHANGE);
   SerialLog::infof("CYCLE", "Work cycle auto-ended at local day change | day=%u | epoch=%lu",
                    static_cast<unsigned int>(state.dayIndex),
@@ -214,19 +212,21 @@ void finalizeManualEnd(uint32_t epochSeconds) {
   beginGoodbye();
 }
 
-void captureShortPress(uint32_t nowMs, uint32_t epochSeconds) {
+void captureShortPress(uint32_t nowMs) {
   if (!PhysicalButtonGuard::accept(shortPressGuard, nowMs, ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS)) {
     showSuppressed(nowMs);
     return;
   }
 
-  if (!InterruptionService::captureAtEpoch(epochSeconds, InterruptionTypes::EventSource::PhysicalButton)) {
+  // Reuse the exact proven 3.5 capture path. WorkCycle classifies the physical
+  // gesture only; counting, normal Track 3+ feedback, RAM queueing, persistence
+  // and analytics remain owned by InterruptionService.
+  if (!InterruptionService::capture(InterruptionTypes::EventSource::PhysicalButton)) {
     SerialLog::warning("CYCLE", "Physical interruption capture failed");
     return;
   }
 
-  SerialLog::infof("CYCLE", "Physical interruption accepted immediately | epoch=%lu",
-                   static_cast<unsigned long>(epochSeconds));
+  SerialLog::info("CYCLE", "Physical interruption accepted immediately");
 }
 
 void handleShortPress(uint32_t nowMs, uint32_t epochSeconds, const ProjectTime::LocalDateTime &local) {
@@ -241,7 +241,7 @@ void handleShortPress(uint32_t nowMs, uint32_t epochSeconds, const ProjectTime::
     return;
   }
 
-  captureShortPress(nowMs, epochSeconds);
+  captureShortPress(nowMs);
 }
 
 void onGpioChanged(const char *channelId, bool logicalState) {
@@ -267,18 +267,13 @@ void onGpioChanged(const char *channelId, bool logicalState) {
   ProjectTime::LocalDateTime local;
   if (!currentLocal(epochSeconds, local)) {
     // Without a valid local calendar cycle boundaries cannot be classified.
-    // Preserve the proven legacy behavior and still apply the normal 10-second
-    // short-press guard so time loss never creates an input storm.
+    // Preserve the proven legacy interruption behavior and its 10-second guard
+    // instead of guessing START/END semantics.
     if (heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS && state.active) {
       SerialLog::warning("CYCLE", "Local time unavailable; cannot close work cycle safely");
       return;
     }
-    if (!PhysicalButtonGuard::accept(shortPressGuard, nowMs, ProjectConfig::PHYSICAL_BUTTON_COOLDOWN_MS)) {
-      showSuppressed(nowMs);
-      return;
-    }
-    SerialLog::warning("CYCLE", "Local time unavailable; button recorded as legacy interruption");
-    InterruptionService::capture(InterruptionTypes::EventSource::PhysicalButton);
+    captureShortPress(nowMs);
     return;
   }
 
