@@ -6,14 +6,25 @@
 
 namespace ProjectConfig {
 
-// The physical interruption button reuses the generic GPIO layer. DI1 is
-// GPIO13, INPUT_PULLUP, active-low in hardware_config.h.
-constexpr char INTERRUPTION_INPUT_ID[] = "di1";
+// DI1 / GPIO13 remains the single physical button. The interruption service no
+// longer consumes the GPIO edge directly; WorkCycle owns press/release timing
+// and forwards only real interruption events into the proven service path.
+constexpr char INTERRUPTION_INPUT_ID[] = "cycle-managed";
+constexpr char WORK_CYCLE_INPUT_ID[] = "di1";
 
 // Device-local calendar rules for logging and statistics. Absolute timestamps
 // remain UTC; this POSIX TZ is used only to derive local date/hour/week/month.
 constexpr char TIMEZONE_NAME[] = "Europe/Berlin";
 constexpr char TIMEZONE_POSIX[] = "CET-1CEST,M3.5.0,M10.5.0/3";
+
+// Work-cycle policy. The first short press starts the local work cycle and does
+// not consume the anti-spam window. During an active cycle every accepted short
+// press is captured immediately as an interruption. Holding the button ends the
+// cycle explicitly; if that is forgotten, the cycle closes at the next local
+// calendar-day transition without reclassifying a real interruption afterward.
+constexpr uint32_t WORK_CYCLE_LONG_PRESS_MS = 2000;
+constexpr uint32_t WORK_CYCLE_GOODBYE_DISPLAY_MS = 10000;
+constexpr char WORK_CYCLE_PREF_NAMESPACE[] = "interruptcyc";
 
 // Feedback is independent from persistence: the event is captured first, then
 // display/audio/storage work is scheduled cooperatively.
@@ -43,7 +54,9 @@ constexpr uint16_t DISPLAY_DIM_AFTER_DEFAULT_MINUTES = 10;
 constexpr uint16_t DISPLAY_DIM_AFTER_MAX_MINUTES = 1440;
 constexpr uint8_t DISPLAY_DIM_BRIGHTNESS_DEFAULT_PERCENT = 5;
 
-// Raw binary ring: 100,000 * 9 bytes = 900,000 bytes.
+// Raw binary ring: 100,000 * 9 bytes = 900,000 bytes. START/ENDE stay in the
+// separate tiny cycle journal, so normal interruption storage remains byte-for-
+// byte compatible with 3.5.x.
 constexpr uint32_t RAW_EVENT_CAPACITY = 100000;
 constexpr uint8_t RAW_RECORD_SIZE = 9;
 
@@ -62,6 +75,7 @@ constexpr char RAW_DATA_PATH[] = "/interrupt.raw";
 constexpr char RAW_META_PATH[] = "/interrupt.meta";
 constexpr char DAILY_DATA_PATH[] = "/daily.bin";
 constexpr char DAILY_META_PATH[] = "/daily.meta";
+constexpr char CYCLE_JOURNAL_PATH[] = "/cycles.log";
 
 // Preferences namespaces are kept project-specific so the frozen base and
 // unrelated future projects do not overwrite each other's persistent values.

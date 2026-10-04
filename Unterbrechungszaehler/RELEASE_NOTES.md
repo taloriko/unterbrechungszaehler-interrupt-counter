@@ -1,3 +1,32 @@
+# Release 3.6.1
+
+- Arbeitszyklus auf DI1/GPIO13 **neu integriert**, nachdem der verzögerte Pending-Ansatz aus dem 3.6.0-Teststand im Alltag zu falschem Feedback und verspäteter Erfassung geführt hat
+- erster kurzer Druck startet den Arbeitszyklus und zählt nicht als Unterbrechung
+- der START-Druck öffnet **keine** 10-Sekunden-Anti-Spam-Sperre und erzeugt weder Track 2 noch einen normalen Unterbrechungston
+- jeder gültige kurze Druck während eines aktiven Zyklus wird **sofort** über den bestehenden `InterruptionService` gespeichert, gezählt und mit dem normalen Track ab 3 bestätigt
+- nur tatsächlich zu schnelle weitere Kurzdrucke innerhalb der 10-Sekunden-Sperre werden verworfen und erhalten Track 2 plus OLED-Anti-Spam-Feedback
+- langer Druck ab **2 Sekunden** beendet den Zyklus ausdrücklich und ist von der Kurzdruck-Sperre unabhängig
+- wird der lange Enddruck vergessen, schließt der Zyklus beim lokalen Tageswechsel automatisch; bereits erfasste Unterbrechungen werden dabei **nicht rückwirkend umklassifiziert**
+- nach manuellem Ende zeigt das SH1106 **10 Sekunden `FEIERABEND` plus heutige Unterbrechungszahl**; währenddessen werden weitere physische Eingaben ignoriert und die normale Home-/Sekundenanzeige darf die Abschlussanzeige nicht überschreiben
+- alter 3.6.0-Pending-Zustand wird durch eine neue Zyklus-Zustandskennung nicht übernommen; nach dem Update startet die neue Logik mit einem sauberen Zustand
+- START/ENDE bleiben getrennt in `/cycles.log`; der aktive Zyklus benötigt nur einen kleinen NVS-Zustand ohne Pending-Kandidaten
+- bestehender Raw-Ring bleibt **100.000 × 9 Byte** und bytekompatibel zu 3.5.x; Tagesaggregate, CSV, Heatmaps, Fokus und Herkunftsfilter bleiben auf echten Unterbrechungen aufgebaut
+- Webbutton bleibt unabhängig und erzeugt weiterhin sofort Unterbrechungen
+
+## Korrigiertes Bedienmodell
+
+```text
+inaktiv + kurzer Druck     -> START, still, keine Sperre
+aktiv + kurzer Druck       -> sofort UNTERBRECHUNG
+< 10 s nach Unterbrechung  -> weiterer Kurzdruck wird unterdrückt, Track 2
+aktiv + Druck >= 2 s       -> ENDE, 10 s FEIERABEND
+kein ENDE bis Tageswechsel -> Zyklus automatisch schließen
+```
+
+## Kompatibilität
+
+Vorhandene 3.x-Unterbrechungsdaten benötigen keine Migration. Der 3.6.0-Pending-Teststand wird nicht als Datenmodell fortgeführt; eine dort noch offene Zyklus-Pending-Struktur wird von 3.6.1 absichtlich nicht geladen.
+
 # Release 3.5.0
 
 - Fokus-&-Ruhe-Karte auf Home mit aktueller/längster Tages-/Wochenphase und erklärtem 120-Minuten-Trend
