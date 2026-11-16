@@ -17,6 +17,7 @@
 #include "interruption_store.h"
 #include "interruption_aggregates.h"
 #include "project_preferences.h"
+#include "work_cycle.h"
 #include "project_config.h"
 #include "display_views.h"
 
@@ -178,7 +179,10 @@ void handleInterruptionLive() {
     since = static_cast<uint64_t>(strtoull(sinceText.c_str(), &end, 10));
     if (!end || *end != '\0') since = 0;
   }
-  if (since == InterruptionService::summary().revision) {
+  // Cycle changes do not modify interruption statistics. Include the current
+  // state in the existing lightweight conditional poll to avoid stale status.
+  const String sinceCycle = server.arg("cycle");
+  if (since == InterruptionService::summary().revision && sinceCycle == WorkCycle::stateName()) {
     server.sendHeader("Cache-Control", "no-store");
     server.send(204, "text/plain", "");
     return;
