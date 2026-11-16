@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.6.3
+
+- SH1106-Standardansicht weiter entschlackt: links oben nur zwei groessere Statussymbole fuer WLAN und gueltige Uhrzeit; Speicher- und Soundicons entfallen dort
+- links unten ausschliesslich die relative Dauer seit der letzten Unterbrechung, ohne absolute Uhrzeit; rechts weiterhin maximal grosser dynamisch skalierter Tageszaehler
+- bestehende Arbeitszyklus-, Sound-, Speicher- und Analysefunktionen unveraendert
+
 ## 3.6.2
 
 - SH1106-Standardanzeige in vertikal geteiltes 128×64-Layout umgebaut: rechts maximal großer Tageszähler, links oben Statussymbole für WLAN, Zeit, Speicher und Ton, links unten letzte Unterbrechung mit lokaler Uhrzeit und relativer Dauer
