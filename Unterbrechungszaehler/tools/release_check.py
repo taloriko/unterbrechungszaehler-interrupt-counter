@@ -68,7 +68,7 @@ def main() -> None:
 
     # Identity / frozen platform invariants.
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.6.1"' in config, "project version 3.6.2")
+    check('SOFTWARE_VERSION[] = "3.6.2"' in config, "project version 3.6.2")
     check("RAW_EVENT_CAPACITY = 100000" in project and "RAW_RECORD_SIZE = 9" in project, "100,000 x 9-byte raw ring unchanged")
     check("DAILY_AGGREGATE_CAPACITY = 2300" in project and "DAILY_RECORD_SIZE = 64" in project, "daily aggregate format unchanged")
     check("PENDING_EVENT_CAPACITY = 64" in project, "fixed 64-event persistence queue")
