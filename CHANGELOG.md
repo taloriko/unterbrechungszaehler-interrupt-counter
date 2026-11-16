@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.6.2
+
+- SH1106-Standardanzeige in vertikal geteiltes 128×64-Layout umgebaut: rechts maximal großer Tageszähler, links oben Statussymbole für WLAN, Zeit, Speicher und Ton, links unten letzte Unterbrechung mit lokaler Uhrzeit und relativer Dauer
+- Zahl wird abhängig von der Stellenzahl unabhängig in Breite und Höhe skaliert, ohne weiteren Framebuffer oder zusätzliche Abfragen; andere OLED-Modi bleiben unverändert
+- Wechselton beginnt nach ESP32-Neustart bei einem zufälligen Track 3…N und rotiert danach sequenziell; ohne gemeldete Trackanzahl bleibt der eingestellte Basiston erhalten
+- vorhandene 3.x-Datenformate, CYC2-Arbeitszyklus und alle Heatmaps bleiben unverändert
+
 ## 3.6.1
 
 - im Wechselmodus wird beim ersten gültigen Unterbrechungston nach jedem ESP32-Neustart ein zufälliger normaler Track aus 3…N gewählt; anschließend läuft die bisherige zyklische Reihenfolge weiter
