@@ -1,4 +1,4 @@
-# Hardware – Interruption Counter 3.1.0
+# Hardware – Interruption Counter
 
 Target: classic **ESP32 Dev Module / ESP32-WROOM-32(E)**.
 
