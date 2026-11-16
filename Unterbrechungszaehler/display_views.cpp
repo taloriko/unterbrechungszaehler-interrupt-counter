@@ -391,17 +391,14 @@ bool renderSpamFlickerFrame(uint8_t frame) {
   for (uint8_t i = 0; i < 6U; ++i) {
     const int16_t y = static_cast<int16_t>((phase * 7U + i * 11U) % 64U);
     const int16_t inset = static_cast<int16_t>((phase + i * 3U) % 15U);
-    DisplaySh1106::drawHLine(inset, 127 - inset, y);
+    // Avoid drawing scan lines through the central text band.
+    if (y < 13 || y > 50) DisplaySh1106::drawHLine(inset, 127 - inset, y);
   }
   if (phase == 1U || phase == 5U) {
-    DisplaySh1106::drawRect(3, 18, 122, 20);
-    for (int16_t x = 8; x < 124; x += 13) DisplaySh1106::drawVLine(x, 20, 35);
+    DisplaySh1106::drawRect(3, 2, 122, 10);
+    for (int16_t x = 8; x < 124; x += 13) DisplaySh1106::drawVLine(x, 4, 9);
   }
-  // Keep the existing TV flicker, but reserve a quiet opaque band for the
-  // warning. This avoids thin, blinking letters mixed with scan lines.
-  for (int16_t y = 13; y < 51; ++y) {
-    for (int16_t x = 0; x < 128; ++x) DisplaySh1106::drawPixel(x, y, false);
-  }
+  // The middle is already blank from frameClear(); no costly pixel clearing.
   char warning[24];
   strncpy(warning, labels().tooFast, sizeof(warning) - 1U);
   warning[sizeof(warning) - 1U] = '\0';
