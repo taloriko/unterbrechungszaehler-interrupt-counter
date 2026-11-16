@@ -38,6 +38,7 @@ PhysicalButtonGuard::State shortPressGuard;
 bool buttonDown = false;
 uint32_t buttonDownMs = 0;
 bool holdPreviewActive = false;
+bool holdPreviewTimeValid = false; // Evaluate local time only on the press edge.
 uint32_t nextHoldPreviewMs = 0;
 bool goodbyeActive = false;
 uint32_t goodbyeUntilMs = 0;
@@ -349,6 +350,11 @@ void onGpioChanged(const char *channelId, bool logicalState) {
   const uint32_t nowMs = millis();
   if (logicalState) {
     holdPreviewActive = false;
+    // A hold preview must never promise a possible farewell if the device
+    // cannot classify the calendar event. Do this once per press, not per frame.
+    uint32_t pressEpochSeconds = 0;
+    ProjectTime::LocalDateTime pressLocal;
+    holdPreviewTimeValid = currentLocal(pressEpochSeconds, pressLocal);
     nextHoldPreviewMs = nowMs + ProjectConfig::WORK_CYCLE_HOLD_FEEDBACK_AFTER_MS;
     buttonDown = true;
     buttonDownMs = nowMs;
@@ -404,7 +410,7 @@ void begin() {
 
 void update() {
   const uint32_t nowMs = millis();
-  if (buttonDown && state.active && !goodbyeActive &&
+  if (buttonDown && state.active && holdPreviewTimeValid && !goodbyeActive &&
       static_cast<uint32_t>(nowMs - buttonDownMs) >= ProjectConfig::WORK_CYCLE_HOLD_FEEDBACK_AFTER_MS &&
       due(nowMs, nextHoldPreviewMs)) {
     holdPreviewActive = true;
