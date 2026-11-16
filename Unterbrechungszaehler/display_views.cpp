@@ -162,23 +162,73 @@ void drawCenteredScaled(const char *value) {
   DisplaySh1106::drawTextScaled(x, y, shown, scale);
 }
 
+// Standard OLED: 128x64, right-hand counter and two left-hand information panes.
 bool renderStandard(const InterruptionTypes::Summary &summary, const char *age, bool wifi, bool timeOk) {
   DisplaySh1106::frameClear();
-  DisplaySh1106::drawText(2, 1, labels().today);
-  drawTimeIcon(98, 0, timeOk);
-  drawWifiIcon(114, 0, wifi);
-  DisplaySh1106::drawHLine(0, 127, 12);
+  constexpr int16_t splitX = 62;
+  DisplaySh1106::drawVLine(splitX, 0, 63);
+  DisplaySh1106::drawHLine(0, splitX - 1, 31);
 
+  // Upper left: two rows of clear 10px status symbols.
+  drawWifiIcon(6, 3, wifi);
+  drawTimeIcon(34, 3, timeOk);
+
+  // Storage symbol: card frame, status dot or warning dash.
+  DisplaySh1106::drawRect(6, 18, 11, 10);
+  DisplaySh1106::drawHLine(9, 15, 21);
+  if (summary.storageState == InterruptionTypes::StorageState::Ready) {
+    DisplaySh1106::drawPixel(11, 25);
+  } else {
+    DisplaySh1106::drawHLine(9, 14, 25);
+  }
+
+  // Speaker: crossed through when sound is disabled.
+  DisplaySh1106::drawVLine(35, 21, 25);
+  DisplaySh1106::drawHLine(32, 35, 21);
+  DisplaySh1106::drawHLine(32, 35, 25);
+  DisplaySh1106::drawPixel(36, 20);
+  DisplaySh1106::drawPixel(37, 19);
+  DisplaySh1106::drawPixel(36, 26);
+  DisplaySh1106::drawPixel(37, 27);
+  if (ProjectPreferences::soundEnabled()) {
+    DisplaySh1106::drawPixel(40, 21);
+    DisplaySh1106::drawPixel(41, 22);
+    DisplaySh1106::drawPixel(41, 24);
+    DisplaySh1106::drawPixel(40, 25);
+  } else {
+    DisplaySh1106::drawHLine(38, 43, 23);
+  }
+
+  // Lower left: the last recorded event's local clock time, when known.
+  DisplaySh1106::drawText(2, 34, labels().last);
+  char clockText[8] = "--:--";
+  if (summary.lastAvailable && summary.lastAbsoluteValid) {
+    ProjectTime::LocalDateTime local;
+    if (ProjectTime::fromEpochSeconds(summary.lastTimeValueSeconds, local)) {
+      snprintf(clockText, sizeof(clockText), "%02u:%02u",
+               static_cast<unsigned int>(local.hour), static_cast<unsigned int>(local.minute));
+    }
+  }
+  DisplaySh1106::drawTextScaled(2, 43, clockText, 2);
+  // Age is an independent read-only value already computed by the existing
+  // once-per-second display refresh; it does not add another polling loop.
+  DisplaySh1106::drawText(2, 58, age);
+
+  // Right: choose the widest fit for 1..10 digits while filling the height.
+  // Separate X/Y scaling prevents multi-digit values from shrinking in height.
   char count[12];
   snprintf(count, sizeof(count), "%lu", static_cast<unsigned long>(summary.todayCount));
   const size_t digits = strlen(count);
-  const int16_t width = static_cast<int16_t>(digits * 18U - (digits ? 3U : 0U));
-  const int16_t x = static_cast<int16_t>((128 - width) / 2);
-  DisplaySh1106::drawTextScaled(x < 0 ? 0 : x, 17, count, 3);
-
-  DisplaySh1106::drawHLine(0, 127, 43);
-  DisplaySh1106::drawText(2, 48, labels().last);
-  DisplaySh1106::drawText(80, 48, age);
+  uint8_t scaleX = 1;
+  for (uint8_t candidate = 12; candidate > 1; --candidate) {
+    const size_t width = digits * 6U * candidate - candidate;
+    if (width <= 62U) { scaleX = candidate; break; }
+  }
+  const uint8_t scaleY = 8;
+  const int16_t width = static_cast<int16_t>(digits * 6U * scaleX - scaleX);
+  const int16_t x = static_cast<int16_t>(splitX + 1 + (65 - width) / 2);
+  const int16_t y = static_cast<int16_t>((64 - 7 * scaleY) / 2);
+  DisplaySh1106::drawTextStretched(x, y, count, scaleX, scaleY);
   return DisplaySh1106::present();
 }
 
