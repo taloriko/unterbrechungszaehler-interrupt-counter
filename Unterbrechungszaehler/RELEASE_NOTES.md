@@ -1,3 +1,10 @@
+# Release 3.6.3
+
+- Standard-OLED links oben nur noch zwei gross dargestellte Icons fuer WLAN und gueltige Uhrzeit
+- links unten nur die vergangene Zeit seit der letzten Unterbrechung (ohne Uhrzeit)
+- rechts bleibt die dynamisch maximierte Tageszahl
+- keine Aenderung der Datenformate oder anderen OLED-Modi
+
 # Release 3.6.2
 
 - neue SH1106-Standardansicht mit rechts maximierter Tageszahl (dynamische horizontale und vertikale Skalierung)
