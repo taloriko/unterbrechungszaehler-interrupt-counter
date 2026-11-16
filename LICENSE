@@ -1,21 +1,50 @@
-MIT License
+Unterbrechungszaehler / Interrupt Counter Non-Commercial License
 
-Copyright (c) 2026
+Copyright (c) 2026 taloriko
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+of this software, documentation and associated files (the "Work"), to use,
+copy, modify, merge, publish, distribute, and create derivative works from
+the Work for non-commercial purposes, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. Non-commercial use only
+   The Work, including modified or derived versions, may only be used for
+   non-commercial purposes.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. Further development expressly encouraged
+   Forks, modifications, extensions, corrections, integrations and other
+   improvements are expressly permitted and encouraged, provided they remain
+   non-commercial under this license.
+
+3. Attribution
+   The above copyright notice and this license text must be included in all
+   copies or substantial portions of the Work and in redistributed modified
+   versions.
+
+4. Commercial use
+   Commercial use is not permitted without prior written permission from the
+   copyright holder. This includes, in particular, selling the Work or derived
+   works, integrating it into commercial products or paid offerings, or using
+   it as part of a paid service.
+
+5. Earlier versions
+   Unless a specific version, release, tag or archived copy of the Work
+   contains a different license notice, this license also applies to previous
+   versions of the Work published by the copyright holder.
+
+   Any version or copy that contains a different license notice remains
+   subject to the license terms stated for that version or copy.
+
+   Any third-party components included in the Work remain subject to their
+   respective licenses and copyright notices.
+
+6. No warranty
+   THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE WORK OR THE USE OR OTHER DEALINGS IN THE
+   WORK.
+
+For commercial licensing or permission, please contact the copyright holder.
