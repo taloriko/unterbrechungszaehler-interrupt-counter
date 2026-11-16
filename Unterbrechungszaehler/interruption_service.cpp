@@ -1,6 +1,7 @@
 #include "interruption_service.h"
 
 #include <cstring>
+#include <esp_random.h>
 
 #include "audio_dy_sv17f.h"
 #include "display_views.h"
@@ -26,7 +27,7 @@ uint8_t queueTail = 0;
 uint8_t queueCount = 0;
 uint32_t nextStorageRetryMs = 0;
 uint8_t audioPending = 0;
-uint16_t lastRotatingTrack = 2;
+uint16_t lastRotatingTrack = 0;  // First rotation track not yet selected since boot.
 bool rotateFallbackLogged = false;
 bool displayFeedbackPending = false;
 bool aggregatesStarted = false;
@@ -245,11 +246,16 @@ uint16_t interruptionSoundTrack() {
 
 
   if (count >= firstNormal) {
-    // Track 1 = boot/test, track 2 = anti-spam. Normal interruption rotation
-    // starts at track 3 and remains deterministic/no-heap.
-    lastRotatingTrack = (lastRotatingTrack < firstNormal || lastRotatingTrack >= count)
-                          ? firstNormal
-                          : static_cast<uint16_t>(lastRotatingTrack + 1U);
+    // Track 1 = boot/test, track 2 = anti-spam. Pick the first normal
+    // track at random after boot, then rotate sequentially through 3..N.
+    if (lastRotatingTrack < firstNormal) {
+      const uint32_t normalCount = static_cast<uint32_t>(count) - firstNormal + 1U;
+      lastRotatingTrack = static_cast<uint16_t>(firstNormal + esp_random() % normalCount);
+    } else {
+      lastRotatingTrack = lastRotatingTrack >= count
+                            ? firstNormal
+                            : static_cast<uint16_t>(lastRotatingTrack + 1U);
+    }
     rotateFallbackLogged = false;
     missingNormalTracksLogged = false;
     return lastRotatingTrack;
