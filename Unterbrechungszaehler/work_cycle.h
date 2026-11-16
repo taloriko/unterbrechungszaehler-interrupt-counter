@@ -13,6 +13,9 @@ void update();
 bool exclusiveGoodbyeActive();
 // Both short start acknowledgement and goodbye have exclusive OLED ownership.
 bool exclusiveDisplayActive();
+// Read-only live state; no flash read, timer, or extra state allocation.
+bool active();
+const char *stateName();
 
 uint32_t suppressedPhysicalPressCount();
 bool hasSuppressedPhysicalPress();

@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.6.5
+
+- eigene Karte "Arbeitszyklus" unter Einstellungen statt Integration ins Hardware-Feedback; lokale automatische Endzeit mit detaillierter Hilfe, Standard und Beispiel erklaert
+- Web-Startseite zeigt im Feld der letzten Unterbrechung "PAUSE" bei beendetem Arbeitszyklus und bei ungueltiger Uhrzeit einen separaten Hinweis; im aktiven Zyklus wieder die letzte Unterbrechung
+- auf dem OLED erscheint links unten nach den zehn Sekunden "FEIERABEND" deutlich "PAUSE"; grosse Tageszahl sowie WLAN- und Uhr-Symbole bleiben
+- vorhandene Live-HTTP-Abfrage meldet Zykluswechsel auch bei unveraenderter Unterbrechungsanzahl, ohne zusaetzlichen Timer, permanente Poller, Flash-Schreibvorgaenge oder Datenmigration
+- angepasste Uebersetzungen fuer alle sieben UI-Sprachen
+
 ## 3.6.4
 
 - "ZU SCHNELL!"-OLED-Animation mit dauerhaft gut lesbarem zweifach vergroessertem, ggf. zweizeiligem Text bei weiterhin vorhandenem TV-Flimmern; fehlende Ausrufezeichen-/Apostroph-Glyphen ergaenzt

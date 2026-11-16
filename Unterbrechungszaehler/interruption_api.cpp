@@ -12,6 +12,7 @@
 #include "ota_module.h"
 #include "project_config.h"
 #include "project_preferences.h"
+#include "work_cycle.h"
 #include "project_time.h"
 #include "time_service.h"
 #include "wifi_module.h"
@@ -88,6 +89,7 @@ void appendSummaryObjectInternal(String &out) {
   fieldUInt64(out, "sequence", summary.liveSequence);
   fieldUInt64(out, "persistedSequence", summary.persistedSequence);
   fieldUInt64(out, "revision", summary.revision);
+  fieldString(out, "cycleState", WorkCycle::stateName());
 
   // Current device monotonic time lets the browser age a relative event that
   // happened during this boot without inventing wall-clock time.

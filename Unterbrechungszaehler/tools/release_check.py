@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.6.4."""
+"""Portable release checks for Unterbrechungszaehler 3.6.5."""
 from __future__ import annotations
 
 import gzip
@@ -68,7 +68,7 @@ def main() -> None:
 
     # Identity / frozen platform invariants.
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.6.4"' in config, "project version 3.6.4")
+    check('SOFTWARE_VERSION[] = "3.6.5"' in config, "project version 3.6.5")
     check("RAW_EVENT_CAPACITY = 100000" in project and "RAW_RECORD_SIZE = 9" in project, "100,000 x 9-byte raw ring unchanged")
     check("DAILY_AGGREGATE_CAPACITY = 2300" in project and "DAILY_RECORD_SIZE = 64" in project, "daily aggregate format unchanged")
     check("PENDING_EVENT_CAPACITY = 64" in project, "fixed 64-event persistence queue")
@@ -100,6 +100,19 @@ def main() -> None:
           "custom fallback end is evaluated in local calendar")
     check("cycleEndTime" in api and "cycleEndTime" in server,
           "cycle setting exposed over project preferences API")
+
+    check('bool active()' in cycle_h and 'const char *stateName()' in cycle_h,
+          "live work-cycle state exposed without adding stored fields")
+    check('fieldString(out, "cycleState", WorkCycle::stateName())' in api,
+          "cycle status included in the existing interruption JSON")
+    check('sinceCycle == WorkCycle::stateName()' in server,
+          "conditional live poll detects changes even without new interruption")
+    check('strcmp(WorkCycle::stateName(), lastCycleState)' in views and 'drawTextScaled(2, 46, "PAUSE", 2)' in views,
+          "OLED lower-left shows pause and refreshes on cycle changes")
+    check("'cycleSettings': renderCycleSettings" in JS or "cycleSettings: renderCycleSettings" in JS,
+          "own cycle settings card renderer is registered")
+    check("cycle.settings.explain" in JS and "cycle.status.pauseHint" in JS,
+          "all cycle setting explanations and states are translatable")
 
     # 3.6.1 work-cycle contract: classification wraps the proven capture path.
     check('WORK_CYCLE_INPUT_ID[] = "di1"' in project, "work cycle owns DI1")
