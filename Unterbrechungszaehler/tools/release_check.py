@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.6.3."""
+"""Portable release checks for Unterbrechungszaehler 3.6.4."""
 from __future__ import annotations
 
 import gzip
@@ -68,7 +68,7 @@ def main() -> None:
 
     # Identity / frozen platform invariants.
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.6.3"' in config, "project version 3.6.3")
+    check('SOFTWARE_VERSION[] = "3.6.4"' in config, "project version 3.6.4")
     check("RAW_EVENT_CAPACITY = 100000" in project and "RAW_RECORD_SIZE = 9" in project, "100,000 x 9-byte raw ring unchanged")
     check("DAILY_AGGREGATE_CAPACITY = 2300" in project and "DAILY_RECORD_SIZE = 64" in project, "daily aggregate format unchanged")
     check("PENDING_EVENT_CAPACITY = 64" in project, "fixed 64-event persistence queue")
@@ -90,6 +90,17 @@ def main() -> None:
     check("drawTextScaled(ageX, ageY, shownAge, ageScale)" in standard_view,
           "only elapsed time since latest interruption in bottom-left pane")
 
+    check("drawCenteredScaledAt(warning, 25, 2" in views and "drawCenteredScaledAt(warning + split + 1, 35, 2" in views,
+          "large translated anti-spam warning always visible")
+    check("WORK_CYCLE_START_DISPLAY_MS = 2000" in project and "showCycleStart()" in cycle,
+          "two-second translated start acknowledgement")
+    check('getUShort("cycleend"' in (ROOT / "project_preferences.cpp").read_text(encoding="utf-8"),
+          "cycle end setting loaded from compact NVS key")
+    check("workCycleEndMinute()" in cycle and "cycleDeadlineReached" in cycle,
+          "custom fallback end is evaluated in local calendar")
+    check("cycleEndTime" in api and "cycleEndTime" in server,
+          "cycle setting exposed over project preferences API")
+
     # 3.6.1 work-cycle contract: classification wraps the proven capture path.
     check('WORK_CYCLE_INPUT_ID[] = "di1"' in project, "work cycle owns DI1")
     check('INTERRUPTION_INPUT_ID[] = "cycle-managed"' in project, "legacy direct DI callback cannot consume DI1")
@@ -102,12 +113,12 @@ def main() -> None:
     check("state.pending" not in cycle and "pendingEpochSeconds" not in cycle, "no deferred last-press candidate remains")
     check("InterruptionService::capture(InterruptionTypes::EventSource::PhysicalButton)" in cycle, "accepted short press uses normal immediate capture")
     check("captureAtEpoch" not in cycle and "captureAtEpoch" not in service and "captureAtEpoch" not in service_h, "obsolete deferred timestamp API removed")
-    check("finalizeAutomaticEnd(epochSeconds)" in cycle and "local.dayIndex != state.dayIndex" in cycle, "automatic local-day fallback")
+    check("finalizeAutomaticEnd(epochSeconds)" in cycle and "cycleDeadlineReached(local)" in cycle, "configurable local deadline fallback")
     check("never reclassified" in cycle, "day-change fallback never rewrites captured interruptions")
     check("heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS" in cycle, "long press detected on release")
     check("beginGoodbye" in cycle and "FEIERABEND" in cycle and "todayCount" in cycle, "manual goodbye includes today count")
     check("if (goodbyeActive) return;" in cycle, "goodbye ignores further physical input")
-    check("exclusiveGoodbyeActive" in cycle_h and "if (!WorkCycle::exclusiveGoodbyeActive())" in sketch, "goodbye exclusively blocks normal interruption display servicing")
+    check("exclusiveDisplayActive" in cycle_h and "if (!WorkCycle::exclusiveDisplayActive())" in sketch, "start and goodbye overlays exclusively block normal OLED display servicing")
     check("delay(" not in cycle, "work-cycle path remains nonblocking")
     check("PhysicalButtonGuard::accept(shortPressGuard, nowMs" in cycle, "10-second guard applies to real short interruptions")
     start_block = cycle.split("void startCycle", 1)[1].split("void renderGoodbye", 1)[0]
