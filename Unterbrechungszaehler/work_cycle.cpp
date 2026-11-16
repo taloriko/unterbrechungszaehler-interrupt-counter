@@ -382,6 +382,11 @@ void update() {
 }
 
 bool exclusiveGoodbyeActive() { return goodbyeActive; }
+bool active() { return state.active != 0U; }
+const char *stateName() {
+  if (active()) return "active";
+  return TimeService::now().valid ? "pause" : "time-unknown";
+}
 bool exclusiveDisplayActive() { return goodbyeActive || startDisplayActive; }
 uint32_t suppressedPhysicalPressCount() { return shortPressGuard.suppressedCount; }
 bool hasSuppressedPhysicalPress() { return shortPressGuard.hasSuppressed; }
