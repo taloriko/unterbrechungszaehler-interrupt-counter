@@ -37,6 +37,8 @@ PersistentState state;
 PhysicalButtonGuard::State shortPressGuard;
 bool buttonDown = false;
 uint32_t buttonDownMs = 0;
+bool holdPreviewActive = false;
+uint32_t nextHoldPreviewMs = 0;
 bool goodbyeActive = false;
 uint32_t goodbyeUntilMs = 0;
 uint32_t nextGoodbyeRenderMs = 0;
@@ -219,7 +221,49 @@ void renderGoodbye() {
   DisplaySh1106::present();
 }
 
+// A fixed-rate progress preview: no heap allocation, persistence or new task.
+// The original two-second gesture is still committed only when released.
+void renderHoldPreview(uint32_t heldMs) {
+  if (!ProjectPreferences::displayEnabled() || !DisplaySh1106::enabled() || !DisplaySh1106::detected() ||
+      DisplaySh1106::bootScreenActive() || DisplaySh1106::manualTestActive()) return;
+
+  const char *language = ProjectPreferences::language();
+  const char *title = "FEIERABEND";
+  const char *instruction = heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS ? "LOSLASSEN" : "HALTEN ...";
+  if (language && strcmp(language, "en") == 0) {
+    title = "FINISH WORK";
+    instruction = heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS ? "RELEASE" : "KEEP HOLDING";
+  } else if (language && strcmp(language, "fr") == 0) {
+    title = "FIN DE JOURNEE";
+    instruction = heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS ? "RELACHER" : "MAINTENIR";
+  } else if (language && strcmp(language, "it") == 0) {
+    title = "FINE LAVORO";
+    instruction = heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS ? "RILASCIA" : "TIENI PREMUTO";
+  } else if (language && strncmp(language, "swg", 3) == 0) {
+    title = "FEIERABEND";
+    instruction = heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS ? "LOS LASSA" : "HALTA ...";
+  }
+
+  DisplaySh1106::setPower(true);
+  DisplaySh1106::setInverted(false);
+  DisplaySh1106::frameClear();
+  DisplaySh1106::drawCenteredText(5, title);
+  DisplaySh1106::drawHLine(2, 125, 16);
+  // The outline spans almost the full 128px panel width.
+  DisplaySh1106::drawRect(2, 24, 124, 23);
+  const uint32_t start = ProjectConfig::WORK_CYCLE_HOLD_FEEDBACK_AFTER_MS;
+  const uint32_t finish = ProjectConfig::WORK_CYCLE_LONG_PRESS_MS;
+  const uint32_t elapsed = heldMs >= finish ? finish - start : heldMs > start ? heldMs - start : 0U;
+  const uint16_t width = static_cast<uint16_t>((elapsed * 120U) / (finish - start));
+  for (uint16_t x = 0; x < width; ++x) {
+    DisplaySh1106::drawVLine(static_cast<int16_t>(4 + x), 26, 44);
+  }
+  DisplaySh1106::drawCenteredText(54, instruction);
+  DisplaySh1106::present();
+}
+
 void beginGoodbye() {
+  holdPreviewActive = false;
   goodbyeActive = true;
   buttonDown = false;
   const uint32_t nowMs = millis();
@@ -298,12 +342,20 @@ void onGpioChanged(const char *channelId, bool logicalState) {
   // starts a fresh cycle normally.
   if (goodbyeActive) return;
 
+  // Reset on every physical release, even when the threshold has been met.
+  // A new press always starts a new independent preview from zero.
+  if (!logicalState && holdPreviewActive) {
+    holdPreviewActive = false;
+    DisplayViews::requestHomeRefresh();
+  }
   if (startDisplayActive) {
     startDisplayActive = false;
     DisplayViews::requestHomeRefresh();
   }
   const uint32_t nowMs = millis();
   if (logicalState) {
+    holdPreviewActive = false;
+    nextHoldPreviewMs = nowMs + ProjectConfig::WORK_CYCLE_HOLD_FEEDBACK_AFTER_MS;
     buttonDown = true;
     buttonDownMs = nowMs;
     return;
@@ -358,6 +410,13 @@ void begin() {
 
 void update() {
   const uint32_t nowMs = millis();
+  if (buttonDown && state.active && !goodbyeActive &&
+      static_cast<uint32_t>(nowMs - buttonDownMs) >= ProjectConfig::WORK_CYCLE_HOLD_FEEDBACK_AFTER_MS &&
+      due(nowMs, nextHoldPreviewMs)) {
+    holdPreviewActive = true;
+    renderHoldPreview(static_cast<uint32_t>(nowMs - buttonDownMs));
+    nextHoldPreviewMs = nowMs + ProjectConfig::WORK_CYCLE_HOLD_FEEDBACK_FRAME_MS;
+  }
   if (startDisplayActive && due(nowMs, startDisplayUntilMs)) {
     startDisplayActive = false;
     DisplayViews::requestHomeRefresh();
@@ -387,7 +446,7 @@ const char *stateName() {
   if (active()) return "active";
   return TimeService::now().valid ? "pause" : "time-unknown";
 }
-bool exclusiveDisplayActive() { return goodbyeActive || startDisplayActive; }
+bool exclusiveDisplayActive() { return goodbyeActive || startDisplayActive || holdPreviewActive; }
 uint32_t suppressedPhysicalPressCount() { return shortPressGuard.suppressedCount; }
 bool hasSuppressedPhysicalPress() { return shortPressGuard.hasSuppressed; }
 uint32_t lastSuppressedPhysicalPressMs() { return shortPressGuard.lastSuppressedMs; }

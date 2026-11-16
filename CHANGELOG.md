@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.6.6
+
+- Haltefeedback fuer den physischen Feierabenddruck: ab 250 ms erscheint bei aktivem Zyklus "FEIERABEND" mit Fortschrittsbalken ueber fast die gesamte OLED-Breite; 85-ms-Aktualisierung ohne Task oder Extra-Framebuffer
+- Fortschrittsbalken erreicht nach 2 Sekunden 100 Prozent; beim Loslassen vor Ablauf verschwindet die Vorschau, und der naechste Druck beginnt bei null
+- vollstaendiger 2-Sekunden-Druck beendet wie bisher erst nach dem Loslassen den Zyklus; danach folgt unveraendert die 10-Sekunden-Feierabendmeldung
+- mehrsprachige OLED-Aufforderung zum Weiterhalten/Loslassen in DE/EN/FR/IT/Schwaebisch, keine Veraenderung von Events, Statistiken, NVS und Arbeitszyklus-Journal
+
 ## 3.6.5
 
 - eigene Karte "Arbeitszyklus" unter Einstellungen statt Integration ins Hardware-Feedback; lokale automatische Endzeit mit detaillierter Hilfe, Standard und Beispiel erklaert

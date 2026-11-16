@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.6.5."""
+"""Portable release checks for Unterbrechungszaehler 3.6.6."""
 from __future__ import annotations
 
 import gzip
@@ -68,7 +68,7 @@ def main() -> None:
 
     # Identity / frozen platform invariants.
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.6.5"' in config, "project version 3.6.5")
+    check('SOFTWARE_VERSION[] = "3.6.6"' in config, "project version 3.6.6")
     check("RAW_EVENT_CAPACITY = 100000" in project and "RAW_RECORD_SIZE = 9" in project, "100,000 x 9-byte raw ring unchanged")
     check("DAILY_AGGREGATE_CAPACITY = 2300" in project and "DAILY_RECORD_SIZE = 64" in project, "daily aggregate format unchanged")
     check("PENDING_EVENT_CAPACITY = 64" in project, "fixed 64-event persistence queue")
@@ -113,6 +113,22 @@ def main() -> None:
           "own cycle settings card renderer is registered")
     check("cycle.settings.explain" in JS and "cycle.status.pauseHint" in JS,
           "all cycle setting explanations and states are translatable")
+
+    # 3.6.6: responsive but interruptible manual farewell preview.
+    check("WORK_CYCLE_HOLD_FEEDBACK_AFTER_MS = 250" in project,
+          "farewell hold feedback starts after 250ms")
+    check("WORK_CYCLE_HOLD_FEEDBACK_FRAME_MS = 85" in project,
+          "farewell hold feedback has bounded 85ms update interval")
+    check("renderHoldPreview(static_cast<uint32_t>(nowMs - buttonDownMs))" in cycle,
+          "hold progress is proportional to elapsed press duration")
+    check('DisplaySh1106::drawRect(2, 24, 124, 23)' in cycle and 'drawVLine(static_cast<int16_t>(4 + x), 26, 44)' in cycle,
+          "farewell hold preview fills the OLED horizontally")
+    check("if (!logicalState && holdPreviewActive)" in cycle and "holdPreviewActive = false;" in cycle,
+          "releasing the button cancels an incomplete hold preview")
+    check("goodbyeActive || startDisplayActive || holdPreviewActive" in cycle,
+          "preview safely owns OLED without a new worker task")
+    check("if (state.active && heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS)" in cycle,
+          "only a completed two-second gesture can end the work cycle")
 
     # 3.6.1 work-cycle contract: classification wraps the proven capture path.
     check('WORK_CYCLE_INPUT_ID[] = "di1"' in project, "work cycle owns DI1")
