@@ -1,3 +1,11 @@
+# Release 3.6.6
+
+- Bei einem aktiven Arbeitszyklus erscheint nach 250 ms ununterbrochenem Halten des physischen Knopfes eine OLED-Vorschau: FEIERABEND, breiter Fortschrittsbalken und lokalisierte Aufforderung.
+- Bei 2 Sekunden ist der Balken voll. Erst Loslassen nach Erreichen der Halteschwelle fuehrt wie bisher zum wirklichen Feierabend, mit 10-Sekunden-Abschlussanzeige.
+- Fruehes Loslassen setzt die Anzeige zurueck; jeder neue Druck beginnt wieder bei null. Kurzes Druecken bleibt eine normale Unterbrechung.
+- Displayvorschau aktualisiert maximal alle 85 ms im bestehenden Loop, ohne weitere Tasks, Flash-Schreibzugriffe oder neuen Puffer.
+- Keine Aenderungen bestehender Persistenzformate oder Auswertungen.
+
 # Release 3.6.5
 
 - Die Einstellung "Automatisches Zyklusende" liegt in einer eigenen, ausfuehrlich erklaerten Arbeitszyklus-Karte.
