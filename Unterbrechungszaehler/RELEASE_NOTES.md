@@ -1,3 +1,12 @@
+# Release 3.6.8
+
+- Wechselton bleibt bei beschaeftigtem DY-SV17F vorgemerkt und wird erst nach erfolgreicher Abspielbefehlannahme weitergeschaltet.
+- Feierabend-Fortschrittsbalken nur bei gueltiger Uhrzeit zu Beginn des Haltens. Kurze Druecke unter 2 Sekunden zaehlen weiterhin.
+- Einstellungsfehler erscheinen nur in der jeweiligen eigenen Karte.
+- Web-Bundle auf den aktuellen Stand gebracht fuer Arduino-IDE und OTA.
+- Bewusst akzeptiert: seltene Gleichzeitigkeit von Tastendruck und automatischem Ende; Stromausfall ohne Zeitpuffer, Wiederanlaufabschluss zur aktuellen Zeit; fehlgeschlagene NVS-Schreibvorgaenge werden nicht weiter behandelt.
+- Vor Release: praktischer Test von DI1 kurz/lang, OLED, OTA, Audio und Einstellungen auf dem echten ESP32.
+
 # Release 3.6.7
 
 - OLED-Zyklustexte in DE/EN/IT/FR und drei schwaebischen Varianten: START, Haltebalken, Loslassen, FEIERABEND, PAUSE und unbekannte Zeit.
