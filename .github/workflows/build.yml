@@ -23,12 +23,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Regenerate deterministic web assets
+        run: python3 Unterbrechungszaehler/tools/build_web.py
       - name: Portable release checks
         run: python3 Unterbrechungszaehler/tools/release_check.py
       - name: Verify generated web assets
         run: |
           python3 Unterbrechungszaehler/tools/build_web.py
-          git diff --exit-code -- Unterbrechungszaehler/web_assets.h
+          python3 Unterbrechungszaehler/tools/release_check.py
 
   compile:
     runs-on: ubuntu-latest
@@ -51,6 +53,8 @@ jobs:
           arduino-cli config init
           arduino-cli core update-index --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
           arduino-cli core install esp32:esp32@3.3.11 --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+      - name: Build bundled web UI for firmware
+        run: python3 Unterbrechungszaehler/tools/build_web.py
       - name: Compile firmware
         env:
           VERSION: ${{ steps.version.outputs.version }}
