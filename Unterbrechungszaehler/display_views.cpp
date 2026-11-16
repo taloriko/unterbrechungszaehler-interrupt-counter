@@ -69,6 +69,31 @@ const Labels &labels() {
   return de;
 }
 
+// Keep cycle-specific OLED status text separate from the legacy home labels.
+// Short ASCII-only strings fit in the 61-pixel lower-left display pane.
+struct CycleStatusLabels {
+  const char *heading;
+  const char *pause;
+  const char *clockUnknown;
+};
+const CycleStatusLabels &cycleStatusLabels() {
+  static const CycleStatusLabels de{"ZYKLUS", "PAUSE", "ZEIT"};
+  static const CycleStatusLabels en{"CYCLE", "PAUSE", "TIME"};
+  static const CycleStatusLabels fr{"CYCLE", "PAUSE", "HEURE"};
+  static const CycleStatusLabels it{"CICLO", "PAUSA", "ORA"};
+  static const CycleStatusLabels swg{"ZYKLUS", "PAUSE", "ZEIT"};
+  static const CycleStatusLabels alb{"ARBEIT", "PAUSE", "UHR"};
+  static const CycleStatusLabels ob{"SCHICHT", "PAUSE", "UHR"};
+  const char *language = ProjectPreferences::language();
+  if (strcmp(language, "en") == 0) return en;
+  if (strcmp(language, "fr") == 0) return fr;
+  if (strcmp(language, "it") == 0) return it;
+  if (strcmp(language, "swg-alb") == 0) return alb;
+  if (strcmp(language, "swg-ob") == 0) return ob;
+  if (strcmp(language, "swg") == 0) return swg;
+  return de;
+}
+
 bool due(uint32_t now, uint32_t deadline) { return static_cast<int32_t>(now - deadline) >= 0; }
 
 void ageText(const InterruptionTypes::Summary &summary, char out[16]) {
@@ -221,11 +246,12 @@ bool renderStandard(const InterruptionTypes::Summary &summary, const char *age, 
   // Lower left reflects the work-cycle state. The last interruption age
   // remains available while active; no additional persisted display data.
   const char *cycle = WorkCycle::stateName();
+  const CycleStatusLabels &cycleLabels = cycleStatusLabels();
   if (strcmp(cycle, "pause") == 0) {
-    DisplaySh1106::drawText(2, 35, "ZYKLUS");
-    DisplaySh1106::drawTextScaled(2, 46, "PAUSE", 2);
+    DisplaySh1106::drawText(2, 35, cycleLabels.heading);
+    DisplaySh1106::drawTextScaled(2, 46, cycleLabels.pause, 2);
   } else if (strcmp(cycle, "time-unknown") == 0) {
-    DisplaySh1106::drawText(2, 35, "ZEIT?");
+    DisplaySh1106::drawText(2, 35, cycleLabels.clockUnknown);
     DisplaySh1106::drawText(2, 48, "--");
   } else {
     DisplaySh1106::drawText(2, 34, labels().last);
