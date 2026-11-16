@@ -2,6 +2,9 @@
 
 ## 3.6.1
 
+- im Wechselmodus wird beim ersten gültigen Unterbrechungston nach jedem ESP32-Neustart ein zufälliger normaler Track aus 3…N gewählt; anschließend läuft die bisherige zyklische Reihenfolge weiter
+- wenn das DY-SV17F keine Trackanzahl meldet, bleibt der eingestellte feste Basiston der Fallback; keine zusätzlichen Flash-Schreibzugriffe
+
 - physischen Arbeitszyklus auf DI1/GPIO13 nach Praxistest neu integriert; der verzögerte Pending-Kandidaten-Ansatz des 3.6.0-Teststands wurde entfernt
 - erster kurzer Druck startet den Zyklus weiterhin ohne Unterbrechung, erzeugt jetzt aber weder Anti-Spam-Ton noch eine 10-Sekunden-Sperre
 - jeder gültige kurze Druck im aktiven Zyklus wird sofort über den bewährten Unterbrechungspfad gespeichert, gezählt, angezeigt und mit einem normalen Track ab 3 bestätigt
