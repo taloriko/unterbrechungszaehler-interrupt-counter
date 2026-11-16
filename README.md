@@ -3,7 +3,7 @@
 > [!WARNING]
 > **KI-Hinweis:** Dieses Projekt wurde maßgeblich mit Unterstützung von KI erstellt, anschließend aber praktisch getestet, überarbeitet und weiterentwickelt. Wer KI-generierten Code grundsätzlich nicht mag, darf natürlich trotzdem den Taster drücken. ;-)
 
-> **Aktueller Stand:** `3.6.1`
+> **Entwicklungskandidat:** `3.6.8` – vor der Freigabe auf Hardware testen
 
 [Deutsch](docs/de/README.md) · [English](docs/en/README.md) · [Schwäbisch](docs/swg/README.md)
 
@@ -24,21 +24,21 @@ Seit 3.6.x kommt eine wichtige Konkretisierung dazu: **Arbeitsbeginn und Arbeits
 > [!WARNING]
 > Ob die Daten deinen Chef anschließend interessieren, ist natürlich weiterhin eine völlig andere wissenschaftliche Fragestellung. ;-)
 
-## Neu in 3.6.1: Arbeitszyklus neu integriert
+## Arbeitszyklus ab 3.6.1, aktueller Kandidat 3.6.8
 
 Der vorhandene Taster auf **DI1/GPIO13** funktioniert jetzt bewusst direkt und ohne rückwirkende Klassifikation:
 
 1. **Erster kurzer Druck:** START des Arbeitszyklus – wird nicht als Unterbrechung gezählt.
 2. **Weitere kurze Drücke:** werden bei gültigem Abstand sofort als Unterbrechung gespeichert und erhalten sofort das normale Feedback.
 3. **Langer Druck ab 2 Sekunden:** beendet den Arbeitszyklus ausdrücklich und zählt nicht als Unterbrechung.
-4. **Kein langer Druck:** beim lokalen Tageswechsel wird der Zyklus automatisch geschlossen.
+4. **Kein langer Druck:** eine konfigurierbare lokale Uhrzeit schließt den offenen Zyklus automatisch (Standard **00:00 Uhr**). Die Tagesstatistik beginnt unabhängig davon um 00:00.
 5. Ein bereits erfasster kurzer Druck wird später **nicht mehr** zum Arbeitsende umgedeutet.
 
 Der in 3.6.0 ausprobierte Pending-/„letzter Druck wird später entschieden“-Ansatz wurde damit verworfen. Genau diese Verzögerung machte Zähler und Sound im Alltag unnötig schwer nachvollziehbar.
 
 ### Feierabend
 
-Ein langer Druck von mindestens **2 Sekunden** beendet den Arbeitszyklus sofort. Danach zeigt das SH1106 für **10 Sekunden**:
+Ab 250 ms Gedrückthalten erscheint bei gültiger lokaler Uhrzeit ein breiter Fortschrittsbalken. **Alles unter 2 Sekunden zählt bei aktivem Zyklus als normaler Unterbrechungsdruck**, auch ein abgebrochener Halteversuch. Erst mindestens **2 Sekunden Halten und anschließendes Loslassen** beendet den Zyklus. Danach zeigt das SH1106 für **10 Sekunden**:
 
 ```text
 FEIERABEND
@@ -47,7 +47,11 @@ FEIERABEND
 HEUTE UNTERBR.
 ```
 
-Während dieser Anzeige werden weitere physische Eingaben ignoriert und die normale Sekunden-/Home-Anzeige darf nicht dazwischen zeichnen. Beim automatischen Tagesabschluss bleibt das Display unverändert.
+Während dieser Anzeige werden weitere physische Eingaben ignoriert; anschließend zeigt die Standardansicht **PAUSE** im linken unteren Feld. Beim automatischen Abschluss erfolgt kein 10-Sekunden-Overlay, nur der Statuswechsel auf PAUSE.
+
+### Automatische Endzeit und Stromausfall
+
+Unter **Einstellungen → Arbeitszyklus** lässt sich die automatische Endzeit von `00:00` auf eine andere Uhrzeit ändern. Beginnt ein Zyklus erst nach der Endzeit, gilt die Endzeit des Folgetags. Wird das Gerät vor Ende ausgeschaltet, gibt es bewusst **keine Notstrompufferung**: Der offene Zyklus wird beim nächsten Start mit gültiger Uhrzeit geschlossen und dieser Wiederanlaufzeitpunkt als Abschluss gespeichert. Eine nachträgliche Rekonstruktion des tatsächlichen Ausschaltzeitpunkts findet nicht statt.
 
 ## Anti-Spam bleibt erhalten
 
@@ -65,7 +69,7 @@ Der lange Feierabend-Druck ist von der Sperre ausgenommen.
 
 ## Datenkompatibilität
 
-Die bestehende Unterbrechungsdatenbank bleibt in 3.6.1 bewusst unverändert:
+Die bestehende Unterbrechungsdatenbank bleibt auch in 3.6.8 bewusst unverändert:
 
 - **100.000 Raw-Records × 9 Byte**
 - **2.300 Tagesaggregate × 64 Byte**
@@ -129,7 +133,7 @@ Die Dateien kommen direkt ins Root-Verzeichnis des DY-SV17F. Ein Startpaket lieg
 5. **ESP32 Dev Module** auswählen, kompilieren und flashen.
 6. Morgens einmal kurz drücken: Der Arbeitszyklus startet – ohne Unterbrechungston und ohne Anti-Spam-Sperre.
 7. Unterbrechungen wie gewohnt kurz drücken; sie werden sofort erfasst.
-8. Zum Feierabend mindestens 2 Sekunden gedrückt halten. Falls das vergessen wird, schließt der Zyklus beim Tageswechsel automatisch.
+8. Zum Feierabend mindestens 2 Sekunden gedrückt halten. Falls das vergessen wird, schließt der Zyklus zur konfigurierten Endzeit automatisch.
 
 ## Technische Dokumentation
 
