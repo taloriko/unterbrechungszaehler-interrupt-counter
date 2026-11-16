@@ -140,9 +140,9 @@ void showCycleStart() {
       DisplaySh1106::bootScreenActive() || DisplaySh1106::manualTestActive()) return;
   const char *language = ProjectPreferences::language();
   const char *upper = "LOS";
-  const char *lower = "GEHTS!";
+  const char *lower = "GEHT\u0027S!";
   if (language && strcmp(language, "en") == 0) {
-    upper = "LETS"; lower = "GO!";
+    upper = "LET\u0027S"; lower = "GO!";
   } else if (language && strcmp(language, "fr") == 0) {
     upper = "C'EST"; lower = "PARTI!";
   } else if (language && strcmp(language, "it") == 0) {
