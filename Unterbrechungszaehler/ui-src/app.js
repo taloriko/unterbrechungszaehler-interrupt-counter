@@ -1233,6 +1233,66 @@
   };
   Object.entries(CYCLE_END_LABELS).forEach(([code, labels]) => Object.assign(I18N[code], labels));
 
+  const CYCLE_STATUS_LABELS = {
+    de: {
+      'cycle.settings.title': 'Arbeitszyklus', 'cycle.settings.desc': 'Arbeitsbeginn, Feierabend und automatische Beendigung',
+      'cycle.settings.explain': 'Dein erster kurzer Knopfdruck startet den Arbeitszyklus, ohne eine Unterbrechung zu zählen. Ein langer Druck (mindestens 2 Sekunden) beendet ihn manuell. Vergisst du den Feierabend, beendet diese Uhrzeit den noch offenen Zyklus automatisch.',
+      'cycle.settings.example': 'Beispiel: 17:00 beendet einen morgens gestarteten Zyklus um 17:00 Uhr. Startest du erst nach 17:00 Uhr, endet der Zyklus am Folgetag um 17:00 Uhr.',
+      'cycle.settings.calendar': 'Standard: 00:00 Uhr. Die Tagesstatistik beginnt unabhängig davon immer um 00:00 Uhr. Die Einstellung wird nur bei Änderungen im ESP32 gespeichert.',
+      'cycle.status.title': 'Arbeitszyklus', 'cycle.status.pause': 'PAUSE', 'cycle.status.pauseHint': 'Zyklus beendet · kurzer Knopfdruck startet neu',
+      'cycle.status.unknown': 'ZEIT UNBEKANNT', 'cycle.status.unknownHint': 'Lokale Uhrzeit prüfen'
+    },
+    en: {
+      'cycle.settings.title': 'Work cycle', 'cycle.settings.desc': 'Start, finish and automatic closure',
+      'cycle.settings.explain': 'Your first short physical press starts a work cycle without counting an interruption. Holding the button for at least 2 seconds ends it manually. If you forget to finish, this local time closes any open cycle automatically.',
+      'cycle.settings.example': 'Example: 17:00 ends a cycle started that morning at 17:00. Starting after 17:00 means the cycle ends at 17:00 the next day.',
+      'cycle.settings.calendar': 'Default: 00:00. Daily statistics still reset at midnight. The ESP32 stores this setting only when it changes.',
+      'cycle.status.title': 'Work cycle', 'cycle.status.pause': 'PAUSE', 'cycle.status.pauseHint': 'Cycle finished · short press starts again',
+      'cycle.status.unknown': 'TIME UNKNOWN', 'cycle.status.unknownHint': 'Check the local clock'
+    },
+    it: {
+      'cycle.settings.title': 'Ciclo di lavoro', 'cycle.settings.desc': 'Inizio, fine e chiusura automatica',
+      'cycle.settings.explain': 'La prima pressione breve avvia il ciclo senza contare un’interruzione. Una pressione lunga di almeno 2 secondi lo termina. Se dimentichi di chiuderlo, l’ora impostata termina automaticamente il ciclo aperto.',
+      'cycle.settings.example': 'Esempio: 17:00 chiude il ciclo iniziato al mattino. Un ciclo iniziato dopo le 17:00 termina alle 17:00 del giorno seguente.',
+      'cycle.settings.calendar': 'Predefinito: 00:00. Le statistiche giornaliere ripartono sempre a mezzanotte. Il valore viene salvato solo se cambia.',
+      'cycle.status.title': 'Ciclo di lavoro', 'cycle.status.pause': 'PAUSA', 'cycle.status.pauseHint': 'Ciclo terminato · premi brevemente per ripartire',
+      'cycle.status.unknown': 'ORA SCONOSCIUTA', 'cycle.status.unknownHint': 'Controlla l’ora locale'
+    },
+    fr: {
+      'cycle.settings.title': 'Cycle de travail', 'cycle.settings.desc': 'Début, fin et fermeture automatique',
+      'cycle.settings.explain': 'Le premier appui court démarre le cycle sans compter d’interruption. Un appui d’au moins 2 secondes le termine. En cas d’oubli, l’heure choisie ferme automatiquement le cycle encore ouvert.',
+      'cycle.settings.example': 'Exemple : 17:00 ferme un cycle commencé le matin. Un cycle démarré après 17:00 se termine à 17:00 le lendemain.',
+      'cycle.settings.calendar': 'Par défaut : 00:00. Les statistiques quotidiennes repartent toujours à minuit. Le réglage est enregistré seulement s’il change.',
+      'cycle.status.title': 'Cycle de travail', 'cycle.status.pause': 'PAUSE', 'cycle.status.pauseHint': 'Cycle terminé · appui court pour recommencer',
+      'cycle.status.unknown': 'HEURE INCONNUE', 'cycle.status.unknownHint': 'Vérifier l’heure locale'
+    },
+    swg: {
+      'cycle.settings.title': 'Arbeitstag', 'cycle.settings.desc': 'Start, Feierabend ond automatisch Schluss',
+      'cycle.settings.explain': 'Dr erschte kurze Druck macht dr Arbeitstag auf, zählt aber koi Unterbrechung. Zwei Sekunda lang drucka macht Feierabend. Vergissesch des, macht dia Uhrzeit dr offne Zyklus zua.',
+      'cycle.settings.example': 'Zum Beispiel: 17:00 macht dr Zyklus um fünfe zua. Fängsch erscht später a, isch erscht morga um fünfe Schluss.',
+      'cycle.settings.calendar': 'Standard 00:00. D Tagesstatistik startet trotzdem immer um Mitternacht. Speichera bloß beim Ändra.',
+      'cycle.status.title': 'Arbeitstag', 'cycle.status.pause': 'PAUSE', 'cycle.status.pauseHint': 'Feierabend · kurzer Druck startet wieder',
+      'cycle.status.unknown': 'ZEIT?', 'cycle.status.unknownHint': 'Uhrzeit prüafa'
+    },
+    'swg-alb': {
+      'cycle.settings.title': 'Arbeitstag', 'cycle.settings.desc': 'Aafanga, Feierabend ond automatisch Schluss',
+      'cycle.settings.explain': 'Dr erschte kurze Druck startet dr Zyklus, zählt aber net. Zwei Sekunda lang drucka macht Schluss. Sonst macht des dia eingstellte Uhrzeit.',
+      'cycle.settings.example': '17:00 macht dr morgends gstartete Zyklus zua. Fangsch noch fünfe a, gilt morga fünfe.',
+      'cycle.settings.calendar': 'Standard 00:00. D Statistik fängt trotzdem um Mitternacht a. Speichra bloß beim Ändra.',
+      'cycle.status.title': 'Arbeitstag', 'cycle.status.pause': 'PAUSE', 'cycle.status.pauseHint': 'Feierabend · kurzer Druck startet wieder',
+      'cycle.status.unknown': 'ZEIT?', 'cycle.status.unknownHint': 'Uhrzeit prüafa'
+    },
+    'swg-ob': {
+      'cycle.settings.title': 'Arbeitstag', 'cycle.settings.desc': 'Start, Feierabend ond automatisch Schluss',
+      'cycle.settings.explain': 'Dr erschte kurze Druck startet, zählt aber koi Unterbrechung. Lang drucka macht Feierabend. Sonst macht dia eingstellte Zeit dr Zyklus zua.',
+      'cycle.settings.example': '17:00 macht dr morgends gstartete Zyklus zua. Später starte heißt morga fünfe Schluss.',
+      'cycle.settings.calendar': 'Standard 00:00. D Tageszahl startet trotzdem um Mitternacht. Gspeichert wird bloß beim Ändra.',
+      'cycle.status.title': 'Arbeitstag', 'cycle.status.pause': 'PAUSE', 'cycle.status.pauseHint': 'Feierabend · kurzer Druck startet wieder',
+      'cycle.status.unknown': 'ZEIT?', 'cycle.status.unknownHint': 'Uhrzeit prüafa'
+    }
+  };
+  Object.entries(CYCLE_STATUS_LABELS).forEach(([code, labels]) => Object.assign(I18N[code], labels));
+
   const STORAGE_STATUS_LABELS = {
     de: { 'status.ready': 'Bereit', 'status.unavailable': 'Nicht verfügbar' },
     en: { 'status.ready': 'Ready', 'status.unavailable': 'Unavailable' },
@@ -1374,6 +1434,9 @@
       settings: {
         titleKey: 'view.settings.title', descriptionKey: 'view.settings.desc',
         cards: [
+          { id: 'cycle-settings', titleKey: 'cycle.settings.title', descriptionKey: 'cycle.settings.desc', icon: 'clock', width: 'full', components: [
+            { type: 'cycleSettings' }
+          ] },
           { id: 'project-settings', titleKey: 'project.settings.title', descriptionKey: 'project.settings.desc', icon: 'settings', width: 'full', components: [
             { type: 'projectSettings' }
           ] },
@@ -1485,7 +1548,7 @@
     status: { wifi: 'unknown', time: 'unknown', api: 'busy', gpio: 'disabled', rtc: 'disabled', display: 'disabled', audio: 'disabled', data: 'unknown' },
     connection: { deviceLoading: false, deviceRequested: false, deviceLoaded: false },
     device: {}, wifi: {}, memory: {}, hardware: { checking: false, modules: [] }, ota: { supported: null, currentBytes: 0, maxBytes: 0, headroomBytes: 0, usedPercent: 0 },
-    interruptions: { todayCount: 0, unassignedCount: 0, sequence: 0, persistedSequence: 0, pendingCount: 0, droppedCount: 0, storageState: 'unavailable', soundEnabled: true, last: { available: false }, focus: { timeValid: false, currentPhaseAvailable: false, longestTodayAvailable: false, longestWeekAvailable: false, trendPrevious60: 0, trendLast60: 0, trendDirection: 'stable' }, patterns: { evaluatedDays: 0, coverageComplete: true, quietSufficient: false, peakSufficient: false } },
+    interruptions: { todayCount: 0, unassignedCount: 0, sequence: 0, persistedSequence: 0, pendingCount: 0, droppedCount: 0, storageState: 'unavailable', soundEnabled: true, cycleState: 'time-unknown', last: { available: false }, focus: { timeValid: false, currentPhaseAvailable: false, longestTodayAvailable: false, longestWeekAvailable: false, trendPrevious60: 0, trendLast60: 0, trendDirection: 'stable' }, patterns: { evaluatedDays: 0, coverageComplete: true, quietSufficient: false, peakSufficient: false } },
     projectSettings: { soundEnabled: true, soundVolume: 100, soundMode: 'rotate', soundTrack: 3, soundTrackCount: 0, language: 'en', languageStored: false, displayEnabled: true, displayRotation180: false, displayFlashEnabled: true, displayMode: 'standard', displayBrightness: 65, displayDimAfterMinutes: 10, displayDimBrightness: 5, cycleEndTime: '00:00' },
     analytics: { loaded: false, loading: false, dirty: false, error: '', storage: null, hourly: null, monthWeek: null, yearMonth: null, hourlyMode: 'week', metric: 'count', source: 'all' },
     time: { valid: false, source: 'relative', quality: 'relative', epochMs: 0, syncPerf: 0 },
@@ -2328,16 +2391,31 @@
 
     const updateSummary = () => {
       count.textContent = String(state.interruptions.todayCount || 0);
-      lastValue.textContent = interruptionAgeText();
+      const cycleState = state.interruptions.cycleState || 'time-unknown';
       const last = state.interruptions.last || {};
-      const eventSourceKey = `event.source.${last.eventSource || 'unknown'}`;
-      lastMeta.textContent = last.available ? `${t(`time.source.${last.timeSource || 'relative'}`)} · ${t(eventSourceKey)}` : '';
+      if (cycleState === 'pause') {
+        lastLabel.textContent = t('cycle.status.title');
+        lastValue.textContent = t('cycle.status.pause');
+        lastMeta.textContent = t('cycle.status.pauseHint');
+        lastWrap.dataset.cycleState = 'pause';
+      } else if (cycleState === 'time-unknown') {
+        lastLabel.textContent = t('cycle.status.title');
+        lastValue.textContent = t('cycle.status.unknown');
+        lastMeta.textContent = t('cycle.status.unknownHint');
+        lastWrap.dataset.cycleState = 'unknown';
+      } else {
+        lastLabel.textContent = t('interruptions.last');
+        lastValue.textContent = interruptionAgeText();
+        const eventSourceKey = `event.source.${last.eventSource || 'unknown'}`;
+        lastMeta.textContent = last.available ? `${t(`time.source.${last.timeSource || 'relative'}`)} · ${t(eventSourceKey)}` : '';
+        lastWrap.dataset.cycleState = 'active';
+      }
       const pending = Number(state.interruptions.pendingCount || 0);
       const dropped = Number(state.interruptions.droppedCount || 0);
       status.textContent = dropped > 0 ? translatedCount('interruptions.dropped', dropped) : pending > 0 ? `${t('interruptions.pending')} (${pending})` : '';
       status.dataset.state = state.interruptions.storageState || 'unavailable';
     };
-    Bindings.add(['interruptions.todayCount','interruptions.pendingCount','interruptions.droppedCount','interruptions.storageState','interruptions.last','clock.tick'], updateSummary);
+    Bindings.add(['interruptions.todayCount','interruptions.pendingCount','interruptions.droppedCount','interruptions.storageState','interruptions.last','interruptions.cycleState','clock.tick'], updateSummary);
     return root;
   }
 
@@ -2501,11 +2579,6 @@
     addRange(displayGrid, 'displayDimBrightness', 'project.displayDimBrightness', 0, 100);
     addHardwareAction(displayGrid, 'display', 'test', 'action.displayTest', 'display');
 
-    const cycleGrid = addSection('project.section.cycle');
-    addTime(cycleGrid, 'cycleEndTime', 'project.cycleEndTime');
-    const cycleHint = el('div', 'form-note project-setting-note');
-    cycleHint.textContent = t('project.cycleEndHint'); cycleGrid.append(cycleHint);
-
     const feedbackGrid = addSection('project.section.displayFeedback');
     addSwitch(feedbackGrid, 'displayFlashEnabled', 'project.displayFlash');
 
@@ -2540,6 +2613,27 @@
         : `${t('project.soundTrackHint')} ${t('project.soundTracksUnknown')}`;
     };
     Bindings.add('projectSettings', update);
+    return root;
+  }
+
+  // A dedicated settings card, separate from hardware feedback.
+  function renderCycleSettings() {
+    const root = el('div', 'project-settings');
+    const heading = el('p', 'cycle-settings-intro'); heading.textContent = t('cycle.settings.explain');
+    const control = el('label', 'project-setting-row cycle-time-setting');
+    const name = el('span', 'project-setting-label'); name.textContent = t('project.cycleEndTime');
+    const input = el('input', 'project-setting-input');
+    input.type = 'time'; input.step = '60'; input.required = true;
+    input.dataset.projectSetting = 'cycleEndTime';
+    control.append(name, input);
+    const example = el('p', 'form-note cycle-settings-note'); example.textContent = t('cycle.settings.example');
+    const clarification = el('p', 'form-note cycle-settings-note'); clarification.textContent = t('cycle.settings.calendar');
+    const status = el('div', 'project-setting-message'); status.dataset.projectSettingMessage = '1';
+    status.setAttribute('aria-live', 'polite');
+    root.append(heading, control, example, clarification, status);
+    Bindings.add('projectSettings', () => {
+      if (document.activeElement !== input) input.value = state.projectSettings.cycleEndTime || '00:00';
+    });
     return root;
   }
 
@@ -2778,7 +2872,7 @@
   }
 
   function renderComponent(def) {
-    const renderers = { kv: renderKv, status: renderStatus, meter: renderMeter, select: renderSelect, switch: renderSwitch, action: renderAction, upload: renderUpload, hardware: renderHardware, timeManagement: renderTimeManagement, notice: renderNotice, list: renderList, interruptionHome: renderInterruptionHome, focusInsights: renderFocusInsights, workPatterns: renderWorkPatterns, projectSettings: renderProjectSettings, heatmapHourly: renderHeatmapHourly, heatmapMonthWeek: renderHeatmapMonthWeek, heatmapYearMonth: renderHeatmapYearMonth, analyticsStorage: renderAnalyticsStorage };
+    const renderers = { kv: renderKv, status: renderStatus, meter: renderMeter, select: renderSelect, switch: renderSwitch, action: renderAction, upload: renderUpload, hardware: renderHardware, timeManagement: renderTimeManagement, notice: renderNotice, list: renderList, interruptionHome: renderInterruptionHome, focusInsights: renderFocusInsights, workPatterns: renderWorkPatterns, projectSettings: renderProjectSettings, cycleSettings: renderCycleSettings, heatmapHourly: renderHeatmapHourly, heatmapMonthWeek: renderHeatmapMonthWeek, heatmapYearMonth: renderHeatmapYearMonth, analyticsStorage: renderAnalyticsStorage };
     const renderer = renderers[def.type];
     return renderer ? renderer(def) : null;
   }
@@ -2986,7 +3080,7 @@
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 2500);
       try {
-        const response = await fetch(`/api/interruptions/live?since=${encodeURIComponent(state.interruptions.revision || state.interruptions.sequence || 0)}`, { cache: 'no-store', headers: { Accept: 'application/json' }, signal: controller.signal });
+        const response = await fetch(`/api/interruptions/live?since=${encodeURIComponent(state.interruptions.revision || state.interruptions.sequence || 0)}&cycle=${encodeURIComponent(state.interruptions.cycleState || 'time-unknown')}`, { cache: 'no-store', headers: { Accept: 'application/json' }, signal: controller.signal });
         if (response.status === 204) return;
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const data = await response.json();
