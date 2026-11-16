@@ -1,3 +1,11 @@
+# Release 3.6.5
+
+- Die Einstellung "Automatisches Zyklusende" liegt in einer eigenen, ausfuehrlich erklaerten Arbeitszyklus-Karte.
+- OLED-Standardansicht: beim aktiven Zyklus links unten die letzte Unterbrechung, nach manuellem oder automatischem Ende "PAUSE". "FEIERABEND" bleibt zuvor fuer 10 Sekunden.
+- Web-Startseite: dasselbe Signal "PAUSE" mit Erklaerung, sobald der Arbeitszyklus geschlossen ist. Bei ungueltiger lokaler Uhrzeit ein eigener Status statt falsch suggerierter Pause.
+- Zyklusstatus nutzt bestehende Live-Abfrage, kein neuer Hintergrundtimer; Datenformate und Flash-Schreibstrategie unveraendert.
+- Alle sieben UI-Sprachen aktualisiert.
+
 # Release 3.6.4
 
 - OLED TV-Anti-Spam-Animation zeigt grosse lesbare Warnung in einer oder zwei Zeilen, bei allen Animationsbildern.
