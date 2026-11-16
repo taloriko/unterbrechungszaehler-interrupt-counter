@@ -10,6 +10,7 @@
 #include "project_time.h"
 #include "time_service.h"
 #include "wifi_module.h"
+#include "work_cycle.h"
 
 namespace DisplayViews {
 namespace {
@@ -29,6 +30,7 @@ uint64_t lastIntervalSum = UINT64_MAX;
 uint32_t lastIntervalSamples = UINT32_MAX;
 bool lastWifi = false;
 bool lastTimeOk = false;
+char lastCycleState[16] = "";
 char lastAge[16] = "";
 ProjectPreferences::DisplayMode lastMode = ProjectPreferences::DisplayMode::Standard;
 int16_t lastContrast = -1;
@@ -216,15 +218,25 @@ bool renderStandard(const InterruptionTypes::Summary &summary, const char *age, 
   drawLargeWifiIcon(5, 5, wifi);
   drawLargeTimeIcon(35, 5, timeOk);
 
-  // Lower left: elapsed time since the last interruption, without a clock time.
-  DisplaySh1106::drawText(2, 34, labels().last);
-  const char *shownAge = age && *age ? age : "--";
-  const uint8_t ageScale = fittedScale(shownAge, 3, 58, 21);
-  const size_t ageLength = strlen(shownAge);
-  const int16_t ageWidth = static_cast<int16_t>(ageLength * 6U * ageScale - ageScale);
-  const int16_t ageX = static_cast<int16_t>((splitX - ageWidth) / 2);
-  const int16_t ageY = static_cast<int16_t>(43 + (21 - 7 * ageScale) / 2);
-  DisplaySh1106::drawTextScaled(ageX, ageY, shownAge, ageScale);
+  // Lower left reflects the work-cycle state. The last interruption age
+  // remains available while active; no additional persisted display data.
+  const char *cycle = WorkCycle::stateName();
+  if (strcmp(cycle, "pause") == 0) {
+    DisplaySh1106::drawText(2, 35, "ZYKLUS");
+    DisplaySh1106::drawTextScaled(2, 46, "PAUSE", 2);
+  } else if (strcmp(cycle, "time-unknown") == 0) {
+    DisplaySh1106::drawText(2, 35, "ZEIT?");
+    DisplaySh1106::drawText(2, 48, "--");
+  } else {
+    DisplaySh1106::drawText(2, 34, labels().last);
+    const char *shownAge = age && *age ? age : "--";
+    const uint8_t ageScale = fittedScale(shownAge, 3, 58, 21);
+    const size_t ageLength = strlen(shownAge);
+    const int16_t ageWidth = static_cast<int16_t>(ageLength * 6U * ageScale - ageScale);
+    const int16_t ageX = static_cast<int16_t>((splitX - ageWidth) / 2);
+    const int16_t ageY = static_cast<int16_t>(43 + (21 - 7 * ageScale) / 2);
+    DisplaySh1106::drawTextScaled(ageX, ageY, shownAge, ageScale);
+  }
 
   // Right: choose the widest fit for 1..10 digits while filling the height.
   // Separate X/Y scaling prevents multi-digit values from shrinking in height.
@@ -599,7 +611,8 @@ void update(const InterruptionTypes::Summary &summary) {
   const bool changed = summary.todayCount != lastCount ||
                        summary.todayIntervalSumSeconds != lastIntervalSum ||
                        summary.todayIntervalSamples != lastIntervalSamples ||
-                       wifi != lastWifi || timeOk != lastTimeOk || strcmp(age, lastAge) != 0 || mode != lastMode;
+                       wifi != lastWifi || timeOk != lastTimeOk || strcmp(age, lastAge) != 0 ||
+                       strcmp(WorkCycle::stateName(), lastCycleState) != 0 || mode != lastMode;
   if (!renderRequested && !changed) return;
 
   if (renderHome(summary, age, wifi, timeOk)) {
@@ -608,6 +621,8 @@ void update(const InterruptionTypes::Summary &summary) {
     lastIntervalSamples = summary.todayIntervalSamples;
     lastWifi = wifi;
     lastTimeOk = timeOk;
+    strncpy(lastCycleState, WorkCycle::stateName(), sizeof(lastCycleState) - 1U);
+    lastCycleState[sizeof(lastCycleState) - 1U] = '\0';
     lastMode = mode;
     strncpy(lastAge, age, sizeof(lastAge) - 1);
     lastAge[sizeof(lastAge) - 1] = '\0';
