@@ -1,3 +1,12 @@
+# Release 3.6.4
+
+- OLED TV-Anti-Spam-Animation zeigt grosse lesbare Warnung in einer oder zwei Zeilen, bei allen Animationsbildern.
+- Beim Start des Zyklus erscheint fuer zwei Sekunden ein grosses lokalisiertes "LOS GEHT'S!" (kein Zaehlen, kein normaler Ton, keine Anti-Spam-Sperre).
+- Einstellbare automatische Endzeit der Arbeitszyklen in der Weboberflaeche (HH:MM, Standard 00:00); ein Start nach der Endzeit laeuft bis zur Endzeit des folgenden lokalen Tages.
+- Der normale Kalendertag fuer Tageszaehler/Analytik wechselt unveraendert um 00:00; manueller Abschluss per langem Druck bleibt.
+- Ein einzelner kompakter NVS-Wert wird nur nach tatsaechlicher Aenderung geschrieben; keine Aenderung bestehender Ring-/Aggregat-/Zyklusdatenformate.
+- Firmware-Build erzeugt das deterministische Web-Asset vor dem Kompilieren neu.
+
 # Release 3.6.3
 
 - Standard-OLED links oben nur noch zwei gross dargestellte Icons fuer WLAN und gueltige Uhrzeit
