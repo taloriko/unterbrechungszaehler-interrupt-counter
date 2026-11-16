@@ -23,6 +23,8 @@ constexpr char TIMEZONE_POSIX[] = "CET-1CEST,M3.5.0,M10.5.0/3";
 // cycle explicitly; if that is forgotten, the cycle closes at the next local
 // calendar-day transition without reclassifying a real interruption afterward.
 constexpr uint32_t WORK_CYCLE_LONG_PRESS_MS = 2000;
+constexpr uint32_t WORK_CYCLE_HOLD_FEEDBACK_AFTER_MS = 250;
+constexpr uint32_t WORK_CYCLE_HOLD_FEEDBACK_FRAME_MS = 85;
 constexpr uint32_t WORK_CYCLE_GOODBYE_DISPLAY_MS = 10000;
 constexpr uint32_t WORK_CYCLE_START_DISPLAY_MS = 2000;
 // Local HH:MM minutes after midnight; daily counters still reset at 00:00.
