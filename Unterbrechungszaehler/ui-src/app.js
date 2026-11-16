@@ -3063,13 +3063,13 @@
           Bindings.notify('projectSettings');
         }
         if (data.summary) applyInterruptionSummary(data.summary);
-        const message = document.querySelector('[data-project-setting-message]');
+        const message = input?.closest('.project-settings')?.querySelector('[data-project-setting-message]') || null;
         if (message) { message.textContent = ''; message.dataset.state = 'ok'; }
         return true;
       } catch (error) {
         console.warn('Project preference failed:', field, error);
         Bindings.notify('projectSettings');
-        const message = document.querySelector('[data-project-setting-message]');
+        const message = input?.closest('.project-settings')?.querySelector('[data-project-setting-message]') || null;
         if (message) { message.textContent = t('project.preferenceError'); message.dataset.state = 'error'; }
         return false;
       } finally { if (input) input.disabled = false; }
