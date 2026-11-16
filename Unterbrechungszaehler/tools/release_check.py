@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.6.7."""
+"""Portable release checks for Unterbrechungszaehler 3.6.8."""
 from __future__ import annotations
 
 import gzip
@@ -68,7 +68,7 @@ def main() -> None:
 
     # Identity / frozen platform invariants.
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.6.7"' in config, "project version 3.6.7")
+    check('SOFTWARE_VERSION[] = "3.6.8"' in config, "project version 3.6.8")
     check("RAW_EVENT_CAPACITY = 100000" in project and "RAW_RECORD_SIZE = 9" in project, "100,000 x 9-byte raw ring unchanged")
     check("DAILY_AGGREGATE_CAPACITY = 2300" in project and "DAILY_RECORD_SIZE = 64" in project, "daily aggregate format unchanged")
     check("PENDING_EVENT_CAPACITY = 64" in project, "fixed 64-event persistence queue")
@@ -123,7 +123,20 @@ def main() -> None:
     check('strcmp(language, "swg-alb") == 0' in cycle and 'strcmp(language, "swg-ob") == 0' in cycle,
           "regional Swabian messages handled separately")
 
-    # 3.6.7: responsive but interruptible manual farewell preview.
+    # 3.6.8 approved release corrections.
+    check("uint16_t pendingRotatingTrack = 0;" in service and
+          "if (AudioDySv17f::playTrack(track)) {" in service and
+          "lastRotatingTrack = track;" in service,
+          "normal audio track advances only after accepted playback command")
+    check("holdPreviewTimeValid = currentLocal(pressEpochSeconds, pressLocal)" in cycle and
+          "state.active && holdPreviewTimeValid && !goodbyeActive" in cycle,
+          "farewell hold preview is gated by a single valid-clock check on press")
+    check("input?.closest('.project-settings')?.querySelector('[data-project-setting-message]')" in JS,
+          "settings save messages scoped to their own cards")
+    check("handleShortPress(nowMs, epochSeconds, local)" in cycle,
+          "under-two-second presses still use interruption capture")
+
+    # 3.6.8: responsive but interruptible manual farewell preview.
     check("WORK_CYCLE_HOLD_FEEDBACK_AFTER_MS = 250" in project,
           "farewell hold feedback starts after 250ms")
     check("WORK_CYCLE_HOLD_FEEDBACK_FRAME_MS = 85" in project,
