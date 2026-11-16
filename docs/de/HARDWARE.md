@@ -1,4 +1,4 @@
-# Hardware – Unterbrechungszähler 3.1.0
+# Hardware – Unterbrechungszähler
 
 Zielplattform ist ein klassisches **ESP32 Dev Module / ESP32-WROOM-32(E)**.
 
