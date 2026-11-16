@@ -9,19 +9,6 @@
 
 ---
 
-## What's new in 3.6.8: work cycle, OLED and sound
-
-- The **first short physical press** starts a work cycle without recording an interruption; the OLED briefly displays a localized start message.
-- Subsequent short presses during an active cycle count as interruptions, subject to the existing 10-second cooldown. **Any press shorter than two seconds is a short press**, even when the finish-progress preview was visible.
-- After 250 ms of holding, the OLED shows a finish-progress bar when local time is valid. Holding for **at least two seconds and then releasing** ends the cycle; the screen displays the finish message for 10 seconds, then **PAUSE**.
-- **Settings → Work cycle** provides a configurable automatic local end time (`HH:MM`, default **00:00**). Daily statistics continue to roll over at midnight.
-- After loss of power, an open cycle is closed when the device resumes with valid time; the restart time is recorded as the end time.
-- The standard SH1106 view has a large dynamically sized daily count on the right, Wi-Fi and clock icons at upper left, and elapsed time since the last interruption or cycle **PAUSE** at lower left.
-- Normal audio rotation chooses a random starting track from **3 through N** after each reboot, then plays sequentially. If the track count is unavailable, the configured base track is used. Track 1 is for boot/test; track 2 is for anti-spam.
-- The web UI and new OLED work-cycle messages support German, English, Italian, French and three Swabian variants. The web-triggered interruption button remains independent of the physical work cycle.
-
-Existing stored event formats, saved settings, heatmaps, CSV export, audio files and other OLED modes remain available. The application can be updated using its existing OTA interface.
-
 ## What do I need this thing for?
 
 **You are sitting at your desk, focused on a task.**
