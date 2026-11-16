@@ -1,3 +1,9 @@
+# Release 3.6.7
+
+- OLED-Zyklustexte in DE/EN/IT/FR und drei schwaebischen Varianten: START, Haltebalken, Loslassen, FEIERABEND, PAUSE und unbekannte Zeit.
+- Kompakte, statische Sprachtexte ohne neue Heap-Allokation oder Display-Puffer.
+- Zaehlung, Arbeitszyklus- und Datenformate unveraendert.
+
 # Release 3.6.6
 
 - Bei einem aktiven Arbeitszyklus erscheint nach 250 ms ununterbrochenem Halten des physischen Knopfes eine OLED-Vorschau: FEIERABEND, breiter Fortschrittsbalken und lokalisierte Aufforderung.
