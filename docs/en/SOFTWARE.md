@@ -1,4 +1,4 @@
-# Software, Build and Flashing – 3.0.1
+# Software, Build and Flashing
 
 ## Requirements
 
