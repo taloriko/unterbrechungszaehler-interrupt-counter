@@ -40,6 +40,8 @@ uint32_t buttonDownMs = 0;
 bool goodbyeActive = false;
 uint32_t goodbyeUntilMs = 0;
 uint32_t nextGoodbyeRenderMs = 0;
+bool startDisplayActive = false;
+uint32_t startDisplayUntilMs = 0;
 
 bool due(uint32_t now, uint32_t deadline) {
   return static_cast<int32_t>(now - deadline) >= 0;
@@ -118,6 +120,46 @@ void showSuppressed(uint32_t nowMs) {
                    static_cast<unsigned long>(remaining));
 }
 
+// A cycle's configured deadline belongs to the start day when it is still
+// ahead of the starting minute; otherwise it belongs to the next local day.
+// This calculation uses only integer calendar fields and the existing RTC.
+bool cycleDeadlineReached(const ProjectTime::LocalDateTime &nowLocal) {
+  if (!state.active) return false;
+  ProjectTime::LocalDateTime startLocal;
+  if (!ProjectTime::fromEpochSeconds(state.startEpochSeconds, startLocal)) return false;
+  const uint16_t cutoff = ProjectPreferences::workCycleEndMinute();
+  const uint16_t startedAt = static_cast<uint16_t>(startLocal.hour * 60U + startLocal.minute);
+  const uint16_t deadlineDay = static_cast<uint16_t>(startLocal.dayIndex + (startedAt >= cutoff ? 1U : 0U));
+  const uint16_t nowMinute = static_cast<uint16_t>(nowLocal.hour * 60U + nowLocal.minute);
+  return nowLocal.dayIndex > deadlineDay ||
+         (nowLocal.dayIndex == deadlineDay && nowMinute >= cutoff);
+}
+
+void showCycleStart() {
+  if (!ProjectPreferences::displayEnabled() || !DisplaySh1106::enabled() || !DisplaySh1106::detected() ||
+      DisplaySh1106::bootScreenActive() || DisplaySh1106::manualTestActive()) return;
+  const char *language = ProjectPreferences::language();
+  const char *upper = "LOS";
+  const char *lower = "GEHT\u0027S!";
+  if (language && strcmp(language, "en") == 0) {
+    upper = "LET\u0027S"; lower = "GO!";
+  } else if (language && strcmp(language, "fr") == 0) {
+    upper = "C'EST"; lower = "PARTI!";
+  } else if (language && strcmp(language, "it") == 0) {
+    upper = "SI"; lower = "PARTE!";
+  } else if (language && strncmp(language, "swg", 3) == 0) {
+    upper = "AUF"; lower = "GEHTS!";
+  }
+  DisplaySh1106::setPower(true);
+  DisplaySh1106::setInverted(false);
+  DisplaySh1106::frameClear();
+  const int16_t upperWidth = static_cast<int16_t>(strlen(upper) * 12U - 2U);
+  const int16_t lowerWidth = static_cast<int16_t>(strlen(lower) * 12U - 2U);
+  DisplaySh1106::drawTextScaled((128 - upperWidth) / 2, 11, upper, 2);
+  DisplaySh1106::drawTextScaled((128 - lowerWidth) / 2, 35, lower, 2);
+  DisplaySh1106::present();
+}
+
 void startCycle(uint32_t epochSeconds, const ProjectTime::LocalDateTime &local) {
   state.magic = STATE_MAGIC;
   state.active = 1;
@@ -129,6 +171,9 @@ void startCycle(uint32_t epochSeconds, const ProjectTime::LocalDateTime &local) 
   shortPressGuard = PhysicalButtonGuard::State{};
   saveState();
   appendJournal(epochSeconds, local.dayIndex, JOURNAL_START, 0);
+  startDisplayActive = true;
+  startDisplayUntilMs = millis() + ProjectConfig::WORK_CYCLE_START_DISPLAY_MS;
+  showCycleStart();
 
   SerialLog::successf("CYCLE", "Work cycle started | day=%u | epoch=%lu",
                       static_cast<unsigned int>(local.dayIndex),
@@ -209,6 +254,7 @@ void finalizeManualEnd(uint32_t epochSeconds) {
                       static_cast<unsigned int>(state.dayIndex),
                       static_cast<unsigned long>(InterruptionService::summary().todayCount));
   clearCycleState();
+  startDisplayActive = false;
   beginGoodbye();
 }
 
@@ -235,7 +281,7 @@ void handleShortPress(uint32_t nowMs, uint32_t epochSeconds, const ProjectTime::
     return;
   }
 
-  if (local.dayIndex != state.dayIndex) {
+  if (cycleDeadlineReached(local)) {
     finalizeAutomaticEnd(epochSeconds);
     startCycle(epochSeconds, local);
     return;
@@ -252,6 +298,10 @@ void onGpioChanged(const char *channelId, bool logicalState) {
   // starts a fresh cycle normally.
   if (goodbyeActive) return;
 
+  if (startDisplayActive) {
+    startDisplayActive = false;
+    DisplayViews::requestHomeRefresh();
+  }
   const uint32_t nowMs = millis();
   if (logicalState) {
     buttonDown = true;
@@ -296,7 +346,7 @@ void begin() {
 
   uint32_t epochSeconds = 0;
   ProjectTime::LocalDateTime local;
-  if (state.active && currentLocal(epochSeconds, local) && local.dayIndex != state.dayIndex) {
+  if (state.active && currentLocal(epochSeconds, local) && cycleDeadlineReached(local)) {
     finalizeAutomaticEnd(epochSeconds);
   }
 
@@ -307,14 +357,18 @@ void begin() {
 }
 
 void update() {
+  const uint32_t nowMs = millis();
+  if (startDisplayActive && due(nowMs, startDisplayUntilMs)) {
+    startDisplayActive = false;
+    DisplayViews::requestHomeRefresh();
+  }
   uint32_t epochSeconds = 0;
   ProjectTime::LocalDateTime local;
-  if (state.active && currentLocal(epochSeconds, local) && local.dayIndex != state.dayIndex) {
+  if (state.active && currentLocal(epochSeconds, local) && cycleDeadlineReached(local)) {
     finalizeAutomaticEnd(epochSeconds);
   }
 
   if (!goodbyeActive) return;
-  const uint32_t nowMs = millis();
   if (due(nowMs, goodbyeUntilMs)) {
     goodbyeActive = false;
     DisplayViews::requestHomeRefresh();
@@ -328,6 +382,7 @@ void update() {
 }
 
 bool exclusiveGoodbyeActive() { return goodbyeActive; }
+bool exclusiveDisplayActive() { return goodbyeActive || startDisplayActive; }
 uint32_t suppressedPhysicalPressCount() { return shortPressGuard.suppressedCount; }
 bool hasSuppressedPhysicalPress() { return shortPressGuard.hasSuppressed; }
 uint32_t lastSuppressedPhysicalPressMs() { return shortPressGuard.lastSuppressedMs; }

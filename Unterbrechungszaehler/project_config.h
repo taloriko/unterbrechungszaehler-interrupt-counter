@@ -24,6 +24,9 @@ constexpr char TIMEZONE_POSIX[] = "CET-1CEST,M3.5.0,M10.5.0/3";
 // calendar-day transition without reclassifying a real interruption afterward.
 constexpr uint32_t WORK_CYCLE_LONG_PRESS_MS = 2000;
 constexpr uint32_t WORK_CYCLE_GOODBYE_DISPLAY_MS = 10000;
+constexpr uint32_t WORK_CYCLE_START_DISPLAY_MS = 2000;
+// Local HH:MM minutes after midnight; daily counters still reset at 00:00.
+constexpr uint16_t WORK_CYCLE_END_DEFAULT_MINUTE = 0;
 constexpr char WORK_CYCLE_PREF_NAMESPACE[] = "interruptcyc";
 
 // Feedback is independent from persistence: the event is captured first, then

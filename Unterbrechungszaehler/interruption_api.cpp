@@ -68,7 +68,13 @@ void appendProjectPreferencesObjectInternal(String &out) {
   fieldString(out, "displayMode", ProjectPreferences::displayModeName());
   fieldUInt(out, "displayBrightness", ProjectPreferences::displayBrightnessPercent());
   fieldUInt(out, "displayDimAfterMinutes", ProjectPreferences::displayDimAfterMinutes());
-  fieldUInt(out, "displayDimBrightness", ProjectPreferences::displayDimBrightnessPercent(), false);
+  fieldUInt(out, "displayDimBrightness", ProjectPreferences::displayDimBrightnessPercent());
+  const uint16_t cycleMinute = ProjectPreferences::workCycleEndMinute();
+  char cycleEnd[6];
+  snprintf(cycleEnd, sizeof(cycleEnd), "%02u:%02u",
+           static_cast<unsigned int>(cycleMinute / 60U),
+           static_cast<unsigned int>(cycleMinute % 60U));
+  fieldString(out, "cycleEndTime", cycleEnd, false);
   out += '}';
 }
 

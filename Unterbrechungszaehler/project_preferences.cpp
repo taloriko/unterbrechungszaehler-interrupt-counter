@@ -10,6 +10,7 @@
 namespace ProjectPreferences {
 namespace {
 bool initialized = false;
+uint16_t cycleEndMinute = ProjectConfig::WORK_CYCLE_END_DEFAULT_MINUTE;
 bool sound = ProjectConfig::INTERRUPTION_SOUND_DEFAULT;
 uint8_t soundVolume = ProjectConfig::SOUND_VOLUME_DEFAULT_PERCENT;
 uint16_t track = ProjectConfig::INTERRUPTION_SOUND_TRACK_DEFAULT;
@@ -94,6 +95,8 @@ void begin() {
     SerialLog::warning("PROJECT", "Project Preferences unavailable; using defaults");
     return;
   }
+  cycleEndMinute = prefs.getUShort("cycleend", ProjectConfig::WORK_CYCLE_END_DEFAULT_MINUTE);
+  if (cycleEndMinute >= 1440U) cycleEndMinute = ProjectConfig::WORK_CYCLE_END_DEFAULT_MINUTE;
   sound = prefs.getBool("sound", ProjectConfig::INTERRUPTION_SOUND_DEFAULT);
   soundVolume = prefs.getUChar("sndvol", ProjectConfig::SOUND_VOLUME_DEFAULT_PERCENT);
   if (soundVolume > 100) soundVolume = ProjectConfig::SOUND_VOLUME_DEFAULT_PERCENT;
@@ -132,6 +135,19 @@ void begin() {
   SerialLog::infof("PROJECT", "Display settings | language=%s | brightness=%u%% | dim-after=%u min | dim-brightness=%u%%",
                    languageValue, static_cast<unsigned int>(brightness), static_cast<unsigned int>(dimAfterMinutes),
                    static_cast<unsigned int>(dimBrightness));
+}
+
+uint16_t workCycleEndMinute() { return cycleEndMinute; }
+
+bool setWorkCycleEndMinute(uint16_t minute) {
+  if (minute >= 1440U) return false;
+  if (cycleEndMinute == minute) return true; // No redundant NVS writes.
+  if (!persistUShort("cycleend", minute)) return false;
+  cycleEndMinute = minute;
+  SerialLog::infof("CYCLE", "Automatic end time changed | %02u:%02u local",
+                   static_cast<unsigned int>(minute / 60U),
+                   static_cast<unsigned int>(minute % 60U));
+  return true;
 }
 
 bool soundEnabled() { return sound; }

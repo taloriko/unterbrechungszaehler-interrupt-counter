@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.6.4
+
+- "ZU SCHNELL!"-OLED-Animation mit dauerhaft gut lesbarem zweifach vergroessertem, ggf. zweizeiligem Text bei weiterhin vorhandenem TV-Flimmern; fehlende Ausrufezeichen-/Apostroph-Glyphen ergaenzt
+- beim ersten kurzen Tastendruck eines Arbeitszyklus zwei Sekunden grosse "LOS GEHT'S!"-Meldung (sprachabhaengig, ohne Unterbrechung oder Anti-Spam-Sperre)
+- unter Einstellungen > Projekteinstellungen neue einstellbare lokale automatische Zyklus-Endzeit (HH:MM, Standard 00:00); bei Erreichen wird ein offener Zyklus beendet, auch nach Neustart
+- Zyklus kann weiterhin manuell durch mindestens zwei Sekunden langen Druck beendet werden; automatische Endzeit beeinflusst weder den Kalender-Tageswechsel der Statistik noch bereits gespeicherte Unterbrechungen
+- Uebersetzungen fuer DE/EN/IT/FR und drei schwaebische Varianten, kompakter 2-Byte-NVS-Wert nur bei Aenderung, keine neuen Timer/Tasks oder Datenmigration
+
 ## 3.6.3
 
 - SH1106-Standardansicht weiter entschlackt: links oben nur zwei groessere Statussymbole fuer WLAN und gueltige Uhrzeit; Speicher- und Soundicons entfallen dort

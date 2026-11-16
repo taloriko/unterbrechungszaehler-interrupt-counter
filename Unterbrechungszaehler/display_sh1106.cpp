@@ -32,7 +32,7 @@ uint8_t frameBuffer[(HardwareConfig::DISPLAY_WIDTH * HardwareConfig::DISPLAY_HEI
 
 // Compact 5x7 uppercase font. Only ASCII used by the reusable boot/test UI is
 // included; lowercase input is normalized to uppercase.
-const char FONT_CHARS[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-:/";
+const char FONT_CHARS[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-:/!'";
 const uint8_t FONT_DATA[][5] = {
   {0x00,0x00,0x00,0x00,0x00}, // space
   {0x7E,0x11,0x11,0x11,0x7E}, // A
@@ -75,6 +75,8 @@ const uint8_t FONT_DATA[][5] = {
   {0x08,0x08,0x08,0x08,0x08}, // -
   {0x00,0x36,0x36,0x00,0x00}, // :
   {0x20,0x10,0x08,0x04,0x02}, // /
+  {0x00,0x00,0x5F,0x00,0x00}, // !
+  {0x00,0x03,0x05,0x00,0x00}, // '
 };
 
 void setHealth(StatusRegistry::State state, const char *message = "") {

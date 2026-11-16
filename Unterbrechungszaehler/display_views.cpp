@@ -391,13 +391,34 @@ bool renderSpamFlickerFrame(uint8_t frame) {
   for (uint8_t i = 0; i < 6U; ++i) {
     const int16_t y = static_cast<int16_t>((phase * 7U + i * 11U) % 64U);
     const int16_t inset = static_cast<int16_t>((phase + i * 3U) % 15U);
-    DisplaySh1106::drawHLine(inset, 127 - inset, y);
+    // Avoid drawing scan lines through the central text band.
+    if (y < 13 || y > 50) DisplaySh1106::drawHLine(inset, 127 - inset, y);
   }
   if (phase == 1U || phase == 5U) {
-    DisplaySh1106::drawRect(3, 18, 122, 20);
-    for (int16_t x = 8; x < 124; x += 13) DisplaySh1106::drawVLine(x, 20, 35);
+    DisplaySh1106::drawRect(3, 2, 122, 10);
+    for (int16_t x = 8; x < 124; x += 13) DisplaySh1106::drawVLine(x, 4, 9);
   }
-  if ((phase & 1U) == 0U) DisplaySh1106::drawCenteredText(27, labels().tooFast);
+  // The middle is already blank from frameClear(); no costly pixel clearing.
+  char warning[24];
+  strncpy(warning, labels().tooFast, sizeof(warning) - 1U);
+  warning[sizeof(warning) - 1U] = '\0';
+  const size_t length = strlen(warning);
+  if (length <= 10U) {
+    drawCenteredScaledAt(warning, 25, 2, 126);
+  } else {
+    // Split at a word boundary, with both 2x lines fitting 128 pixels.
+    int8_t split = -1;
+    for (size_t i = 1; i < length; ++i) {
+      if (warning[i] == ' ' && i <= 10U && length - i - 1U <= 10U) split = static_cast<int8_t>(i);
+    }
+    if (split > 0) {
+      warning[split] = '\0';
+      drawCenteredScaledAt(warning, 16, 2, 126);
+      drawCenteredScaledAt(warning + split + 1, 35, 2, 126);
+    } else {
+      drawCenteredScaledAt(warning, 25, 1, 126);
+    }
+  }
 
   // Controller inversion adds a short vertical-sync-like flash without
   // rebuilding the framebuffer. Always restored when the effect ends.

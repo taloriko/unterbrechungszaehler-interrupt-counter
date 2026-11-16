@@ -65,7 +65,7 @@ void loop() {
   // the existing anti-spam lock semantics. Normal interruption UI servicing is
   // resumed immediately after the overlay ends.
   HardwareRegistry::update();
-  if (!WorkCycle::exclusiveGoodbyeActive()) {
+  if (!WorkCycle::exclusiveDisplayActive()) {
     InterruptionService::update();
   }
   WorkCycle::update();

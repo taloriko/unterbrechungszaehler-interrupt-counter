@@ -11,6 +11,8 @@ void update();
 // interaction/display path. Physical edges are ignored and normal interruption
 // display servicing resumes only after the overlay has ended.
 bool exclusiveGoodbyeActive();
+// Both short start acknowledgement and goodbye have exclusive OLED ownership.
+bool exclusiveDisplayActive();
 
 uint32_t suppressedPhysicalPressCount();
 bool hasSuppressedPhysicalPress();
