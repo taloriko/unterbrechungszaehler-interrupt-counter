@@ -212,7 +212,7 @@ bool renderStandard(const InterruptionTypes::Summary &summary, const char *age, 
   DisplaySh1106::drawTextScaled(2, 43, clockText, 2);
   // Age is an independent read-only value already computed by the existing
   // once-per-second display refresh; it does not add another polling loop.
-  DisplaySh1106::drawText(2, 58, age);
+  DisplaySh1106::drawText(2, 57, age);
 
   // Right: choose the widest fit for 1..10 digits while filling the height.
   // Separate X/Y scaling prevents multi-digit values from shrinking in height.
