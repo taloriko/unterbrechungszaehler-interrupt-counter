@@ -2,69 +2,16 @@
 
 ## 3.6.8
 
-- Wechselton: Trackwahl bei beschaeftigtem Audiomodul beibehalten; Rotation erst nach erfolgreicher Befehlsannahme weiterschalten
-- Feierabend-Haltevorschau nur bei gueltiger Uhrzeit beim Start des Tastendrucks, ohne weitere Zeitpruefung pro Animationsbild
-- Einstellungsfehlermeldungen nur in der zugehoerigen Karte anzeigen
-- eingechecktes Web-Bundle aus den aktuellen Quellen regenerieren fuer Arduino-IDE und GitHub-OTA
-- bewusst beibehalten: Druck unter 2 Sekunden zaehlt; seltene Gleichzeitigkeit beim automatischen Endzeitpunkt und Stromausfall-Randfaelle
-- alle sieben Sprachen und gespeicherten Messformate bleiben unveraendert
+- **Arbeitszyklus am vorhandenen Taster:** Der erste kurze Druck startet die Arbeit ohne Unterbrechungszählung. Weitere akzeptierte kurze Drücke erfassen Unterbrechungen; mindestens zwei Sekunden Halten und anschließendes Loslassen beendet den Arbeitszyklus. Die 10-Sekunden-Anti-Spam-Sperre für echte kurze Unterbrechungsdrücke bleibt bestehen.
+- **Konfigurierbarer automatischer Feierabend:** Neue eigene Karte unter **Einstellungen → Arbeitszyklus** mit einer verständlich erklärten lokalen Endzeit (HH:MM, standardmäßig 00:00). Der Kalendertageswechsel der Tagesstatistik bleibt unabhängig davon bei 00:00.
+- **OLED-Bedienfeedback:** Großes „LOS GEHT'S!“ zum Zyklusstart; ab 250 ms Halten bei gültiger Uhrzeit eine bildschirmbreite Feierabend-Fortschrittsanzeige bis zur Zwei-Sekunden-Grenze; anschließend zehn Sekunden Feierabendanzeige und Status „PAUSE“.
+- **Klarere SH1106-Standardansicht:** Rechts die dynamisch möglichst große heutige Unterbrechungszahl, links oben große WLAN-/Uhr-Symbole und links unten die Zeit seit der letzten Unterbrechung beziehungsweise der Zyklusstatus.
+- **Lesbares Anti-Spam-Feedback:** Größere, dauerhaft sichtbare und bei Bedarf zweizeilige Warnmeldung bei erhaltener TV-Flimmeranimation.
+- **Live-Status in der Weboberfläche:** Ein aktiver oder abgeschlossener Arbeitszyklus wird ohne zusätzliche Abfrage-Schleife im bestehenden Live-Verfahren angezeigt; die Projekteinstellungen und Arbeitszyklus-Einstellungen sind getrennt angeordnet.
+- **Wechselnde Unterbrechungstöne:** Nach jedem Neustart zufälliger erster regulärer Track 3…N, danach zyklische Wiedergabe; bei unbekannter Trackanzahl Verwendung des eingestellten Basistons. Track 1 bleibt Boot/Test und Track 2 Anti-Spam.
+- **Sprachen:** Neue OLED-Zyklustexte und Web-Einstellungen in Deutsch, Englisch, Italienisch, Französisch sowie Schwäbisch, Alb-Schwäbisch und Oberschwäbisch.
+- **Bestehende Daten und Hardware erhalten:** Unveränderte Raw-Events und Tagesaggregate, Auswertungen, CSV, weitere OLED-Modi, OTA-Partitionierung und bestehende GPIO-Belegung. Bei regulärem OTA-Update bleiben vorhandene NVS-/LittleFS-Daten erhalten.
 
-## 3.6.7
-
-- OLED-Zyklustexte fuer Start, Halten, Loslassen, Feierabend, Pause und unbekannte Zeit konsequent sprachabhaengig
-- DE/EN/IT/FR sowie drei schwaebische Sprachvarianten mit kurzen, OLED-tauglichen statischen Texten ohne neue Puffer
-- Unveraenderte Zyklus-/Unterbrechungslogik, Statistiken und persistente Datenformate
-
-## 3.6.6
-
-- Haltefeedback fuer den physischen Feierabenddruck: ab 250 ms erscheint bei aktivem Zyklus "FEIERABEND" mit Fortschrittsbalken ueber fast die gesamte OLED-Breite; 85-ms-Aktualisierung ohne Task oder Extra-Framebuffer
-- Fortschrittsbalken erreicht nach 2 Sekunden 100 Prozent; beim Loslassen vor Ablauf verschwindet die Vorschau, und der naechste Druck beginnt bei null
-- vollstaendiger 2-Sekunden-Druck beendet wie bisher erst nach dem Loslassen den Zyklus; danach folgt unveraendert die 10-Sekunden-Feierabendmeldung
-- mehrsprachige OLED-Aufforderung zum Weiterhalten/Loslassen in DE/EN/FR/IT/Schwaebisch, keine Veraenderung von Events, Statistiken, NVS und Arbeitszyklus-Journal
-
-## 3.6.5
-
-- eigene Karte "Arbeitszyklus" unter Einstellungen statt Integration ins Hardware-Feedback; lokale automatische Endzeit mit detaillierter Hilfe, Standard und Beispiel erklaert
-- Web-Startseite zeigt im Feld der letzten Unterbrechung "PAUSE" bei beendetem Arbeitszyklus und bei ungueltiger Uhrzeit einen separaten Hinweis; im aktiven Zyklus wieder die letzte Unterbrechung
-- auf dem OLED erscheint links unten nach den zehn Sekunden "FEIERABEND" deutlich "PAUSE"; grosse Tageszahl sowie WLAN- und Uhr-Symbole bleiben
-- vorhandene Live-HTTP-Abfrage meldet Zykluswechsel auch bei unveraenderter Unterbrechungsanzahl, ohne zusaetzlichen Timer, permanente Poller, Flash-Schreibvorgaenge oder Datenmigration
-- angepasste Uebersetzungen fuer alle sieben UI-Sprachen
-
-## 3.6.4
-
-- "ZU SCHNELL!"-OLED-Animation mit dauerhaft gut lesbarem zweifach vergroessertem, ggf. zweizeiligem Text bei weiterhin vorhandenem TV-Flimmern; fehlende Ausrufezeichen-/Apostroph-Glyphen ergaenzt
-- beim ersten kurzen Tastendruck eines Arbeitszyklus zwei Sekunden grosse "LOS GEHT'S!"-Meldung (sprachabhaengig, ohne Unterbrechung oder Anti-Spam-Sperre)
-- unter Einstellungen > Projekteinstellungen neue einstellbare lokale automatische Zyklus-Endzeit (HH:MM, Standard 00:00); bei Erreichen wird ein offener Zyklus beendet, auch nach Neustart
-- Zyklus kann weiterhin manuell durch mindestens zwei Sekunden langen Druck beendet werden; automatische Endzeit beeinflusst weder den Kalender-Tageswechsel der Statistik noch bereits gespeicherte Unterbrechungen
-- Uebersetzungen fuer DE/EN/IT/FR und drei schwaebische Varianten, kompakter 2-Byte-NVS-Wert nur bei Aenderung, keine neuen Timer/Tasks oder Datenmigration
-
-## 3.6.3
-
-- SH1106-Standardansicht weiter entschlackt: links oben nur zwei groessere Statussymbole fuer WLAN und gueltige Uhrzeit; Speicher- und Soundicons entfallen dort
-- links unten ausschliesslich die relative Dauer seit der letzten Unterbrechung, ohne absolute Uhrzeit; rechts weiterhin maximal grosser dynamisch skalierter Tageszaehler
-- bestehende Arbeitszyklus-, Sound-, Speicher- und Analysefunktionen unveraendert
-
-## 3.6.2
-
-- SH1106-Standardanzeige in vertikal geteiltes 128×64-Layout umgebaut: rechts maximal großer Tageszähler, links oben Statussymbole für WLAN, Zeit, Speicher und Ton, links unten letzte Unterbrechung mit lokaler Uhrzeit und relativer Dauer
-- Zahl wird abhängig von der Stellenzahl unabhängig in Breite und Höhe skaliert, ohne weiteren Framebuffer oder zusätzliche Abfragen; andere OLED-Modi bleiben unverändert
-- Wechselton beginnt nach ESP32-Neustart bei einem zufälligen Track 3…N und rotiert danach sequenziell; ohne gemeldete Trackanzahl bleibt der eingestellte Basiston erhalten
-- vorhandene 3.x-Datenformate, CYC2-Arbeitszyklus und alle Heatmaps bleiben unverändert
-
-## 3.6.1
-
-- im Wechselmodus wird beim ersten gültigen Unterbrechungston nach jedem ESP32-Neustart ein zufälliger normaler Track aus 3…N gewählt; anschließend läuft die bisherige zyklische Reihenfolge weiter
-- wenn das DY-SV17F keine Trackanzahl meldet, bleibt der eingestellte feste Basiston der Fallback; keine zusätzlichen Flash-Schreibzugriffe
-
-- physischen Arbeitszyklus auf DI1/GPIO13 nach Praxistest neu integriert; der verzögerte Pending-Kandidaten-Ansatz des 3.6.0-Teststands wurde entfernt
-- erster kurzer Druck startet den Zyklus weiterhin ohne Unterbrechung, erzeugt jetzt aber weder Anti-Spam-Ton noch eine 10-Sekunden-Sperre
-- jeder gültige kurze Druck im aktiven Zyklus wird sofort über den bewährten Unterbrechungspfad gespeichert, gezählt, angezeigt und mit einem normalen Track ab 3 bestätigt
-- Track 2 und OLED-TV-Störung werden ausschließlich bei tatsächlich zu schnellen weiteren Kurzdrucken innerhalb der bestehenden 10-Sekunden-Sperre ausgelöst
-- langer Druck ab 2 Sekunden beendet den Zyklus unabhängig von der Kurzdruck-Sperre; START und ENDE bleiben außerhalb des Unterbrechungs-Rings
-- vergessener Feierabend wird beim lokalen Tageswechsel durch Schließen des Zyklus abgefangen; bereits erfasste Unterbrechungen werden nicht rückwirkend zu einem Ende umklassifiziert
-- manuelles Ende zeigt 10 Sekunden `FEIERABEND` plus Tageszahl; währenddessen werden physische Eingaben ignoriert und die normale OLED-Ansicht darf die Abschlussanzeige nicht überschreiben
-- neuer kompakter CYC2-Zykluszustand verwirft den alten 3.6.0-Pending-Zustand bewusst, damit ein OTA mit sauberer Zyklussemantik startet
-- RawEvent bleibt 9 Byte, Tagesaggregate bleiben 64 Byte; vorhandene 3.x-Unterbrechungsdaten benötigen keine Migration
 
 ## 3.5.0
 
@@ -184,3 +131,59 @@ Version 3.0.0 ist der neue stabile Ausgangspunkt des Unterbrechungszählers. Fr�
 - DY-SV17F CON3/BUSY auf GPIO39/VN mit externem ca. 10-kΩ-Pull-up an V33
 - CON1 und CON2 des DY-SV17F für UART-Modus auf GND
 - eigene 4-MiB-Partitionstabelle mit zwei OTA-App-Slots und LittleFS
+
+### Weboberfläche
+
+- Home mit Tageszähler, letzter Unterbrechung und großem Erfassungsbutton
+- Feedback-/Displaykarte mit persistenten Geräteeinstellungen
+- Auswertung mit Wochentag/Stunde, Monat/Kalenderwoche und 5-Jahres-Monatsansicht
+- responsive Heatmaps ohne externe Chartbibliothek
+- Live-Aktualisierung nur bei sichtbarem Home/Auswertung
+- UI in Deutsch, Englisch, Italienisch, Französisch, Schwäbisch, Alb-Schwäbisch und Oberschwäbisch
+- README-Dokumentation in Deutsch, Englisch und Schwäbisch
+
+### Sound
+
+- DY-SV17F-Hardwareerkennung und BUSY-Rückmeldung
+- Track 1 ausschließlich als Boot-Ton
+- Unterbrechungston als fester Track ab 2 oder rotierend über erkannte Tracks 2…N
+- Sound kann unabhängig von der Ereignisspeicherung deaktiviert werden
+
+### Speicherung / Daten
+
+- 100.000 Raw-Slots à 9 Byte mit CRC
+- 2.300 Tagesrecords à 64 Byte
+- transaktionale Metadaten mit Recoverypfaden
+- feste 64er Pending-Queue ohne Heap-Allokation pro Ereignis
+- CSV wird erst beim Download erzeugt und in kleinen Chunks gestreamt
+- lokale Kalenderauswertung für Europe/Berlin; absolute Zeit bleibt UTC
+
+### Zeit / Betrieb
+
+- NTP als bevorzugte Zeitquelle
+- DS3231 als Offline-/Startfallback
+- Browserzeit als zusätzlicher Fallback
+- Ereignisse ohne gültige absolute Zeit bleiben ausdrücklich relativ statt eine falsche Kalenderzeit zu erhalten
+
+### Breaking Changes
+
+- keine zugesicherte Hardwarekompatibilität zu 2.x
+- keine zugesicherte Daten-/NVS-/LittleFS-Migration aus 2.x
+- kein zugesichertes direktes OTA-Upgrade von 2.x
+- 3.0.0 nach der aktuellen Hardwaredokumentation neu verdrahten und als neuen Ausgangspunkt behandeln
+
+### Build / Release
+
+- portable Releasechecks prüfen Storage, i18n, JavaScript und Webbundle
+- GitHub Actions kompiliert mit festgelegtem Arduino-ESP32-Core
+- Release wird nur nach erfolgreichem Build auf `main` erzeugt
+- OTA-BIN wird automatisch an den GitHub-Release angehängt
+
+### Noch auf realer Hardware zu bestätigen
+
+- physischer Taster und Debounce
+- reale LittleFS-Persistenz und Recovery
+- OTA auf dem Zielboard
+- DS3231 und SH1106
+- DY-SV17F Boot-/Unterbrechungstöne und BUSY-Signal
+- Offlinebetrieb und Langzeittest
