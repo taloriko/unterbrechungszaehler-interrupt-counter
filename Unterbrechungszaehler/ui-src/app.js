@@ -1221,6 +1221,18 @@
   };
   Object.entries(I18N_350).forEach(([code, labels]) => Object.assign(I18N[code], labels));
 
+  // Additional device-side cycle deadline strings. All seven language packs.
+  const CYCLE_END_LABELS = {
+    de: { 'project.section.cycle': 'Arbeitszyklus', 'project.cycleEndTime': 'Automatisches Zyklusende', 'project.cycleEndHint': 'Lokale Uhrzeit. Standard 00:00. Beendet nur einen offenen Arbeitszyklus, nicht die Tagesstatistik.' },
+    en: { 'project.section.cycle': 'Work cycle', 'project.cycleEndTime': 'Automatic cycle end', 'project.cycleEndHint': 'Local time. Default 00:00. Only closes an active work cycle, not the daily statistics.' },
+    it: { 'project.section.cycle': 'Ciclo di lavoro', 'project.cycleEndTime': 'Fine automatica del ciclo', 'project.cycleEndHint': 'Ora locale. Predefinita 00:00. Chiude solo il ciclo attivo, non le statistiche giornaliere.' },
+    fr: { 'project.section.cycle': 'Cycle de travail', 'project.cycleEndTime': 'Fin automatique du cycle', 'project.cycleEndHint': 'Heure locale. Par d\u00e9faut 00:00. Ferme uniquement le cycle en cours, sans modifier les statistiques du jour.' },
+    swg: { 'project.section.cycle': 'Arbeitstag', 'project.cycleEndTime': 'Automatischs Zyklus-End', 'project.cycleEndHint': 'Ortszeit. Standard 00:00. Blo\u00df dr offne Arbeitszyklus wird beendet, net d Tagesstatistik.' },
+    'swg-alb': { 'project.section.cycle': 'Arbeitstag', 'project.cycleEndTime': 'Automatischs Feierabend-End', 'project.cycleEndHint': 'Ortszeit, normal 00:00. Blo\u00df dr offne Zyklus macht zua, d Tageszahl bleibt.' },
+    'swg-ob': { 'project.section.cycle': 'Arbeitstag', 'project.cycleEndTime': 'Automatischs Zyklus-End', 'project.cycleEndHint': 'Ortszeit, standardm\u00e4\u00dfig 00:00. Dr offne Zyklus wird zua gmacht, d Tageszahl bleibt.' }
+  };
+  Object.entries(CYCLE_END_LABELS).forEach(([code, labels]) => Object.assign(I18N[code], labels));
+
   const STORAGE_STATUS_LABELS = {
     de: { 'status.ready': 'Bereit', 'status.unavailable': 'Nicht verfügbar' },
     en: { 'status.ready': 'Ready', 'status.unavailable': 'Unavailable' },
@@ -1474,7 +1486,7 @@
     connection: { deviceLoading: false, deviceRequested: false, deviceLoaded: false },
     device: {}, wifi: {}, memory: {}, hardware: { checking: false, modules: [] }, ota: { supported: null, currentBytes: 0, maxBytes: 0, headroomBytes: 0, usedPercent: 0 },
     interruptions: { todayCount: 0, unassignedCount: 0, sequence: 0, persistedSequence: 0, pendingCount: 0, droppedCount: 0, storageState: 'unavailable', soundEnabled: true, last: { available: false }, focus: { timeValid: false, currentPhaseAvailable: false, longestTodayAvailable: false, longestWeekAvailable: false, trendPrevious60: 0, trendLast60: 0, trendDirection: 'stable' }, patterns: { evaluatedDays: 0, coverageComplete: true, quietSufficient: false, peakSufficient: false } },
-    projectSettings: { soundEnabled: true, soundVolume: 100, soundMode: 'rotate', soundTrack: 3, soundTrackCount: 0, language: 'en', languageStored: false, displayEnabled: true, displayRotation180: false, displayFlashEnabled: true, displayMode: 'standard', displayBrightness: 65, displayDimAfterMinutes: 10, displayDimBrightness: 5 },
+    projectSettings: { soundEnabled: true, soundVolume: 100, soundMode: 'rotate', soundTrack: 3, soundTrackCount: 0, language: 'en', languageStored: false, displayEnabled: true, displayRotation180: false, displayFlashEnabled: true, displayMode: 'standard', displayBrightness: 65, displayDimAfterMinutes: 10, displayDimBrightness: 5, cycleEndTime: '00:00' },
     analytics: { loaded: false, loading: false, dirty: false, error: '', storage: null, hourly: null, monthWeek: null, yearMonth: null, hourlyMode: 'week', metric: 'count', source: 'all' },
     time: { valid: false, source: 'relative', quality: 'relative', epochMs: 0, syncPerf: 0 },
     timeManagement: { activeSource: 'relative', quality: 'relative', valid: false, ntpServer: '', browserFallbackAllowed: false, ntp: {}, rtc: {}, browser: {}, system: {} },
@@ -2449,6 +2461,14 @@
       row.append(label, wrap); grid.append(row); controls[field] = { input, row };
     };
 
+    const addTime = (grid, field, labelKey) => {
+      const row = el('label', 'project-setting-row');
+      const label = el('span', 'project-setting-label'); label.textContent = t(labelKey);
+      const input = el('input', 'project-setting-input'); input.type = 'time'; input.step = '60';
+      input.required = true; input.dataset.projectSetting = field;
+      row.append(label, input); grid.append(row); controls[field] = { input, row };
+    };
+
     const addRange = (grid, field, labelKey, min, max) => {
       const row = el('label', 'project-setting-row');
       const label = el('span', 'project-setting-label'); label.textContent = t(labelKey);
@@ -2480,6 +2500,11 @@
     const dimHint = el('div', 'form-note project-setting-note'); dimHint.textContent = t('project.dimDisabled'); displayGrid.append(dimHint);
     addRange(displayGrid, 'displayDimBrightness', 'project.displayDimBrightness', 0, 100);
     addHardwareAction(displayGrid, 'display', 'test', 'action.displayTest', 'display');
+
+    const cycleGrid = addSection('project.section.cycle');
+    addTime(cycleGrid, 'cycleEndTime', 'project.cycleEndTime');
+    const cycleHint = el('div', 'form-note project-setting-note');
+    cycleHint.textContent = t('project.cycleEndHint'); cycleGrid.append(cycleHint);
 
     const feedbackGrid = addSection('project.section.displayFeedback');
     addSwitch(feedbackGrid, 'displayFlashEnabled', 'project.displayFlash');
