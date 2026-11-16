@@ -1,4 +1,4 @@
-# Interruption Counter 3.6.8
+# Interruption Counter - English
 
 > [!WARNING]
 > **AI notice:** This project was created with substantial support from AI, then tested in practice, revised and developed further. If you fundamentally dislike AI-generated code, you are of course still allowed to press the button. ;-)
