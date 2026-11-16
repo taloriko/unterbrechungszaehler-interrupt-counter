@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.6.2."""
+"""Portable release checks for Unterbrechungszaehler 3.6.3."""
 from __future__ import annotations
 
 import gzip
@@ -68,7 +68,7 @@ def main() -> None:
 
     # Identity / frozen platform invariants.
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.6.2"' in config, "project version 3.6.2")
+    check('SOFTWARE_VERSION[] = "3.6.3"' in config, "project version 3.6.3")
     check("RAW_EVENT_CAPACITY = 100000" in project and "RAW_RECORD_SIZE = 9" in project, "100,000 x 9-byte raw ring unchanged")
     check("DAILY_AGGREGATE_CAPACITY = 2300" in project and "DAILY_RECORD_SIZE = 64" in project, "daily aggregate format unchanged")
     check("PENDING_EVENT_CAPACITY = 64" in project, "fixed 64-event persistence queue")
@@ -76,16 +76,19 @@ def main() -> None:
     check(re.search(r'\{"di1"[^\n]*13,\s*PullMode::Up,\s*false[^\n]*25,\s*true,', hardware) is not None, "DI1 GPIO13 active-edge interrupt latch")
     check("AUDIO_RX_PIN = 18" in hardware and "AUDIO_TX_PIN = 19" in hardware and "AUDIO_BUSY_PIN = 39" in hardware, "DY-SV17F pin map")
 
-    # 3.6.2 compact OLED standard mode with maximum-height count.
+    # 3.6.3 compact OLED standard mode with maximum-height count.
     display = (ROOT / "display_sh1106.cpp").read_text(encoding="utf-8")
     check("drawTextStretched" in views and "stretchedText" in display,
           "compact standard view uses width-fitted tall counter")
     check("drawVLine(splitX, 0, 63)" in views and "drawHLine(0, splitX - 1, 31)" in views,
           "standard OLED split into right counter and left status / last areas")
-    check("ProjectTime::fromEpochSeconds(summary.lastTimeValueSeconds, local)" in views,
-          "local clock for last interruption")
-    check("summary.storageState" in views and "ProjectPreferences::soundEnabled()" in views,
-          "OLED shows compact storage and sound status")
+    check("drawLargeWifiIcon(5, 5, wifi)" in views and "drawLargeTimeIcon(35, 5, timeOk)" in views,
+          "two enlarged WiFi/time status icons only")
+    standard_view = views.split("bool renderStandard(", 1)[1].split("bool renderCountOnly(", 1)[0]
+    check("clockText" not in standard_view and "summary.storageState" not in standard_view,
+          "no local time or additional status icons in compact standard view")
+    check("drawTextScaled(ageX, ageY, shownAge, ageScale)" in standard_view,
+          "only elapsed time since latest interruption in bottom-left pane")
 
     # 3.6.1 work-cycle contract: classification wraps the proven capture path.
     check('WORK_CYCLE_INPUT_ID[] = "di1"' in project, "work cycle owns DI1")
