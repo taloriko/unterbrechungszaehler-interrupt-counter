@@ -1,3 +1,20 @@
+# Release 3.6.8
+
+Der Unterbrechungszähler unterscheidet jetzt mit dem vorhandenen physischen Knopf zwischen **Arbeitsbeginn**, **Unterbrechung** und **Feierabend**:
+
+- Erster kurzer Druck bei inaktivem Zyklus: Arbeitsbeginn mit großer, kurzer OLED-Startmeldung; keine Unterbrechung.
+- Weitere kurze Drücke im aktiven Zyklus: normale Erfassung bei Beachtung der 10-Sekunden-Anti-Spam-Sperre. **Unter zwei Sekunden gilt jeder Druck als kurz**, auch wenn die Feierabend-Vorschau bereits sichtbar war.
+- Mindestens zwei Sekunden halten und loslassen: Arbeitszyklus schließen; der Fortschrittsbalken startet ab 250 ms bei gültiger Uhrzeit. Anschließend folgen zehn Sekunden Feierabendanzeige und der Status **PAUSE**.
+- Der automatische Zyklusabschluss lässt sich unter **Einstellungen → Arbeitszyklus** als lokale Uhrzeit HH:MM festlegen (Default 00:00). Die tägliche Unterbrechungsstatistik wechselt weiterhin um Mitternacht.
+- Neue SH1106-Standardansicht: rechts die möglichst große Tageszahl, links oben WLAN-/Uhr-Symbole, links unten die letzte Unterbrechung als relative Zeit beziehungsweise PAUSE. Die Anti-Spam-Warnanimation ist besser lesbar.
+- Im Web werden Zyklusstatus und automatische Endzeit in einer eigenen Karte angezeigt.
+- Wechselmodus für Unterbrechungstöne: zufälliger Starttrack 3…N nach Neustart, anschließend feste Rotation; bei unbekannter Trackanzahl der gewählte Basiston.
+- Die neuen Funktionen sind in allen sieben Sprachvarianten verfügbar.
+
+**Kompatibilität:** Keine Datenmigration. Rohereignisse, Tagesaggregate, bestehende CSV-/Heatmap-Auswertungen, GPIOs, Audio-Dateibelegung, OLED-Modi und OTA-Partitionierung bleiben erhalten. Bei regulärem OTA bleiben NVS und LittleFS erhalten.
+
+**Verhalten ohne Strom:** Ein nicht abgeschlossener Arbeitszyklus wird nach der Wiederaufnahme mit gültiger Uhrzeit geschlossen. Der aufgezeichnete Abschlusszeitpunkt ist dann die Wiederanlaufzeit; es gibt keinen eigenständigen Puffer für den Ausschaltzeitpunkt.
+
 # Release 3.5.0
 
 - Fokus-&-Ruhe-Karte auf Home mit aktueller/längster Tages-/Wochenphase und erklärtem 120-Minuten-Trend

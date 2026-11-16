@@ -32,7 +32,7 @@ uint8_t frameBuffer[(HardwareConfig::DISPLAY_WIDTH * HardwareConfig::DISPLAY_HEI
 
 // Compact 5x7 uppercase font. Only ASCII used by the reusable boot/test UI is
 // included; lowercase input is normalized to uppercase.
-const char FONT_CHARS[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-:/";
+const char FONT_CHARS[] = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-:/!'";
 const uint8_t FONT_DATA[][5] = {
   {0x00,0x00,0x00,0x00,0x00}, // space
   {0x7E,0x11,0x11,0x11,0x7E}, // A
@@ -75,6 +75,8 @@ const uint8_t FONT_DATA[][5] = {
   {0x08,0x08,0x08,0x08,0x08}, // -
   {0x00,0x36,0x36,0x00,0x00}, // :
   {0x20,0x10,0x08,0x04,0x02}, // /
+  {0x00,0x00,0x5F,0x00,0x00}, // !
+  {0x00,0x03,0x05,0x00,0x00}, // '
 };
 
 void setHealth(StatusRegistry::State state, const char *message = "") {
@@ -214,8 +216,10 @@ void text(int16_t x, int16_t y, const char *value) {
   }
 }
 
-void scaledText(int16_t x, int16_t y, const char *value, uint8_t scale) {
-  if (!value || scale == 0) return;
+// Independent horizontal/vertical scaling keeps long counters tall on a
+// 128x64 display. Reuses the existing 5x7 font, fixed stack buffer and pixels.
+void stretchedText(int16_t x, int16_t y, const char *value, uint8_t scaleX, uint8_t scaleY) {
+  if (!value || scaleX == 0U || scaleY == 0U) return;
   char normalized[80];
   normalizeDisplayText(value, normalized, sizeof(normalized));
   const char *cursor = normalized;
@@ -224,16 +228,20 @@ void scaledText(int16_t x, int16_t y, const char *value, uint8_t scale) {
     for (uint8_t col = 0; col < 5; ++col) {
       for (uint8_t row = 0; row < 7; ++row) {
         if (!(g[col] & (1U << row))) continue;
-        for (uint8_t dx = 0; dx < scale; ++dx) {
-          for (uint8_t dy = 0; dy < scale; ++dy) {
-            pixel(static_cast<int16_t>(x + static_cast<int16_t>(col * scale + dx)),
-                  static_cast<int16_t>(y + static_cast<int16_t>(row * scale + dy)));
+        for (uint8_t dx = 0; dx < scaleX; ++dx) {
+          for (uint8_t dy = 0; dy < scaleY; ++dy) {
+            pixel(static_cast<int16_t>(x + col * scaleX + dx),
+                  static_cast<int16_t>(y + row * scaleY + dy));
           }
         }
       }
     }
-    x = static_cast<int16_t>(x + static_cast<int16_t>(6U * scale));
+    x = static_cast<int16_t>(x + 6U * scaleX);
   }
+}
+
+void scaledText(int16_t x, int16_t y, const char *value, uint8_t scale) {
+  stretchedText(x, y, value, scale, scale);
 }
 
 void centeredText(int16_t y, const char *value) {
@@ -417,6 +425,9 @@ void drawVLine(int16_t x, int16_t y0, int16_t y1) { vLine(x, y0, y1); }
 void drawRect(int16_t x, int16_t y, int16_t w, int16_t h) { rect(x, y, w, h); }
 void drawText(int16_t x, int16_t y, const char *value) { text(x, y, value); }
 void drawTextScaled(int16_t x, int16_t y, const char *value, uint8_t scale) { scaledText(x, y, value, scale); }
+void drawTextStretched(int16_t x, int16_t y, const char *value, uint8_t scaleX, uint8_t scaleY) {
+  stretchedText(x, y, value, scaleX, scaleY);
+}
 void drawCenteredText(int16_t y, const char *value) { centeredText(y, value); }
 bool present() { return flushFrame(); }
 

@@ -12,6 +12,7 @@
 #include "rtc_ds3231.h"
 #include "serial_log.h"
 #include "status_registry.h"
+#include "work_cycle.h"
 
 namespace HardwareRegistry {
 namespace {
@@ -327,9 +328,9 @@ void appendJson(String &out) {
     appendInfoString(out, first, "hardware.info.inputs", pinList(HardwareConfig::GpioDirection::Input));
     appendInfoString(out, first, "hardware.info.outputs", pinList(HardwareConfig::GpioDirection::Output));
     appendInfoString(out, first, "hardware.info.buttonCooldown", String(InterruptionService::physicalButtonCooldownMs() / 1000U) + " s");
-    appendInfoUInt(out, first, "hardware.info.suppressedPresses", InterruptionService::suppressedPhysicalPressCount());
-    if (InterruptionService::hasSuppressedPhysicalPress()) {
-      appendInfoUInt(out, first, "hardware.info.lastSuppressedPress", InterruptionService::lastSuppressedPhysicalPressMs(), "checkTime");
+    appendInfoUInt(out, first, "hardware.info.suppressedPresses", WorkCycle::suppressedPhysicalPressCount());
+    if (WorkCycle::hasSuppressedPhysicalPress()) {
+      appendInfoUInt(out, first, "hardware.info.lastSuppressedPress", WorkCycle::lastSuppressedPhysicalPressMs(), "checkTime");
     }
     endModule(out);
   }

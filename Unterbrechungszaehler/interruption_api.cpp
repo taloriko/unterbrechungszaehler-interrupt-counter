@@ -12,6 +12,7 @@
 #include "ota_module.h"
 #include "project_config.h"
 #include "project_preferences.h"
+#include "work_cycle.h"
 #include "project_time.h"
 #include "time_service.h"
 #include "wifi_module.h"
@@ -68,7 +69,13 @@ void appendProjectPreferencesObjectInternal(String &out) {
   fieldString(out, "displayMode", ProjectPreferences::displayModeName());
   fieldUInt(out, "displayBrightness", ProjectPreferences::displayBrightnessPercent());
   fieldUInt(out, "displayDimAfterMinutes", ProjectPreferences::displayDimAfterMinutes());
-  fieldUInt(out, "displayDimBrightness", ProjectPreferences::displayDimBrightnessPercent(), false);
+  fieldUInt(out, "displayDimBrightness", ProjectPreferences::displayDimBrightnessPercent());
+  const uint16_t cycleMinute = ProjectPreferences::workCycleEndMinute();
+  char cycleEnd[6];
+  snprintf(cycleEnd, sizeof(cycleEnd), "%02u:%02u",
+           static_cast<unsigned int>(cycleMinute / 60U),
+           static_cast<unsigned int>(cycleMinute % 60U));
+  fieldString(out, "cycleEndTime", cycleEnd, false);
   out += '}';
 }
 
@@ -82,6 +89,7 @@ void appendSummaryObjectInternal(String &out) {
   fieldUInt64(out, "sequence", summary.liveSequence);
   fieldUInt64(out, "persistedSequence", summary.persistedSequence);
   fieldUInt64(out, "revision", summary.revision);
+  fieldString(out, "cycleState", WorkCycle::stateName());
 
   // Current device monotonic time lets the browser age a relative event that
   // happened during this boot without inventing wall-clock time.

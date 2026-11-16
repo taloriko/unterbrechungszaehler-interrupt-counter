@@ -21,6 +21,10 @@ enum class DisplayMode : uint8_t {
 
 void begin();
 
+// Automatic work-cycle fallback deadline in local minutes [0..1439].
+uint16_t workCycleEndMinute();
+bool setWorkCycleEndMinute(uint16_t minute);
+
 bool soundEnabled();
 bool setSoundEnabled(bool enabled);
 uint8_t soundVolumePercent();

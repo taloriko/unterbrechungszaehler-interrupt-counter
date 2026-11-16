@@ -113,3 +113,10 @@ Vor dem öffentlichen Verteilen eigener Audiodateien deren Lizenz/Herkunft prüf
 Alle Module brauchen gemeinsame Masse. ESP32-GPIOs sind 3,3-V-Logik; keine 5-V-Signale direkt auf ESP32-Eingänge geben.
 
 Die vollständige technische Verdrahtungsdokumentation liegt zusätzlich in [`../../Unterbrechungszaehler/HARDWARE_WIRING.md`](../../Unterbrechungszaehler/HARDWARE_WIRING.md).
+
+## Ergänzung 3.6.8 – Bedienung und Soundbelegung
+
+Der vorhandene Taster an DI1/GPIO13 dient nun auch zur Arbeitszyklus-Steuerung: erster kurzer Druck = START, folgende kurze Drücke = Unterbrechungen, mindestens 2 Sekunden halten und loslassen = ENDE. Die optische Haltebestätigung beginnt nach 250 ms auf dem SH1106, sofern die lokale Uhrzeit gültig ist.
+
+Die DY-SV17F-Dateibelegung ist: **Track 1** Boot/Test, **Track 2** Anti-Spam, **Tracks 3 bis N** normale Unterbrechungstöne. Der Wechselmodus startet nach ESP32-Neustart bei einem zufälligen normalen Track und spielt danach zyklisch weiter. Bei unbekannter Trackzahl gilt der eingestellte Basiston.
+

@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.6.8
+
+- **Arbeitszyklus am vorhandenen Taster:** Der erste kurze Druck startet die Arbeit ohne Unterbrechungszählung. Weitere akzeptierte kurze Drücke erfassen Unterbrechungen; mindestens zwei Sekunden Halten und anschließendes Loslassen beendet den Arbeitszyklus. Die 10-Sekunden-Anti-Spam-Sperre für echte kurze Unterbrechungsdrücke bleibt bestehen.
+- **Konfigurierbarer automatischer Feierabend:** Neue eigene Karte unter **Einstellungen → Arbeitszyklus** mit einer verständlich erklärten lokalen Endzeit (HH:MM, standardmäßig 00:00). Der Kalendertageswechsel der Tagesstatistik bleibt unabhängig davon bei 00:00.
+- **OLED-Bedienfeedback:** Großes „LOS GEHT'S!“ zum Zyklusstart; ab 250 ms Halten bei gültiger Uhrzeit eine bildschirmbreite Feierabend-Fortschrittsanzeige bis zur Zwei-Sekunden-Grenze; anschließend zehn Sekunden Feierabendanzeige und Status „PAUSE“.
+- **Klarere SH1106-Standardansicht:** Rechts die dynamisch möglichst große heutige Unterbrechungszahl, links oben große WLAN-/Uhr-Symbole und links unten die Zeit seit der letzten Unterbrechung beziehungsweise der Zyklusstatus.
+- **Lesbares Anti-Spam-Feedback:** Größere, dauerhaft sichtbare und bei Bedarf zweizeilige Warnmeldung bei erhaltener TV-Flimmeranimation.
+- **Live-Status in der Weboberfläche:** Ein aktiver oder abgeschlossener Arbeitszyklus wird ohne zusätzliche Abfrage-Schleife im bestehenden Live-Verfahren angezeigt; die Projekteinstellungen und Arbeitszyklus-Einstellungen sind getrennt angeordnet.
+- **Wechselnde Unterbrechungstöne:** Nach jedem Neustart zufälliger erster regulärer Track 3…N, danach zyklische Wiedergabe; bei unbekannter Trackanzahl Verwendung des eingestellten Basistons. Track 1 bleibt Boot/Test und Track 2 Anti-Spam.
+- **Sprachen:** Neue OLED-Zyklustexte und Web-Einstellungen in Deutsch, Englisch, Italienisch, Französisch sowie Schwäbisch, Alb-Schwäbisch und Oberschwäbisch.
+- **Bestehende Daten und Hardware erhalten:** Unveränderte Raw-Events und Tagesaggregate, Auswertungen, CSV, weitere OLED-Modi, OTA-Partitionierung und bestehende GPIO-Belegung. Bei regulärem OTA-Update bleiben vorhandene NVS-/LittleFS-Daten erhalten.
+
+
 ## 3.5.0
 
 - neue Home-Karte **Fokus & Ruhe** mit aktueller Ruhephase, längster Ruhephase heute, längster Ruhephase der laufenden Woche und erklärtem 120-Minuten-Trend

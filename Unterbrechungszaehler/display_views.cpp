@@ -10,6 +10,7 @@
 #include "project_time.h"
 #include "time_service.h"
 #include "wifi_module.h"
+#include "work_cycle.h"
 
 namespace DisplayViews {
 namespace {
@@ -29,6 +30,7 @@ uint64_t lastIntervalSum = UINT64_MAX;
 uint32_t lastIntervalSamples = UINT32_MAX;
 bool lastWifi = false;
 bool lastTimeOk = false;
+char lastCycleState[16] = "";
 char lastAge[16] = "";
 ProjectPreferences::DisplayMode lastMode = ProjectPreferences::DisplayMode::Standard;
 int16_t lastContrast = -1;
@@ -64,6 +66,31 @@ const Labels &labels() {
   if (strcmp(language, "fr") == 0) return fr;
   if (strcmp(language, "it") == 0) return it;
   if (strncmp(language, "swg", 3) == 0) return swg;
+  return de;
+}
+
+// Keep cycle-specific OLED status text separate from the legacy home labels.
+// Short ASCII-only strings fit in the 61-pixel lower-left display pane.
+struct CycleStatusLabels {
+  const char *heading;
+  const char *pause;
+  const char *clockUnknown;
+};
+const CycleStatusLabels &cycleStatusLabels() {
+  static const CycleStatusLabels de{"ZYKLUS", "PAUSE", "ZEIT"};
+  static const CycleStatusLabels en{"CYCLE", "PAUSE", "TIME"};
+  static const CycleStatusLabels fr{"CYCLE", "PAUSE", "HEURE"};
+  static const CycleStatusLabels it{"CICLO", "PAUSA", "ORA"};
+  static const CycleStatusLabels swg{"ZYKLUS", "PAUSE", "ZEIT"};
+  static const CycleStatusLabels alb{"ARBEIT", "PAUSE", "UHR"};
+  static const CycleStatusLabels ob{"SCHICHT", "PAUSE", "UHR"};
+  const char *language = ProjectPreferences::language();
+  if (strcmp(language, "en") == 0) return en;
+  if (strcmp(language, "fr") == 0) return fr;
+  if (strcmp(language, "it") == 0) return it;
+  if (strcmp(language, "swg-alb") == 0) return alb;
+  if (strcmp(language, "swg-ob") == 0) return ob;
+  if (strcmp(language, "swg") == 0) return swg;
   return de;
 }
 
@@ -162,23 +189,96 @@ void drawCenteredScaled(const char *value) {
   DisplaySh1106::drawTextScaled(x, y, shown, scale);
 }
 
+
+void drawLargeWifiIcon(int16_t x, int16_t y, bool connected) {
+  // 21 x 19 pixel arcs centered in the left status pane.
+  DisplaySh1106::drawHLine(x + 5, x + 15, y + 1);
+  DisplaySh1106::drawHLine(x + 3, x + 4, y + 2);
+  DisplaySh1106::drawHLine(x + 16, x + 17, y + 2);
+  DisplaySh1106::drawPixel(x + 2, y + 3);
+  DisplaySh1106::drawPixel(x + 18, y + 3);
+  DisplaySh1106::drawPixel(x + 1, y + 4);
+  DisplaySh1106::drawPixel(x + 19, y + 4);
+  DisplaySh1106::drawHLine(x + 7, x + 13, y + 8);
+  DisplaySh1106::drawPixel(x + 5, y + 9);
+  DisplaySh1106::drawPixel(x + 15, y + 9);
+  DisplaySh1106::drawPixel(x + 4, y + 10);
+  DisplaySh1106::drawPixel(x + 16, y + 10);
+  DisplaySh1106::drawHLine(x + 9, x + 11, y + 14);
+  DisplaySh1106::drawPixel(x + 10, y + 17);
+  if (!connected) {
+    // Crossed arc means Wi-Fi disconnected; no animation or new polling.
+    for (int16_t p = 0; p < 18; ++p) DisplaySh1106::drawPixel(x + 2 + p, y + 1 + p);
+  }
+}
+
+void drawLargeTimeIcon(int16_t x, int16_t y, bool valid) {
+  // A 21 x 21 pixel clock face, using only the existing bitmap primitives.
+  DisplaySh1106::drawHLine(x + 5, x + 15, y);
+  DisplaySh1106::drawHLine(x + 5, x + 15, y + 20);
+  DisplaySh1106::drawVLine(x, y + 5, y + 15);
+  DisplaySh1106::drawVLine(x + 20, y + 5, y + 15);
+  for (int16_t p = 0; p < 4; ++p) {
+    DisplaySh1106::drawPixel(x + 4 - p, y + p + 1);
+    DisplaySh1106::drawPixel(x + 16 + p, y + p + 1);
+    DisplaySh1106::drawPixel(x + 4 - p, y + 19 - p);
+    DisplaySh1106::drawPixel(x + 16 + p, y + 19 - p);
+  }
+  if (valid) {
+    DisplaySh1106::drawVLine(x + 10, y + 5, y + 10);
+    DisplaySh1106::drawHLine(x + 10, x + 15, y + 10);
+  } else {
+    DisplaySh1106::drawHLine(x + 6, x + 14, y + 10);
+  }
+}
+
+// Standard OLED: 128x64, right-hand counter and two left-hand information panes.
 bool renderStandard(const InterruptionTypes::Summary &summary, const char *age, bool wifi, bool timeOk) {
   DisplaySh1106::frameClear();
-  DisplaySh1106::drawText(2, 1, labels().today);
-  drawTimeIcon(98, 0, timeOk);
-  drawWifiIcon(114, 0, wifi);
-  DisplaySh1106::drawHLine(0, 127, 12);
+  constexpr int16_t splitX = 62;
+  DisplaySh1106::drawVLine(splitX, 0, 63);
+  DisplaySh1106::drawHLine(0, splitX - 1, 31);
 
+  // Upper left: only two large, immediately recognizable status icons.
+  drawLargeWifiIcon(5, 5, wifi);
+  drawLargeTimeIcon(35, 5, timeOk);
+
+  // Lower left reflects the work-cycle state. The last interruption age
+  // remains available while active; no additional persisted display data.
+  const char *cycle = WorkCycle::stateName();
+  const CycleStatusLabels &cycleLabels = cycleStatusLabels();
+  if (strcmp(cycle, "pause") == 0) {
+    DisplaySh1106::drawText(2, 35, cycleLabels.heading);
+    DisplaySh1106::drawTextScaled(2, 46, cycleLabels.pause, 2);
+  } else if (strcmp(cycle, "time-unknown") == 0) {
+    DisplaySh1106::drawText(2, 35, cycleLabels.clockUnknown);
+    DisplaySh1106::drawText(2, 48, "--");
+  } else {
+    DisplaySh1106::drawText(2, 34, labels().last);
+    const char *shownAge = age && *age ? age : "--";
+    const uint8_t ageScale = fittedScale(shownAge, 3, 58, 21);
+    const size_t ageLength = strlen(shownAge);
+    const int16_t ageWidth = static_cast<int16_t>(ageLength * 6U * ageScale - ageScale);
+    const int16_t ageX = static_cast<int16_t>((splitX - ageWidth) / 2);
+    const int16_t ageY = static_cast<int16_t>(43 + (21 - 7 * ageScale) / 2);
+    DisplaySh1106::drawTextScaled(ageX, ageY, shownAge, ageScale);
+  }
+
+  // Right: choose the widest fit for 1..10 digits while filling the height.
+  // Separate X/Y scaling prevents multi-digit values from shrinking in height.
   char count[12];
   snprintf(count, sizeof(count), "%lu", static_cast<unsigned long>(summary.todayCount));
   const size_t digits = strlen(count);
-  const int16_t width = static_cast<int16_t>(digits * 18U - (digits ? 3U : 0U));
-  const int16_t x = static_cast<int16_t>((128 - width) / 2);
-  DisplaySh1106::drawTextScaled(x < 0 ? 0 : x, 17, count, 3);
-
-  DisplaySh1106::drawHLine(0, 127, 43);
-  DisplaySh1106::drawText(2, 48, labels().last);
-  DisplaySh1106::drawText(80, 48, age);
+  uint8_t scaleX = 1;
+  for (uint8_t candidate = 12; candidate > 1; --candidate) {
+    const size_t width = digits * 6U * candidate - candidate;
+    if (width <= 62U) { scaleX = candidate; break; }
+  }
+  const uint8_t scaleY = 8;
+  const int16_t width = static_cast<int16_t>(digits * 6U * scaleX - scaleX);
+  const int16_t x = static_cast<int16_t>(splitX + 1 + (65 - width) / 2);
+  const int16_t y = static_cast<int16_t>((64 - 7 * scaleY) / 2);
+  DisplaySh1106::drawTextStretched(x, y, count, scaleX, scaleY);
   return DisplaySh1106::present();
 }
 
@@ -329,13 +429,34 @@ bool renderSpamFlickerFrame(uint8_t frame) {
   for (uint8_t i = 0; i < 6U; ++i) {
     const int16_t y = static_cast<int16_t>((phase * 7U + i * 11U) % 64U);
     const int16_t inset = static_cast<int16_t>((phase + i * 3U) % 15U);
-    DisplaySh1106::drawHLine(inset, 127 - inset, y);
+    // Avoid drawing scan lines through the central text band.
+    if (y < 13 || y > 50) DisplaySh1106::drawHLine(inset, 127 - inset, y);
   }
   if (phase == 1U || phase == 5U) {
-    DisplaySh1106::drawRect(3, 18, 122, 20);
-    for (int16_t x = 8; x < 124; x += 13) DisplaySh1106::drawVLine(x, 20, 35);
+    DisplaySh1106::drawRect(3, 2, 122, 10);
+    for (int16_t x = 8; x < 124; x += 13) DisplaySh1106::drawVLine(x, 4, 9);
   }
-  if ((phase & 1U) == 0U) DisplaySh1106::drawCenteredText(27, labels().tooFast);
+  // The middle is already blank from frameClear(); no costly pixel clearing.
+  char warning[24];
+  strncpy(warning, labels().tooFast, sizeof(warning) - 1U);
+  warning[sizeof(warning) - 1U] = '\0';
+  const size_t length = strlen(warning);
+  if (length <= 10U) {
+    drawCenteredScaledAt(warning, 25, 2, 126);
+  } else {
+    // Split at a word boundary, with both 2x lines fitting 128 pixels.
+    int8_t split = -1;
+    for (size_t i = 1; i < length; ++i) {
+      if (warning[i] == ' ' && i <= 10U && length - i - 1U <= 10U) split = static_cast<int8_t>(i);
+    }
+    if (split > 0) {
+      warning[split] = '\0';
+      drawCenteredScaledAt(warning, 16, 2, 126);
+      drawCenteredScaledAt(warning + split + 1, 35, 2, 126);
+    } else {
+      drawCenteredScaledAt(warning, 25, 1, 126);
+    }
+  }
 
   // Controller inversion adds a short vertical-sync-like flash without
   // rebuilding the framebuffer. Always restored when the effect ends.
@@ -516,7 +637,8 @@ void update(const InterruptionTypes::Summary &summary) {
   const bool changed = summary.todayCount != lastCount ||
                        summary.todayIntervalSumSeconds != lastIntervalSum ||
                        summary.todayIntervalSamples != lastIntervalSamples ||
-                       wifi != lastWifi || timeOk != lastTimeOk || strcmp(age, lastAge) != 0 || mode != lastMode;
+                       wifi != lastWifi || timeOk != lastTimeOk || strcmp(age, lastAge) != 0 ||
+                       strcmp(WorkCycle::stateName(), lastCycleState) != 0 || mode != lastMode;
   if (!renderRequested && !changed) return;
 
   if (renderHome(summary, age, wifi, timeOk)) {
@@ -525,6 +647,8 @@ void update(const InterruptionTypes::Summary &summary) {
     lastIntervalSamples = summary.todayIntervalSamples;
     lastWifi = wifi;
     lastTimeOk = timeOk;
+    strncpy(lastCycleState, WorkCycle::stateName(), sizeof(lastCycleState) - 1U);
+    lastCycleState[sizeof(lastCycleState) - 1U] = '\0';
     lastMode = mode;
     strncpy(lastAge, age, sizeof(lastAge) - 1);
     lastAge[sizeof(lastAge) - 1] = '\0';

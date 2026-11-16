@@ -58,3 +58,10 @@ Nach dem CI-Build weiterhin auf einem Zielgerät prüfen:
 - 180°-Drehung inklusive Boot, Test, Flash und allen fünf Ansichten prüfen
 - Helligkeit 65 % / gedimmt 5 % auf frischer NVS-Konfiguration prüfen
 - DY-SV17F-Lautstärke 0/50/100 % und Wechselmodus auf realem Modul prüfen
+
+## Ergänzende Releaseprüfung 3.6.8
+
+Die automatische Releaseprüfung umfasst zusätzlich die 3.6.x-Zyklusklassifikation, die Zustandsanzeige im Web und auf dem OLED, die mit Uhrzeit validierte Feierabend-Haltevorschau, die Trennung der Einstellungsrückmeldungen und die Tonrotation ab Track 3. Das deterministische Web-Bundle wird gegen den eingecheckten Stand verglichen; der tatsächliche ESP32-Build prüft außerdem die Firmwaregröße und die OTA-Binärdatei.
+
+Für die Geräteprüfung bleiben insbesondere zu prüfen: erster kurzer Druck = START ohne Zählung; weiterer kurzer Druck = Unterbrechung; unter 2 s auch bei sichtbarem Haltebalken = kurzer Druck; mindestens 2 s plus Loslassen = FEIERABEND und anschließend PAUSE; normales Track-2-Anti-Spam-Feedback; Wechselton; sieben UI-/OLED-Sprachen; OTA mit Erhalt der Daten; automatische Schließung zum gewählten Zeitpunkt bei verfügbarer lokaler Uhrzeit.
+

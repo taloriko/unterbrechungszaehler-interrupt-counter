@@ -137,3 +137,12 @@ CSV ist **kein** Primärformat. Beim Download werden die Raw-Records chronologis
 Der bereits im 9-Byte-RawEvent gespeicherte `eventSource` wird nun direkt für Heatmap-Filter verwendet. **Beides** kann weiterhin die kompakten Langzeit-Tagesaggregate nutzen. Ein einzelner Herkunftsfilter (z. B. GPIO oder Web) wird aus dem retained Raw-Ring berechnet; dadurch wird das bestehende Tagesformat nicht vergrößert. Ist der angefragte Zeitraum älter als die Rohdatenabdeckung, meldet die API `coverage.complete=false` statt fehlende Daten als Null zu erfinden.
 
 Die manuelle Datenbank-Löschung entfernt zuerst die abgeleiteten Tagesaggregate und danach Rohdaten samt Metadaten. Anschließend startet der ESP32 neu und erzeugt leere, konsistente Datenstrukturen. Die Aktion wird serverseitig nur akzeptiert, wenn die Bestätigung exakt dem Projektnamen entspricht.
+
+## Ergänzung 3.6.8 – Arbeitszyklusdaten
+
+Der zyklusbezogene Zustandsdatensatz wird separat im bestehenden NVS-Bereich gehalten; Beginn und Ende werden zusätzlich als kompakte Marker in `/cycles.log` protokolliert. Die automatisch konfigurierte lokale Endzeit liegt als Minutenwert von 0 bis 1439 in einem eigenen NVS-Eintrag (Default 0 = 00:00). Der Wert wird nur bei tatsächlicher Änderung geschrieben.
+
+**Unverändert** bleiben die 9-Byte-Raw-Events in `/interrupt.raw`, der 100.000er Raw-Ring, die 64-Byte-Tagesaggregate und ihre Historie. START und ENDE sind keine Unterbrechungsereignisse und beeinflussen weder CSV noch Heatmaps oder Ø-Abstände.
+
+Bei Verlust der Versorgung gibt es keinen Pufferspeicher für den tatsächlichen Ausschaltzeitpunkt: Nach Wiederanlauf mit gültiger Uhrzeit wird ein offen gebliebener Zyklus mit dem aktuellen Zeitpunkt abgeschlossen.
+

@@ -1,6 +1,18 @@
-# Unterbrechungszähler 3.2.0 – technische Übersicht
+# Unterbrechungszähler 3.6.8 – technische Übersicht
 
-Dies ist der Sketchordner der Version **3.2.0** für ein klassisches ESP32 Dev Module / ESP32-WROOM-32.
+Dies ist der Sketchordner der Version **3.6.8** für ein klassisches ESP32 Dev Module / ESP32-WROOM-32.
+
+## Erweiterungen in 3.6.8
+
+Der DI1-Taster wird durch `WorkCycle` klassifiziert: Erster kurzer Druck startet einen aktiven Zyklus ohne Rohereignis, weitere akzeptierte kurze Drücke laufen über `InterruptionService::capture(PhysicalButton)`, und mindestens 2 Sekunden Halten mit anschließendem Loslassen beendet den Zyklus. Alle Drücke darunter gelten als kurz und unterliegen gegebenenfalls der bisherigen 10-Sekunden-Sperre. Der Webbutton bleibt unabhängig.
+
+Ab 250 ms Halten zeigt `WorkCycle` einen OLED-Fortschrittsbalken im bestehenden Framebuffer (nur bei gültiger lokaler Uhrzeit beim Druckbeginn). Der Balken erreicht nach 2 Sekunden 100 %. Manuelles Ende: 10 Sekunden Abschlussanzeige, danach Status `PAUSE`. Beginn und Ende werden unabhängig vom Unterbrechungs-Ring protokolliert.
+
+Die automatische lokale Endzeit wird über `ProjectPreferences::workCycleEndMinute()` als kompakter NVS-Wert in Minuten nach Mitternacht gespeichert (Default `0` = **00:00**). Sie betrifft nur den offenen Zyklus; Tagesstatistik und Raw-Event-Zuordnung wechseln weiterhin um 00:00 Uhr. Ein über die Endzeit offener Zyklus wird beim nächsten verfügbaren Zeitwert geschlossen. Nach Stromausfall entspricht der gespeicherte Abschlusszeitpunkt der Wiederanlaufzeit.
+
+Das OLED zeigt in der Standardansicht einen maximal skalierten Tageszähler und links den Zyklusstatus; die Weboberfläche bietet eine eigene Karte **Arbeitszyklus**. Neue OLED-Meldungen sind für alle sieben Sprachvarianten vorgesehen. Der Audiowechsel beginnt nach Boot zufällig bei einem erkannten normalen Track 3…N, läuft anschließend zyklisch und verwendet bei unbekannter Trackanzahl den eingestellten Basiston. Ein Track wird bei belegt gemeldetem Treiber nur nach akzeptiertem Abspielbefehl weitergeschaltet.
+
+Vor dem direkten Kompilieren in der Arduino-IDE `python3 tools/build_web.py` ausführen, wenn `ui-src/*` geändert wurde. Das eingecheckte `web_assets.h` enthält für 3.6.8 bereits die aktuelle Oberfläche; die GitHub-Releaseprüfung kontrolliert seine Übereinstimmung. Alle bisherigen Persistenzformate und OTA-/LittleFS-Partitionen bleiben unverändert.
 
 ## Ereigniserfassung
 

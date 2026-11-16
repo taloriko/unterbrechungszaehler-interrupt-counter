@@ -1,13 +1,26 @@
-# Unterbrechungszähler 3.2.0 – Schwäbisch
+# Unterbrechungszähler 3.6.8 – Schwäbisch
 
 > [!WARNING]
 > **KI-Hinweis:** Des Projekt isch mit ordentlich KI-Unterstützung entstanden, danach aber in echt getestet, verbessert ond weitergebaut worda. Wenn du KI-generierten Code grundsätzlich net leiden kasch, darfst trotzdem dr Knopf drucka. ;-)
 
-> **Aktueller Stand:** `3.1.0`
+> **Aktueller Stand:** `3.6.8`
 
 [Deutsch](../../README.md) · [English](../en/README.md) · [Projektstartseite](../../README.md)
 
 ---
+
+## Neu in 3.6.8: Arbeitszyklus ond besseres OLED
+
+- Dr **erschte kurze Druck** startet dr Arbeitstag; der zählt **net** als Unterbrechung. S OLED zeigt kurz „LOS GEHT'S!“.
+- Weitere kurze Drück im laufende Zyklus zählt dr Zähler als Unterbrechunga, sofern d bekannte 10-Sekunda-Sperre net greift. **Alles unter zwoi Sekunda** isch a kurzer Druck – au wenn dr Feierabend-Balka scho sichtbar war.
+- Nach 250 ms Halta kommt bei gültiger Uhrzeit dr Fortschrittsbalka. **Mindestens zwoi Sekunda halda und dann loslassa** macht Feierabend. Danach kommt zehn Sekunda d Abschlussanzeig ond anschließend **PAUSE**.
+- Unter **Einstellungen → Arbeitszyklus** kasch d automatische Schlusszeit als `HH:MM` selber setza. Standard isch **00:00**. D Tagesstatistik fängt trotzdem immer um Mitternacht a.
+- Wenn dr Strom weg isch, wird a offener Zyklus beim nächste Start mit gültiger Uhrzeit zugmacht. Als Ende zählt dann d Wiederanlaufzeit.
+- D neue OLED-Standardansicht zeigt rechts d große Tageszahl, links obe WLAN ond Uhr, links unte d Zeit seit dr letzte Unterbrechung oder **PAUSE**.
+- D Tön fanget nach em Neustart zufällig bei Track **3 bis N** a ond laufet dann der Reih nach. Wenn d Trackzahl net bekannt isch, bleibt dr eingstellte Basiston. Track 2 isch fürs Anti-Spam.
+- Weboberfläche ond OLED-Zyklustext send in alle sieba Sprachvarianta drin. Dr Webknopf bleibt vom physischa Arbeitszyklus unabhängig.
+
+Bestehende Daten, Einstellungen, Auswertungen, Sounddateia ond andere OLED-Modi bleibet erhalta.
 
 ## Für was brauch i des Ding?
 

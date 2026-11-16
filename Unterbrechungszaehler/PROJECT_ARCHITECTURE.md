@@ -121,3 +121,12 @@ Nur **DI1/GPIO13** ist im Projektprofil 3.2.0 aktiviert. DI2–DI4 und DO1–DO4
 `ProjectPreferences` ist die einzige persistente Quelle für Unterbrechungston und OLED-Projektanzeige einschließlich Display-Master-Schalter. Die Home-UI schreibt jeweils genau ein Feld über `/api/interruptions/preferences`; es gibt keinen globalen Speichern-Button. `DisplayViews` liest nur diese Präferenzen und `InterruptionService` entscheidet beim Feedback zwischen festem Track und der ressourcenschonenden Rotation 2…N. Track 1 bleibt dem Bootpfad vorbehalten.
 
 Die Heatmap-Filter verändern nur die jeweils betroffene Matrix. Das Frontend benachrichtigt nach einem Filterrequest gezielt die passende Bindung (`analytics.hourly` bzw. `analytics.monthWeek`), statt die ganze Auswertungsseite neu aufzubauen.
+
+## Erweiterung 3.6.8 – Arbeitszyklus als vorgeschaltete Klassifikation
+
+Der vorhandene physische Eingang DI1/GPIO13 wird durch `WorkCycle` klassifiziert. Ein erster kurzer Druck im inaktiven Zustand markiert START, weitere gültige kurze Drücke im aktiven Zustand laufen über den bisherigen `InterruptionService::capture(PhysicalButton)`-Pfad. Ein Druck ab zwei Sekunden beendet beim Loslassen den Zyklus. Der Webbutton erfasst weiterhin unabhängig vom Zyklus.
+
+Die Zyklusmarken werden separat als kompakter NVS-Zustand sowie als START-/END-Marken in `/cycles.log` verarbeitet und erreichen weder das Raw-Event-Ringformat noch die Tagesaggregate. Die feste 10-Sekunden-Sperre wird nur durch echte akzeptierte physische Unterbrechungen eröffnet. Die konfigurierbare lokale automatische Endzeit ist von der statistischen Mitternachtsgrenze unabhängig.
+
+`DisplayViews` rendert die neue 128×64-Standardansicht und den Status `PAUSE`, `WorkCycle` besitzt temporär Start-, Halte- und Feierabendüberlagerungen; das Web nutzt den vorhandenen Live-Endpunkt für Zustandswechsel ohne zusätzliche Hintergrundabfrage. Der vorhandene 1-KiB-OLED-Framebuffer wird weiterverwendet. Die Soundrotation wählt einmal nach Neustart einen zufälligen normalen Track aus 3…N und rotiert danach nach erfolgreich angenommenem Abspielbefehl weiter.
+

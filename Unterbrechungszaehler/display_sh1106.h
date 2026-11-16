@@ -43,6 +43,8 @@ void drawVLine(int16_t x, int16_t y0, int16_t y1);
 void drawRect(int16_t x, int16_t y, int16_t w, int16_t h);
 void drawText(int16_t x, int16_t y, const char *value);
 void drawTextScaled(int16_t x, int16_t y, const char *value, uint8_t scale);
+// Nonuniform scaling for tall, width-fitted counters; no additional framebuffer.
+void drawTextStretched(int16_t x, int16_t y, const char *value, uint8_t scaleX, uint8_t scaleY);
 void drawCenteredText(int16_t y, const char *value);
 bool present();
 bool setInverted(bool inverted);

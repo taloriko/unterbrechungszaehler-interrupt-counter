@@ -1,6 +1,19 @@
-# Unterbrechungszähler 3.2.0
+# Unterbrechungszähler 3.6.8
 
 Version 3.0.0 ist der neue Ausgangspunkt des Projekts. Frühere 1.x/2.x-Stände waren Entwicklungs- und Testversionen und werden nicht als Migrationsziel behandelt.
+
+## Neu in 3.6.8: Arbeitszyklus, OLED und Audio
+
+- Erster kurzer Druck startet einen neuen Arbeitszyklus und zählt **nicht** als Unterbrechung; das OLED zeigt „LOS GEHT'S!“.
+- Weitere kurze Drücke während des aktiven Zyklus zählen nach der bestehenden 10-Sekunden-Sperre als Unterbrechung. Jeder Druck **unter 2 Sekunden** bleibt ein kurzer Druck.
+- Ab 250 ms Halten erscheint bei gültiger lokaler Zeit ein Feierabend-Fortschrittsbalken. **Ab 2 Sekunden mit anschließendem Loslassen** wird der Zyklus geschlossen: 10 Sekunden Feierabendanzeige, anschließend **PAUSE**.
+- **Einstellungen → Arbeitszyklus:** Automatische Endzeit frei als `HH:MM`, voreingestellt auf **00:00**. Die Tagesstatistik beginnt unverändert um Mitternacht.
+- Nach Stromverlust wird ein offener Zyklus beim Wiederanlauf mit gültiger Zeit abgeschlossen; der Wiederanlaufzeitpunkt dient als erfasster Abschluss.
+- Neue SH1106-Standardanzeige: rechts große dynamische Tageszahl, links oben WLAN und Uhr, links unten letzte Unterbrechung beziehungsweise **PAUSE**.
+- Wechselnder Ton: zufälliger erster Track 3 bis N je Neustart, anschließend zyklisch; bei unbekannter Trackzahl fester Basiston. Track 2 bleibt für Anti-Spam reserviert.
+- Weboberfläche und neue OLED-Zyklustexte unterstützen alle sieben Sprachvarianten. Der Webbutton bleibt unabhängig vom Arbeitszyklus.
+
+Die bestehenden 9-Byte-Rohdaten, 64-Byte-Tagesaggregate, weiteren Displaymodi, gespeicherten Einstellungen sowie CSV- und Heatmap-Funktionen bleiben erhalten.
 
 ## Funktionen
 

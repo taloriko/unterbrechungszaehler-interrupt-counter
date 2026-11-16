@@ -1,6 +1,7 @@
 #include "interruption_service.h"
 
 #include <cstring>
+#include <esp_random.h>
 
 #include "audio_dy_sv17f.h"
 #include "display_views.h"
@@ -26,7 +27,8 @@ uint8_t queueTail = 0;
 uint8_t queueCount = 0;
 uint32_t nextStorageRetryMs = 0;
 uint8_t audioPending = 0;
-uint16_t lastRotatingTrack = 2;
+uint16_t lastRotatingTrack = 0;  // Last track accepted by the audio driver.
+uint16_t pendingRotatingTrack = 0;  // Retry the same track until playback accepts it.
 bool rotateFallbackLogged = false;
 bool displayFeedbackPending = false;
 bool aggregatesStarted = false;
@@ -239,22 +241,33 @@ uint16_t interruptionSoundTrack() {
   const uint16_t firstNormal = ProjectConfig::INTERRUPTION_SOUND_FIRST_NORMAL_TRACK;
   const uint16_t count = AudioDySv17f::musicCount();
   if (ProjectPreferences::soundMode() != ProjectPreferences::SoundMode::Rotate) {
+    pendingRotatingTrack = 0;
     if (count > 0U && count < firstNormal) return 0U;
     return ProjectPreferences::soundTrack() >= firstNormal ? ProjectPreferences::soundTrack() : firstNormal;
   }
 
 
   if (count >= firstNormal) {
-    // Track 1 = boot/test, track 2 = anti-spam. Normal interruption rotation
-    // starts at track 3 and remains deterministic/no-heap.
-    lastRotatingTrack = (lastRotatingTrack < firstNormal || lastRotatingTrack >= count)
-                          ? firstNormal
-                          : static_cast<uint16_t>(lastRotatingTrack + 1U);
+    // Track 1 = boot/test, track 2 = anti-spam. Pick the first normal
+    // track at random after boot, then rotate sequentially through 3..N.
+    // Do not advance the rotation until DY-SV17F actually accepts playTrack().
+    // The same pending selection is retried when the driver is busy.
+    if (pendingRotatingTrack < firstNormal || pendingRotatingTrack > count) {
+      if (lastRotatingTrack < firstNormal || lastRotatingTrack > count) {
+        const uint32_t normalCount = static_cast<uint32_t>(count) - firstNormal + 1U;
+        pendingRotatingTrack = static_cast<uint16_t>(firstNormal + esp_random() % normalCount);
+      } else {
+        pendingRotatingTrack = lastRotatingTrack >= count
+                                   ? firstNormal
+                                   : static_cast<uint16_t>(lastRotatingTrack + 1U);
+      }
+    }
     rotateFallbackLogged = false;
     missingNormalTracksLogged = false;
-    return lastRotatingTrack;
+    return pendingRotatingTrack;
   }
 
+  pendingRotatingTrack = 0;
   if (count > 0U) {
     if (!missingNormalTracksLogged) {
       SerialLog::warning("INTERRUPT", "Only reserved audio tracks detected; normal interruption sound needs track 3 or higher");
@@ -284,7 +297,14 @@ void processFeedback() {
   if (audioPending > 0 && ProjectPreferences::soundEnabled()) {
     const uint16_t track = interruptionSoundTrack();
     if (track == 0U) --audioPending;
-    else if (AudioDySv17f::playTrack(track)) --audioPending;
+    else if (AudioDySv17f::playTrack(track)) {
+      if (ProjectPreferences::soundMode() == ProjectPreferences::SoundMode::Rotate &&
+          track == pendingRotatingTrack) {
+        lastRotatingTrack = track;
+        pendingRotatingTrack = 0;
+      }
+      --audioPending;
+    }
   } else if (!ProjectPreferences::soundEnabled()) {
     audioPending = 0;
   }
