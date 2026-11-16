@@ -162,23 +162,85 @@ void drawCenteredScaled(const char *value) {
   DisplaySh1106::drawTextScaled(x, y, shown, scale);
 }
 
+
+void drawLargeWifiIcon(int16_t x, int16_t y, bool connected) {
+  // 21 x 19 pixel arcs centered in the left status pane.
+  DisplaySh1106::drawHLine(x + 5, x + 15, y + 1);
+  DisplaySh1106::drawHLine(x + 3, x + 4, y + 2);
+  DisplaySh1106::drawHLine(x + 16, x + 17, y + 2);
+  DisplaySh1106::drawPixel(x + 2, y + 3);
+  DisplaySh1106::drawPixel(x + 18, y + 3);
+  DisplaySh1106::drawPixel(x + 1, y + 4);
+  DisplaySh1106::drawPixel(x + 19, y + 4);
+  DisplaySh1106::drawHLine(x + 7, x + 13, y + 8);
+  DisplaySh1106::drawPixel(x + 5, y + 9);
+  DisplaySh1106::drawPixel(x + 15, y + 9);
+  DisplaySh1106::drawPixel(x + 4, y + 10);
+  DisplaySh1106::drawPixel(x + 16, y + 10);
+  DisplaySh1106::drawHLine(x + 9, x + 11, y + 14);
+  DisplaySh1106::drawPixel(x + 10, y + 17);
+  if (!connected) {
+    // Crossed arc means Wi-Fi disconnected; no animation or new polling.
+    for (int16_t p = 0; p < 18; ++p) DisplaySh1106::drawPixel(x + 2 + p, y + 1 + p);
+  }
+}
+
+void drawLargeTimeIcon(int16_t x, int16_t y, bool valid) {
+  // A 21 x 21 pixel clock face, using only the existing bitmap primitives.
+  DisplaySh1106::drawHLine(x + 5, x + 15, y);
+  DisplaySh1106::drawHLine(x + 5, x + 15, y + 20);
+  DisplaySh1106::drawVLine(x, y + 5, y + 15);
+  DisplaySh1106::drawVLine(x + 20, y + 5, y + 15);
+  for (int16_t p = 0; p < 4; ++p) {
+    DisplaySh1106::drawPixel(x + 4 - p, y + p + 1);
+    DisplaySh1106::drawPixel(x + 16 + p, y + p + 1);
+    DisplaySh1106::drawPixel(x + 4 - p, y + 19 - p);
+    DisplaySh1106::drawPixel(x + 16 + p, y + 19 - p);
+  }
+  if (valid) {
+    DisplaySh1106::drawVLine(x + 10, y + 5, y + 10);
+    DisplaySh1106::drawHLine(x + 10, x + 15, y + 10);
+  } else {
+    DisplaySh1106::drawHLine(x + 6, x + 14, y + 10);
+  }
+}
+
+// Standard OLED: 128x64, right-hand counter and two left-hand information panes.
 bool renderStandard(const InterruptionTypes::Summary &summary, const char *age, bool wifi, bool timeOk) {
   DisplaySh1106::frameClear();
-  DisplaySh1106::drawText(2, 1, labels().today);
-  drawTimeIcon(98, 0, timeOk);
-  drawWifiIcon(114, 0, wifi);
-  DisplaySh1106::drawHLine(0, 127, 12);
+  constexpr int16_t splitX = 62;
+  DisplaySh1106::drawVLine(splitX, 0, 63);
+  DisplaySh1106::drawHLine(0, splitX - 1, 31);
 
+  // Upper left: only two large, immediately recognizable status icons.
+  drawLargeWifiIcon(5, 5, wifi);
+  drawLargeTimeIcon(35, 5, timeOk);
+
+  // Lower left: elapsed time since the last interruption, without a clock time.
+  DisplaySh1106::drawText(2, 34, labels().last);
+  const char *shownAge = age && *age ? age : "--";
+  const uint8_t ageScale = fittedScale(shownAge, 3, 58, 21);
+  const size_t ageLength = strlen(shownAge);
+  const int16_t ageWidth = static_cast<int16_t>(ageLength * 6U * ageScale - ageScale);
+  const int16_t ageX = static_cast<int16_t>((splitX - ageWidth) / 2);
+  const int16_t ageY = static_cast<int16_t>(43 + (21 - 7 * ageScale) / 2);
+  DisplaySh1106::drawTextScaled(ageX, ageY, shownAge, ageScale);
+
+  // Right: choose the widest fit for 1..10 digits while filling the height.
+  // Separate X/Y scaling prevents multi-digit values from shrinking in height.
   char count[12];
   snprintf(count, sizeof(count), "%lu", static_cast<unsigned long>(summary.todayCount));
   const size_t digits = strlen(count);
-  const int16_t width = static_cast<int16_t>(digits * 18U - (digits ? 3U : 0U));
-  const int16_t x = static_cast<int16_t>((128 - width) / 2);
-  DisplaySh1106::drawTextScaled(x < 0 ? 0 : x, 17, count, 3);
-
-  DisplaySh1106::drawHLine(0, 127, 43);
-  DisplaySh1106::drawText(2, 48, labels().last);
-  DisplaySh1106::drawText(80, 48, age);
+  uint8_t scaleX = 1;
+  for (uint8_t candidate = 12; candidate > 1; --candidate) {
+    const size_t width = digits * 6U * candidate - candidate;
+    if (width <= 62U) { scaleX = candidate; break; }
+  }
+  const uint8_t scaleY = 8;
+  const int16_t width = static_cast<int16_t>(digits * 6U * scaleX - scaleX);
+  const int16_t x = static_cast<int16_t>(splitX + 1 + (65 - width) / 2);
+  const int16_t y = static_cast<int16_t>((64 - 7 * scaleY) / 2);
+  DisplaySh1106::drawTextStretched(x, y, count, scaleX, scaleY);
   return DisplaySh1106::present();
 }
 

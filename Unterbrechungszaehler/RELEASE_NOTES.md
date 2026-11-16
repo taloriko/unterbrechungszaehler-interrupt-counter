@@ -1,3 +1,18 @@
+# Release 3.6.3
+
+- Standard-OLED links oben nur noch zwei gross dargestellte Icons fuer WLAN und gueltige Uhrzeit
+- links unten nur die vergangene Zeit seit der letzten Unterbrechung (ohne Uhrzeit)
+- rechts bleibt die dynamisch maximierte Tageszahl
+- keine Aenderung der Datenformate oder anderen OLED-Modi
+
+# Release 3.6.2
+
+- neue SH1106-Standardansicht mit rechts maximierter Tageszahl (dynamische horizontale und vertikale Skalierung)
+- links oben WLAN-, Uhr-, Speicher- und Tonstatus, links unten Zeitpunkt und Alter der letzten Unterbrechung
+- Zufallsstart für normalen Wechselton nach Neustart, anschließend unveränderte Rotation 3…N; fester Basiston bei unbekannter Trackanzahl
+- kein neues persistentes Format, kein zusätzlicher Flash-/NVS-Schreibpfad und keine Änderung anderer OLED-Modi
+- vorhandene 3.6.1-Zykluslogik vollständig beibehalten
+
 # Release 3.6.1
 
 - Arbeitszyklus auf DI1/GPIO13 **neu integriert**, nachdem der verzögerte Pending-Ansatz aus dem 3.6.0-Teststand im Alltag zu falschem Feedback und verspäteter Erfassung geführt hat
