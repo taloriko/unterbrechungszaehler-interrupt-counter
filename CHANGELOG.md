@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.6.7
+
+- OLED-Zyklustexte fuer Start, Halten, Loslassen, Feierabend, Pause und unbekannte Zeit konsequent sprachabhaengig
+- DE/EN/IT/FR sowie drei schwaebische Sprachvarianten mit kurzen, OLED-tauglichen statischen Texten ohne neue Puffer
+- Unveraenderte Zyklus-/Unterbrechungslogik, Statistiken und persistente Datenformate
+
 ## 3.6.6
 
 - Haltefeedback fuer den physischen Feierabenddruck: ab 250 ms erscheint bei aktivem Zyklus "FEIERABEND" mit Fortschrittsbalken ueber fast die gesamte OLED-Breite; 85-ms-Aktualisierung ohne Task oder Extra-Framebuffer

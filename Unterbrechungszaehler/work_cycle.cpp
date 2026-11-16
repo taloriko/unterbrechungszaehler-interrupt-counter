@@ -137,21 +137,41 @@ bool cycleDeadlineReached(const ProjectTime::LocalDateTime &nowLocal) {
          (nowLocal.dayIndex == deadlineDay && nowMinute >= cutoff);
 }
 
+// Fixed, allocation-free OLED copy for every web-selectable language.
+struct CycleUiWords {
+  const char *startTop;
+  const char *startBottom;
+  const char *endTitle;
+  const char *today;
+  const char *countLabel;
+  const char *holdTitle;
+  const char *holdProgress;
+  const char *release;
+};
+const CycleUiWords &cycleUiWords() {
+  static const CycleUiWords de{"LOS", "GEHT'S!", "FEIERABEND", "HEUTE", "UNTERBR.", "FEIERABEND", "HALTEN ...", "LOSLASSEN"};
+  static const CycleUiWords en{"LET'S", "GO!", "DONE FOR TODAY", "TODAY", "INTERRUPT.", "FINISH WORK", "KEEP HOLDING", "RELEASE"};
+  static const CycleUiWords fr{"C'EST", "PARTI!", "FIN DE JOURNEE", "JOUR", "INTERRUPT.", "FIN DE JOURNEE", "MAINTENIR", "RELACHER"};
+  static const CycleUiWords it{"SI", "PARTE!", "FINE LAVORO", "OGGI", "INTERRUZ.", "FINE LAVORO", "TIENI PREMUTO", "RILASCIA"};
+  static const CycleUiWords swg{"AUF", "GEHT'S!", "FEIERABEND", "HEIT", "UNTERBR.", "FEIERABEND", "HALTA ...", "LOS LASSA"};
+  static const CycleUiWords alb{"AUF", "GEHT'S!", "FEIEROBED", "HEIT", "UNTERBR.", "FEIEROBED", "HALTA ...", "LOSLASSA"};
+  static const CycleUiWords ob{"JETZT", "GOHT'S!", "FEI'RABEND", "HEUT", "UNTERBR.", "FEI'RABEND", "HEBA ...", "LASS LOS"};
+  const char *language = ProjectPreferences::language();
+  if (strcmp(language, "en") == 0) return en;
+  if (strcmp(language, "fr") == 0) return fr;
+  if (strcmp(language, "it") == 0) return it;
+  if (strcmp(language, "swg-alb") == 0) return alb;
+  if (strcmp(language, "swg-ob") == 0) return ob;
+  if (strcmp(language, "swg") == 0) return swg;
+  return de;
+}
+
 void showCycleStart() {
   if (!ProjectPreferences::displayEnabled() || !DisplaySh1106::enabled() || !DisplaySh1106::detected() ||
       DisplaySh1106::bootScreenActive() || DisplaySh1106::manualTestActive()) return;
-  const char *language = ProjectPreferences::language();
-  const char *upper = "LOS";
-  const char *lower = "GEHT\u0027S!";
-  if (language && strcmp(language, "en") == 0) {
-    upper = "LET\u0027S"; lower = "GO!";
-  } else if (language && strcmp(language, "fr") == 0) {
-    upper = "C'EST"; lower = "PARTI!";
-  } else if (language && strcmp(language, "it") == 0) {
-    upper = "SI"; lower = "PARTE!";
-  } else if (language && strncmp(language, "swg", 3) == 0) {
-    upper = "AUF"; lower = "GEHTS!";
-  }
+  const CycleUiWords &words = cycleUiWords();
+  const char *upper = words.startTop;
+  const char *lower = words.startBottom;
   DisplaySh1106::setPower(true);
   DisplaySh1106::setInverted(false);
   DisplaySh1106::frameClear();
@@ -190,24 +210,10 @@ void renderGoodbye() {
   DisplaySh1106::setInverted(false);
   DisplaySh1106::frameClear();
 
-  const char *language = ProjectPreferences::language();
-  const char *title = "FEIERABEND";
-  const char *today = "HEUTE";
-  const char *unit = "UNTERBR.";
-  if (language && strcmp(language, "en") == 0) {
-    title = "DONE FOR TODAY";
-    today = "TODAY";
-    unit = "INTERRUPT.";
-  } else if (language && strcmp(language, "fr") == 0) {
-    title = "FIN DE JOURNEE";
-    today = "JOUR";
-    unit = "INTERRUPT.";
-  } else if (language && strcmp(language, "it") == 0) {
-    title = "FINE LAVORO";
-    today = "OGGI";
-    unit = "INTERRUZ.";
-  }
-
+  const CycleUiWords &words = cycleUiWords();
+  const char *title = words.endTitle;
+  const char *today = words.today;
+  const char *unit = words.countLabel;
   DisplaySh1106::drawCenteredText(3, title);
   DisplaySh1106::drawHLine(0, 127, 14);
 
@@ -227,22 +233,10 @@ void renderHoldPreview(uint32_t heldMs) {
   if (!ProjectPreferences::displayEnabled() || !DisplaySh1106::enabled() || !DisplaySh1106::detected() ||
       DisplaySh1106::bootScreenActive() || DisplaySh1106::manualTestActive()) return;
 
-  const char *language = ProjectPreferences::language();
-  const char *title = "FEIERABEND";
-  const char *instruction = heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS ? "LOSLASSEN" : "HALTEN ...";
-  if (language && strcmp(language, "en") == 0) {
-    title = "FINISH WORK";
-    instruction = heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS ? "RELEASE" : "KEEP HOLDING";
-  } else if (language && strcmp(language, "fr") == 0) {
-    title = "FIN DE JOURNEE";
-    instruction = heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS ? "RELACHER" : "MAINTENIR";
-  } else if (language && strcmp(language, "it") == 0) {
-    title = "FINE LAVORO";
-    instruction = heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS ? "RILASCIA" : "TIENI PREMUTO";
-  } else if (language && strncmp(language, "swg", 3) == 0) {
-    title = "FEIERABEND";
-    instruction = heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS ? "LOS LASSA" : "HALTA ...";
-  }
+  const CycleUiWords &words = cycleUiWords();
+  const char *title = words.holdTitle;
+  const char *instruction = heldMs >= ProjectConfig::WORK_CYCLE_LONG_PRESS_MS
+                                ? words.release : words.holdProgress;
 
   DisplaySh1106::setPower(true);
   DisplaySh1106::setInverted(false);

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Portable release checks for Unterbrechungszaehler 3.6.6."""
+"""Portable release checks for Unterbrechungszaehler 3.6.7."""
 from __future__ import annotations
 
 import gzip
@@ -68,7 +68,7 @@ def main() -> None:
 
     # Identity / frozen platform invariants.
     check('PROJECT_NAME[] = "Unterbrechungszähler"' in config, "project name")
-    check('SOFTWARE_VERSION[] = "3.6.6"' in config, "project version 3.6.6")
+    check('SOFTWARE_VERSION[] = "3.6.7"' in config, "project version 3.6.7")
     check("RAW_EVENT_CAPACITY = 100000" in project and "RAW_RECORD_SIZE = 9" in project, "100,000 x 9-byte raw ring unchanged")
     check("DAILY_AGGREGATE_CAPACITY = 2300" in project and "DAILY_RECORD_SIZE = 64" in project, "daily aggregate format unchanged")
     check("PENDING_EVENT_CAPACITY = 64" in project, "fixed 64-event persistence queue")
@@ -107,14 +107,23 @@ def main() -> None:
           "cycle status included in the existing interruption JSON")
     check('sinceCycle == WorkCycle::stateName()' in server,
           "conditional live poll detects changes even without new interruption")
-    check('strcmp(WorkCycle::stateName(), lastCycleState)' in views and 'drawTextScaled(2, 46, "PAUSE", 2)' in views,
+    check('strcmp(WorkCycle::stateName(), lastCycleState)' in views and 'drawTextScaled(2, 46, cycleLabels.pause, 2)' in views,
           "OLED lower-left shows pause and refreshes on cycle changes")
     check("'cycleSettings': renderCycleSettings" in JS or "cycleSettings: renderCycleSettings" in JS,
           "own cycle settings card renderer is registered")
     check("cycle.settings.explain" in JS and "cycle.status.pauseHint" in JS,
           "all cycle setting explanations and states are translatable")
 
-    # 3.6.6: responsive but interruptible manual farewell preview.
+    check("const CycleStatusLabels &cycleStatusLabels()" in views, "OLED pause status localized")
+    check('strcmp(language, "swg-alb") == 0' in views and 'strcmp(language, "swg-ob") == 0' in views,
+          "distinct Swabian OLED status labels")
+    check("const CycleUiWords &cycleUiWords()" in cycle and "words.startBottom" in cycle and
+          "words.endTitle" in cycle and "words.holdProgress" in cycle and "words.release" in cycle,
+          "OLED start/hold/release/goodbye labels centrally localized")
+    check('strcmp(language, "swg-alb") == 0' in cycle and 'strcmp(language, "swg-ob") == 0' in cycle,
+          "regional Swabian messages handled separately")
+
+    # 3.6.7: responsive but interruptible manual farewell preview.
     check("WORK_CYCLE_HOLD_FEEDBACK_AFTER_MS = 250" in project,
           "farewell hold feedback starts after 250ms")
     check("WORK_CYCLE_HOLD_FEEDBACK_FRAME_MS = 85" in project,
