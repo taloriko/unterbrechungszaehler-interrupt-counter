@@ -82,8 +82,9 @@ Das DY-SV17F dekodiert **MP3 und WAV** und besitzt **32 Mbit / 4 MByte internen 
 Das Projekt verwendet folgende Trackbelegung:
 
 - `00001.mp3` bzw. `00001.wav`: Track 1, ausschließlich Boot-Ton
-- `00002` und höher: Unterbrechungstöne
-- Rotationsmodus: erkannte Tracks 2…N
+- `00002.mp3` bzw. `00002.wav`: Track 2, ausschließlich Anti-Spam-Feedback
+- `00003` und höher: normale Unterbrechungstöne
+- Wechselmodus: erster normaler Track nach jedem ESP32-Neustart zufällig aus den erkannten Tracks 3…N; danach zyklisch bis N und wieder ab 3. Ohne gemeldete Trackanzahl wird der eingestellte feste Basiston (mindestens Track 3) verwendet.
 
 Startpaket: [`../sounds/`](../sounds/)
 Dateizuordnung: [`../sounds/DATEIZUORDNUNG.txt`](../sounds/DATEIZUORDNUNG.txt)
