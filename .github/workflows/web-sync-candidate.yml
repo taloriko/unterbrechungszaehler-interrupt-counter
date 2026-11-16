@@ -1,0 +1,38 @@
+name: One-time web bundle sync for 3.6.8 candidate
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - "Unterbrechungszaehler/ui-src/**"
+      - ".github/workflows/web-sync-candidate.yml"
+      - "Unterbrechungszaehler/tools/build_web.py"
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'fix/release-candidate-3.6.8' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out candidate branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          persist-credentials: true
+      - name: Generate the committed web asset
+        run: python3 Unterbrechungszaehler/tools/build_web.py
+      - name: Commit only if the generated bundle changed
+        shell: bash
+        run: |
+          set -e
+          if git diff --quiet -- Unterbrechungszaehler/web_assets.h; then
+            echo "Web asset is already up-to-date"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Unterbrechungszaehler/web_assets.h
+          git commit -m "build(web): commit reproducible 3.6.8 UI bundle"
+          git push origin HEAD:fix/release-candidate-3.6.8
