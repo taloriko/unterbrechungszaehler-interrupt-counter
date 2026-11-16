@@ -27,9 +27,10 @@ jobs:
         run: python3 Unterbrechungszaehler/tools/build_web.py
       - name: Portable release checks
         run: python3 Unterbrechungszaehler/tools/release_check.py
-      - name: Verify generated web assets
+      - name: Verify committed web assets match readable sources
         run: |
           python3 Unterbrechungszaehler/tools/build_web.py
+          git diff --exit-code -- Unterbrechungszaehler/web_assets.h
           python3 Unterbrechungszaehler/tools/release_check.py
 
   compile:
