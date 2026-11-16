@@ -339,13 +339,13 @@ void handleProjectPreferences() {
     if (value.length() != 5U || value[2] != ':' ||
         value[0] < '0' || value[0] > '9' || value[1] < '0' || value[1] > '9' ||
         value[3] < '0' || value[3] > '9' || value[4] < '0' || value[4] > '9') {
-      server.send(400, "application/json; charset=utf-8", "{\\"ok\\":false,\\"error\\":\\"invalid_cycle_end_time\\"}");
+      server.send(400, "application/json; charset=utf-8", "{\"ok\":false,\"error\":\"invalid_cycle_end_time\"}");
       return;
     }
     const uint8_t hours = static_cast<uint8_t>((value[0] - '0') * 10 + (value[1] - '0'));
     const uint8_t minutes = static_cast<uint8_t>((value[3] - '0') * 10 + (value[4] - '0'));
     if (hours >= 24U || minutes >= 60U) {
-      server.send(400, "application/json; charset=utf-8", "{\\"ok\\":false,\\"error\\":\\"invalid_cycle_end_time\\"}");
+      server.send(400, "application/json; charset=utf-8", "{\"ok\":false,\"error\":\"invalid_cycle_end_time\"}");
       return;
     }
     ok = ProjectPreferences::setWorkCycleEndMinute(static_cast<uint16_t>(hours * 60U + minutes));
