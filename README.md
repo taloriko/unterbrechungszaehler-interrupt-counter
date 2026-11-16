@@ -9,23 +9,6 @@
 
 ---
 
-## Neu in Version 3.6.8 – Arbeitszyklus und übersichtliche Anzeige
-
-Der vorhandene Taster auf **DI1/GPIO13** unterscheidet jetzt Arbeitsbeginn, Unterbrechungen und Feierabend:
-
-- **Erster kurzer Druck bei inaktivem Zyklus:** Startet den Arbeitszyklus, ohne eine Unterbrechung zu zählen. Das OLED zeigt kurz „LOS GEHT'S!“.
-- **Weitere kurze Drücke im aktiven Zyklus:** Zählen als Unterbrechungen, sofern die bestehende 10-Sekunden-Sperre nicht greift. **Jeder Druck unter 2 Sekunden** ist ein kurzer Druck, auch wenn der Feierabend-Balken bereits sichtbar war.
-- **Mindestens 2 Sekunden gedrückt halten und loslassen:** Beendet den Zyklus, ohne eine Unterbrechung zu zählen. Ab 250 ms zeigt das OLED bei gültiger lokaler Uhrzeit einen Fortschrittsbalken über fast die gesamte Breite. Anschließend erscheinen 10 Sekunden Feierabendanzeige, dann **PAUSE**.
-- **Automatisches Zyklusende:** Unter **Einstellungen → Arbeitszyklus** lässt sich die lokale Uhrzeit im Format `HH:MM` setzen (Standard **00:00**). Die Tagesstatistik wechselt unabhängig davon weiterhin um Mitternacht.
-- **Bei Stromausfall:** Ein offener Zyklus wird beim nächsten Lauf mit gültiger Uhrzeit abgeschlossen; die Abschlusserfassung erhält die Wiederanlaufzeit. Es wird kein Ausschaltzeitpunkt erfunden.
-- **Web- und OLED-Status:** Im laufenden Zyklus ist die letzte Unterbrechung sichtbar, nach Zyklusende **PAUSE**. Die Standardanzeige zeigt rechts die möglichst große Tageszahl, links oben WLAN und Uhr, links unten die vergangene Zeit seit dem letzten Ereignis beziehungsweise den Zyklusstatus.
-- **Audio:** Der normale Wechselmodus startet nach einem Neustart bei einem zufälligen Track aus **3 bis N** und läuft dann der Reihe nach. Wenn die Trackzahl nicht ermittelt werden kann, wird der eingestellte Basiston verwendet. Track 1 bleibt Boot/Test, Track 2 Anti-Spam.
-- **Sprachen:** Weboberfläche und neue OLED-Zyklustexte unterstützen Deutsch, Englisch, Italienisch, Französisch sowie Schwäbisch, Alb-Schwäbisch und Oberschwäbisch.
-
-Der **Webbutton** bleibt unabhängig vom Arbeitszyklus. Die bisherigen Rohdaten, Heatmaps, CSV-Exporte, Sounddateien und Displaymodi bleiben erhalten. Die Firmware lässt sich über die bestehende OTA-Funktion installieren; NVS- und LittleFS-Daten werden bei einem regulären OTA-Update nicht gelöscht.
-
-Die technischen Details und die vollständige Versionsgeschichte stehen im [Changelog](CHANGELOG.md) und in den [Release Notes](Unterbrechungszaehler/RELEASE_NOTES.md).
-
 ## Für was brauche ich das Ding?
 
 **Du sitzt konzentriert an einer Aufgabe.**
