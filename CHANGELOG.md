@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.6.8
+
+- Wechselton: Trackwahl bei beschaeftigtem Audiomodul beibehalten; Rotation erst nach erfolgreicher Befehlsannahme weiterschalten
+- Feierabend-Haltevorschau nur bei gueltiger Uhrzeit beim Start des Tastendrucks, ohne weitere Zeitpruefung pro Animationsbild
+- Einstellungsfehlermeldungen nur in der zugehoerigen Karte anzeigen
+- eingechecktes Web-Bundle aus den aktuellen Quellen regenerieren fuer Arduino-IDE und GitHub-OTA
+- bewusst beibehalten: Druck unter 2 Sekunden zaehlt; seltene Gleichzeitigkeit beim automatischen Endzeitpunkt und Stromausfall-Randfaelle
+- alle sieben Sprachen und gespeicherten Messformate bleiben unveraendert
+
 ## 3.6.7
 
 - OLED-Zyklustexte fuer Start, Halten, Loslassen, Feierabend, Pause und unbekannte Zeit konsequent sprachabhaengig
