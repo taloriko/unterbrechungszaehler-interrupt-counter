@@ -1,86 +1,19 @@
 # Release 3.6.8
 
-- Wechselton bleibt bei beschaeftigtem DY-SV17F vorgemerkt und wird erst nach erfolgreicher Abspielbefehlannahme weitergeschaltet.
-- Feierabend-Fortschrittsbalken nur bei gueltiger Uhrzeit zu Beginn des Haltens. Kurze Druecke unter 2 Sekunden zaehlen weiterhin.
-- Einstellungsfehler erscheinen nur in der jeweiligen eigenen Karte.
-- Web-Bundle auf den aktuellen Stand gebracht fuer Arduino-IDE und OTA.
-- Bewusst akzeptiert: seltene Gleichzeitigkeit von Tastendruck und automatischem Ende; Stromausfall ohne Zeitpuffer, Wiederanlaufabschluss zur aktuellen Zeit; fehlgeschlagene NVS-Schreibvorgaenge werden nicht weiter behandelt.
-- Vor Release: praktischer Test von DI1 kurz/lang, OLED, OTA, Audio und Einstellungen auf dem echten ESP32.
+Der Unterbrechungszähler unterscheidet jetzt mit dem vorhandenen physischen Knopf zwischen **Arbeitsbeginn**, **Unterbrechung** und **Feierabend**:
 
-# Release 3.6.7
+- Erster kurzer Druck bei inaktivem Zyklus: Arbeitsbeginn mit großer, kurzer OLED-Startmeldung; keine Unterbrechung.
+- Weitere kurze Drücke im aktiven Zyklus: normale Erfassung bei Beachtung der 10-Sekunden-Anti-Spam-Sperre. **Unter zwei Sekunden gilt jeder Druck als kurz**, auch wenn die Feierabend-Vorschau bereits sichtbar war.
+- Mindestens zwei Sekunden halten und loslassen: Arbeitszyklus schließen; der Fortschrittsbalken startet ab 250 ms bei gültiger Uhrzeit. Anschließend folgen zehn Sekunden Feierabendanzeige und der Status **PAUSE**.
+- Der automatische Zyklusabschluss lässt sich unter **Einstellungen → Arbeitszyklus** als lokale Uhrzeit HH:MM festlegen (Default 00:00). Die tägliche Unterbrechungsstatistik wechselt weiterhin um Mitternacht.
+- Neue SH1106-Standardansicht: rechts die möglichst große Tageszahl, links oben WLAN-/Uhr-Symbole, links unten die letzte Unterbrechung als relative Zeit beziehungsweise PAUSE. Die Anti-Spam-Warnanimation ist besser lesbar.
+- Im Web werden Zyklusstatus und automatische Endzeit in einer eigenen Karte angezeigt.
+- Wechselmodus für Unterbrechungstöne: zufälliger Starttrack 3…N nach Neustart, anschließend feste Rotation; bei unbekannter Trackanzahl der gewählte Basiston.
+- Die neuen Funktionen sind in allen sieben Sprachvarianten verfügbar.
 
-- OLED-Zyklustexte in DE/EN/IT/FR und drei schwaebischen Varianten: START, Haltebalken, Loslassen, FEIERABEND, PAUSE und unbekannte Zeit.
-- Kompakte, statische Sprachtexte ohne neue Heap-Allokation oder Display-Puffer.
-- Zaehlung, Arbeitszyklus- und Datenformate unveraendert.
+**Kompatibilität:** Keine Datenmigration. Rohereignisse, Tagesaggregate, bestehende CSV-/Heatmap-Auswertungen, GPIOs, Audio-Dateibelegung, OLED-Modi und OTA-Partitionierung bleiben erhalten. Bei regulärem OTA bleiben NVS und LittleFS erhalten.
 
-# Release 3.6.6
-
-- Bei einem aktiven Arbeitszyklus erscheint nach 250 ms ununterbrochenem Halten des physischen Knopfes eine OLED-Vorschau: FEIERABEND, breiter Fortschrittsbalken und lokalisierte Aufforderung.
-- Bei 2 Sekunden ist der Balken voll. Erst Loslassen nach Erreichen der Halteschwelle fuehrt wie bisher zum wirklichen Feierabend, mit 10-Sekunden-Abschlussanzeige.
-- Fruehes Loslassen setzt die Anzeige zurueck; jeder neue Druck beginnt wieder bei null. Kurzes Druecken bleibt eine normale Unterbrechung.
-- Displayvorschau aktualisiert maximal alle 85 ms im bestehenden Loop, ohne weitere Tasks, Flash-Schreibzugriffe oder neuen Puffer.
-- Keine Aenderungen bestehender Persistenzformate oder Auswertungen.
-
-# Release 3.6.5
-
-- Die Einstellung "Automatisches Zyklusende" liegt in einer eigenen, ausfuehrlich erklaerten Arbeitszyklus-Karte.
-- OLED-Standardansicht: beim aktiven Zyklus links unten die letzte Unterbrechung, nach manuellem oder automatischem Ende "PAUSE". "FEIERABEND" bleibt zuvor fuer 10 Sekunden.
-- Web-Startseite: dasselbe Signal "PAUSE" mit Erklaerung, sobald der Arbeitszyklus geschlossen ist. Bei ungueltiger lokaler Uhrzeit ein eigener Status statt falsch suggerierter Pause.
-- Zyklusstatus nutzt bestehende Live-Abfrage, kein neuer Hintergrundtimer; Datenformate und Flash-Schreibstrategie unveraendert.
-- Alle sieben UI-Sprachen aktualisiert.
-
-# Release 3.6.4
-
-- OLED TV-Anti-Spam-Animation zeigt grosse lesbare Warnung in einer oder zwei Zeilen, bei allen Animationsbildern.
-- Beim Start des Zyklus erscheint fuer zwei Sekunden ein grosses lokalisiertes "LOS GEHT'S!" (kein Zaehlen, kein normaler Ton, keine Anti-Spam-Sperre).
-- Einstellbare automatische Endzeit der Arbeitszyklen in der Weboberflaeche (HH:MM, Standard 00:00); ein Start nach der Endzeit laeuft bis zur Endzeit des folgenden lokalen Tages.
-- Der normale Kalendertag fuer Tageszaehler/Analytik wechselt unveraendert um 00:00; manueller Abschluss per langem Druck bleibt.
-- Ein einzelner kompakter NVS-Wert wird nur nach tatsaechlicher Aenderung geschrieben; keine Aenderung bestehender Ring-/Aggregat-/Zyklusdatenformate.
-- Firmware-Build erzeugt das deterministische Web-Asset vor dem Kompilieren neu.
-
-# Release 3.6.3
-
-- Standard-OLED links oben nur noch zwei gross dargestellte Icons fuer WLAN und gueltige Uhrzeit
-- links unten nur die vergangene Zeit seit der letzten Unterbrechung (ohne Uhrzeit)
-- rechts bleibt die dynamisch maximierte Tageszahl
-- keine Aenderung der Datenformate oder anderen OLED-Modi
-
-# Release 3.6.2
-
-- neue SH1106-Standardansicht mit rechts maximierter Tageszahl (dynamische horizontale und vertikale Skalierung)
-- links oben WLAN-, Uhr-, Speicher- und Tonstatus, links unten Zeitpunkt und Alter der letzten Unterbrechung
-- Zufallsstart für normalen Wechselton nach Neustart, anschließend unveränderte Rotation 3…N; fester Basiston bei unbekannter Trackanzahl
-- kein neues persistentes Format, kein zusätzlicher Flash-/NVS-Schreibpfad und keine Änderung anderer OLED-Modi
-- vorhandene 3.6.1-Zykluslogik vollständig beibehalten
-
-# Release 3.6.1
-
-- Arbeitszyklus auf DI1/GPIO13 **neu integriert**, nachdem der verzögerte Pending-Ansatz aus dem 3.6.0-Teststand im Alltag zu falschem Feedback und verspäteter Erfassung geführt hat
-- erster kurzer Druck startet den Arbeitszyklus und zählt nicht als Unterbrechung
-- der START-Druck öffnet **keine** 10-Sekunden-Anti-Spam-Sperre und erzeugt weder Track 2 noch einen normalen Unterbrechungston
-- jeder gültige kurze Druck während eines aktiven Zyklus wird **sofort** über den bestehenden `InterruptionService` gespeichert, gezählt und mit dem normalen Track ab 3 bestätigt
-- nur tatsächlich zu schnelle weitere Kurzdrucke innerhalb der 10-Sekunden-Sperre werden verworfen und erhalten Track 2 plus OLED-Anti-Spam-Feedback
-- langer Druck ab **2 Sekunden** beendet den Zyklus ausdrücklich und ist von der Kurzdruck-Sperre unabhängig
-- wird der lange Enddruck vergessen, schließt der Zyklus beim lokalen Tageswechsel automatisch; bereits erfasste Unterbrechungen werden dabei **nicht rückwirkend umklassifiziert**
-- nach manuellem Ende zeigt das SH1106 **10 Sekunden `FEIERABEND` plus heutige Unterbrechungszahl**; währenddessen werden weitere physische Eingaben ignoriert und die normale Home-/Sekundenanzeige darf die Abschlussanzeige nicht überschreiben
-- alter 3.6.0-Pending-Zustand wird durch eine neue Zyklus-Zustandskennung nicht übernommen; nach dem Update startet die neue Logik mit einem sauberen Zustand
-- START/ENDE bleiben getrennt in `/cycles.log`; der aktive Zyklus benötigt nur einen kleinen NVS-Zustand ohne Pending-Kandidaten
-- bestehender Raw-Ring bleibt **100.000 × 9 Byte** und bytekompatibel zu 3.5.x; Tagesaggregate, CSV, Heatmaps, Fokus und Herkunftsfilter bleiben auf echten Unterbrechungen aufgebaut
-- Webbutton bleibt unabhängig und erzeugt weiterhin sofort Unterbrechungen
-
-## Korrigiertes Bedienmodell
-
-```text
-inaktiv + kurzer Druck     -> START, still, keine Sperre
-aktiv + kurzer Druck       -> sofort UNTERBRECHUNG
-< 10 s nach Unterbrechung  -> weiterer Kurzdruck wird unterdrückt, Track 2
-aktiv + Druck >= 2 s       -> ENDE, 10 s FEIERABEND
-kein ENDE bis Tageswechsel -> Zyklus automatisch schließen
-```
-
-## Kompatibilität
-
-Vorhandene 3.x-Unterbrechungsdaten benötigen keine Migration. Der 3.6.0-Pending-Teststand wird nicht als Datenmodell fortgeführt; eine dort noch offene Zyklus-Pending-Struktur wird von 3.6.1 absichtlich nicht geladen.
+**Verhalten ohne Strom:** Ein nicht abgeschlossener Arbeitszyklus wird nach der Wiederaufnahme mit gültiger Uhrzeit geschlossen. Der aufgezeichnete Abschlusszeitpunkt ist dann die Wiederanlaufzeit; es gibt keinen eigenständigen Puffer für den Ausschaltzeitpunkt.
 
 # Release 3.5.0
 
